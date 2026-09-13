@@ -68,6 +68,28 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+
+        <!-- JWT (ADR-002-autenticacion-y-sesiones.md: Spring Security + JWT, token
+             de 1 hora). Sprint 1 solo deja lista la utilidad de generacion/validacion
+             (JwtTokenProvider) como insumo para HU02 (login); no hay filtro de login
+             conectado todavia porque HU02 no es tarea individual de Simon. -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.12.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.12.5</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.12.5</version>
+            <scope>runtime</scope>
+        </dependency>
  
         <!-- Pruebas (Fase 5 del prompt maestro) -->
         <dependency>
