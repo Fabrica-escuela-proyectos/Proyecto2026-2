@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: reservas-postgres
+    environment:
+      POSTGRES_DB: reservas
+      POSTGRES_USER: reservas_app
+      POSTGRES_PASSWORD: reservas_app_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - reservas-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  reservas-postgres-data:
