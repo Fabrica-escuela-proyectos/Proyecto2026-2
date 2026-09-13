@@ -1,7 +1,4 @@
--- ============================================================
--- Script inicial PostgreSQL — Sprint 1 (Identidad y Acceso)
--- Responsable: ANDRAUS LOPEZ JUAN SEBASTIAN
--- ============================================================
+
 
 CREATE TABLE users (
     id              BIGSERIAL PRIMARY KEY,
