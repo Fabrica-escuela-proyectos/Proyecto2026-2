@@ -1,15 +1,12 @@
+version: '3.8'
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: reservas-postgres
-    environment:
-      POSTGRES_DB: reservas
-      POSTGRES_USER: reservas_app
-      POSTGRES_PASSWORD: reservas_app_dev
+  backend:
+    build: .
     ports:
-      - "5432:5432"
-    volumes:
-      - reservas-postgres-data:/var/lib/postgresql/data
-
-volumes:
-  reservas-postgres-data:
+      - "8080:8080"
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:reservas-backend@db.sruzcycwcedbylqgoayk.supabase.co:5432/postgres
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=reservas-backend
+      - JWT_SECRET=${JWT_SECRET}
+      - SPRING_PROFILES_ACTIVE=dev
