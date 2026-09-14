@@ -97,3 +97,42 @@ Verificado con `psql` dentro del contenedor: las 6 tablas existen (`audit_logs`,
 ### Pendiente de decisión de equipo
 
 `ReservasBackendApplicationTests` (punto 2 arriba) sigue sin resolver: no usa Testcontainers, requiere que `localhost:5432` tenga la base `reservas` accesible con las credenciales del perfil activo. Con el Postgres de Docker ya levantado y `DB_PASSWORD` exportado, este test debería pasar; falta confirmarlo corriendo `./mvnw test` con el contenedor arriba.
+
+## Actualización — `./mvnw test` con Postgres (Docker) arriba
+
+Con el contenedor `reservas-postgres` corriendo (`docker compose up -d`) y `DB_PASSWORD=reservas_app_dev` exportado, se volvió a correr la suite completa.
+
+### Resumen actualizado
+
+| Clase | Tests | Passed | Failed | Errors |
+|---|---|---|---|---|
+| `ReservasBackendApplicationTests` | 1 | 1 | 0 | 0 |
+| `AuthorizationServiceImplTest` | 4 | 4 | 0 | 0 |
+| `UserRegistrationServiceTest` | 6 | 6 | 0 | 0 |
+| `UserRegistrationIntegrationTest` | 1* | 0 | 0 | 1 |
+| `PasswordValidatorTest` | 8 | 8 | 0 | 0 |
+| `PhoneValidatorTest` | 5 | 5 | 0 | 0 |
+| `JwtTokenProviderTest` | 4 | 4 | 0 | 0 |
+| **Total** | **29** | **28** | **0** | **1** |
+
+**`ReservasBackendApplicationTests` ya pasa** — confirma que el punto 2 de "Pasos a seguir" quedó resuelto simplemente con el Postgres de Docker ya levantado; no hizo falta tocar el test.
+
+### 5. `UserRegistrationIntegrationTest` — Testcontainers no encuentra el Docker de Windows (causa distinta a la original)
+
+Este test sigue fallando, pero **ya no por falta de Docker** — ahora es un problema de cómo Testcontainers se conecta al Docker Desktop de Windows desde este entorno:
+
+```
+NpipeSocketClientProviderStrategy: failed with exception BadRequestException
+(Status 400: {... "Labels":["com.docker.desktop.address=npipe://\\\\.\\pipe\\docker_cli"] ...})
+```
+
+**Causa:** Testcontainers intenta hablar con Docker vía el pipe de Windows `npipe:////./pipe/docker_engine`, pero la respuesta que recibe viene vacía/inconsistente (0 contenedores, sin versión de kernel, etc.) y con una etiqueta que apunta a `docker_cli` en vez de al engine real. `docker ps` desde la terminal sí funciona perfectamente en esta misma máquina — el CLI y Testcontainers están resolviendo el daemon por rutas distintas. Probar `DOCKER_HOST=npipe:////./pipe/docker_engine` explícito no cambió el resultado (es el mismo valor que Testcontainers ya intenta por defecto).
+
+**Próximo paso sugerido** (no lo apliqué porque requiere cambiar configuración de Docker Desktop, que no controlo desde aquí):
+1. En Docker Desktop → *Settings → General*, activar **"Expose daemon on tcp://localhost:2375 without TLS"**.
+2. Exportar `DOCKER_HOST=tcp://localhost:2375` antes de correr `./mvnw test`.
+3. Alternativa: correr las pruebas desde dentro de WSL2 (si se configura), donde Testcontainers habla con Docker vía socket Unix nativo en vez del pipe de Windows, evitando este problema por completo.
+
+### Cambios pendientes de commitear en `main` (actualizado)
+
+Sin cambios adicionales de código en esta ronda — el `pom.xml`, las migraciones movidas y el `docker-compose.yml` ya fueron commiteados (`Integracion Postgres y Docker para pruebas`, `Agregar spring-boot-flyway...`). El working tree está limpio.
