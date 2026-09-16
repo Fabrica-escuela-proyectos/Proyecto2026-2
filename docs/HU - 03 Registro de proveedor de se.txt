@@ -1,0 +1,79 @@
+HU - 03 Registro de proveedor de servicios
+
+Como proveedor de servicios
+
+quiero registrar mi negocio en la plataforma
+para administrar mis servicios, horarios, recursos y reservas.
+
+Scenario: Registro exitoso de proveedor con datos válidos
+    Given un visitante no registrado genera una petición de registro como proveedor
+    When completa nombre completo, correo electrónico, número de celular, contraseña y datos del negocio con información válida
+    And envía la petición
+    Then el sistema crea la cuenta del proveedor exitosamente
+    And registra la información del negocio asociada a dicha cuenta
+    And le asigna el rol "Proveedor" de forma controlada
+    And guarda la contraseña de forma segura, sin que quede visible ni siquiera para el equipo técnico
+
+  Scenario: Registro de proveedor con correo ya existente
+    Given ya existe una cuenta registrada con el correo "proveedor@ejemplo.com"
+    When un visitante intenta registrarse como proveedor usando el correo "proveedor@ejemplo.com"
+    Then el sistema rechaza la solicitud
+    And muestra un mensaje indicando que el correo ya está en uso
+    And no se crea una cuenta duplicada
+
+  Scenario: Registro de proveedor con formato de correo inválido
+    Given un visitante genera una petición de registro de proveedor
+    When ingresa un correo con formato inválido, por ejemplo "negocio@@dominio"
+    And envía la petición
+    Then el sistema rechaza la solicitud
+    And muestra un mensaje de error indicando que el formato del correo no es válido
+    And no se crea ninguna cuenta
+
+  Scenario Outline: Contraseña que no cumple la política de seguridad
+    Given un visitante envía una petición de registro de proveedor con nombre, correo, celular y datos de negocio válidos
+    And una contraseña que no contiene mayúsculas, minúsculas, 8 caracteres mínimo y algún "<caracter especial>"
+    When el sistema la procesa
+    Then el sistema rechaza la solicitud
+    And muestra un mensaje indicando el requisito de seguridad no cumplido
+    And no se crea ninguna cuenta
+
+    Examples:
+      | caracter especial |
+      | ¡                  |
+      | *                  |
+      | +                  |
+      | °                  |
+
+  Scenario Outline: Campo obligatorio faltante en el registro de proveedor
+    Given un visitante genera una petición de registro de proveedor
+    When completa la petición dejando vacío el campo "<campo>"
+    And envía la petición
+    Then el sistema rechaza la solicitud
+    And muestra un mensaje de error específico para el campo "<campo>"
+    And no se crea ninguna cuenta
+
+    Examples:
+      | campo               |
+      | nombre completo     |
+      | correo electrónico  |
+      | número de celular   |
+      | contraseña          |
+      | nombre del negocio  |
+
+  Scenario: El proveedor no puede autoasignarse un rol privilegiado durante el registro
+    Given un visitante genera una petición de registro de proveedor
+    When intenta enviar en la petición un rol distinto a "Proveedor", por ejemplo "Administrador"
+    Then el sistema ignora el rol enviado por el visitante
+    And asigna el rol "Proveedor" de forma controlada desde el servidor
+    And registra la cuenta únicamente con el rol autorizado
+
+  Scenario: Protección de la información del proveedor en los registros internos del sistema
+    Given que un proveedor se registra o inicia sesión en la plataforma
+    When el sistema guarda un registro interno de dicho evento
+    Then ese registro no debe incluir la contraseña ni ninguna otra información sensible del proveedor
+
+  Scenario: La información del proveedor queda protegida en todo momento
+    Given un proveedor se registra exitosamente con datos válidos
+    When su cuenta y la de su negocio quedan creadas en la plataforma
+    Then su contraseña y demás datos sensibles permanecen protegidos
+    And nadie, ni siquiera el equipo que administra la plataforma, puede verlos de forma legible

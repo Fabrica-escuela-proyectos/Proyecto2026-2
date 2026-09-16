@@ -1,0 +1,80 @@
+HU 05 - Gestionar roles y permisos
+
+Como administrador tengo que poder gestionar los roles y permisos de los usuarios, para controlar de forma segura quién puede acceder a cada funcionalidad.
+
+Background:
+
+    Given que el sistema tiene los roles "Cliente", "Proveedor" y "Administrador" configurados
+
+    And cada rol tiene permisos definidos sobre los recursos del sistema
+
+Scenario: Administrador asigna un rol "Administrador" a un usuario existente
+
+    Given un usuario autenticado como "Administrador"
+
+    And existe un usuario con rol "Cliente"
+
+    When le asigna el rol "Administrador" al usuario con rol de "Cliente"
+
+    Then el sistema actualiza el rol del usuario a "Administrador"
+
+    And se activa un evento obligatorio, para la creación de MFA para el nuevo "Administrador"
+
+
+
+
+Scenario: Administrador intenta cambiar un rol "Proveedor" de un usuario existente
+
+    Given un usuario autenticado como "Administrador"
+
+    And existe un usuario con rol "Proveedor"
+
+    When le intenta cambiar el rol de "Proveedor" a un usuario creado
+
+    Then el sistema devuelve un error
+
+    And informa que los usuarios con rol "Proveedor" no se les puede cambiar el rol.
+
+
+
+Scenario: administrador elimina usuario con rol
+
+Given: Usuario autenticado como administrador 
+
+When: Elimina Usuario con rol de "Cliente" o "Proveedor"
+Then:Se elimina el usuario en su totalidad, guardando historial de las funcionalidades de usuario sin tener en cuenta sus reservas, sitios u horarios como datos validos.
+
+Scenario: Administrador intenta asignar un rol inexistente
+
+    Given un usuario autenticado con rol "Administrador"
+
+    When intenta asignar el rol inexistente a un usuario con rol "Cliente"
+
+    Then el sistema rechaza la operación
+
+    And responde con un error uniforme indicando que el rol no existe.
+
+
+
+
+Scenario: Usuario intenta modificar sus propios permisos
+
+    Given un usuario autenticado con cualquier rol
+
+    When intenta modificar sus propios permisos o rol
+
+    Then el sistema rechaza la operación
+
+    And responde con un error uniforme indicando que no puede modificarse a sí mismo
+
+
+
+
+
+
+
+
+
+
+
+

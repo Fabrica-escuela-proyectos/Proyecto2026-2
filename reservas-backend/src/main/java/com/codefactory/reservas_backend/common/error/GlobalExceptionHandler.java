@@ -1,11 +1,23 @@
 package com.codefactory.reservas_backend.common.error;
 
+import com.codefactory.reservas_backend.identity.domain.AdminDeletionNotAllowedException;
 import com.codefactory.reservas_backend.identity.domain.DuplicateEmailException;
 import com.codefactory.reservas_backend.identity.domain.DuplicatePhoneException;
+import com.codefactory.reservas_backend.identity.domain.InvalidCredentialsException;
+import com.codefactory.reservas_backend.identity.domain.InvalidMfaCodeException;
+import com.codefactory.reservas_backend.identity.domain.MfaNotConfiguredException;
+import com.codefactory.reservas_backend.identity.domain.ProviderRoleImmutableException;
+import com.codefactory.reservas_backend.identity.domain.RoleNotFoundException;
+import com.codefactory.reservas_backend.identity.domain.SelfModificationException;
+import com.codefactory.reservas_backend.identity.domain.UserNotFoundException;
 import com.codefactory.reservas_backend.identity.infrastructure.TooManyRequestsException;
+import com.codefactory.reservas_backend.provider.domain.ProviderNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -22,6 +34,8 @@ import java.util.stream.Collectors;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // Escenarios "Formato de correo inválido", "Número de celular con
     // formato inválido", "Contraseña que no cumple política" y "Campo
@@ -62,10 +76,59 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_REQUESTS", ex.getMessage(), null, req);
     }
 
+    // HU-02: credenciales inválidas, cuenta deshabilitada o código MFA
+    // faltante/incorrecto en el login — errores-api-sprint-1.md sección 5.
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ApiError> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest req) {
+        return build(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), null, req);
+    }
+
+    // Errores de validación de negocio que no vienen de Bean Validation
+    // (@Valid), pero que igualmente son "datos de entrada inválidos":
+    // rol inexistente (HU-05) y código/estado de MFA inválido. Se
+    // mantienen dentro del vocabulario de errores documentado
+    // (errores-api-sprint-1.md sección 3) en vez de inventar un nuevo
+    // "error" además de los ya definidos.
+    @ExceptionHandler({RoleNotFoundException.class, InvalidMfaCodeException.class, MfaNotConfiguredException.class})
+    public ResponseEntity<ApiError> handleBusinessValidation(RuntimeException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage(), null, req);
+    }
+
+    // HU-05/HU-06: el usuario/proveedor objetivo de la operación no existe.
+    @ExceptionHandler({UserNotFoundException.class, ProviderNotFoundException.class})
+    public ResponseEntity<ApiError> handleNotFound(RuntimeException ex, HttpServletRequest req) {
+        return build(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage(), null, req);
+    }
+
+    // HU-05: autenticado pero sin permiso suficiente para ESTA operación
+    // específica (auto-modificación, rol de Proveedor inmutable, borrado de
+    // Administrador). Mensajes propios y específicos porque el usuario ya
+    // sabe qué intentó hacer; no hay riesgo de revelar información nueva.
+    @ExceptionHandler({SelfModificationException.class, ProviderRoleImmutableException.class,
+            AdminDeletionNotAllowedException.class})
+    public ResponseEntity<ApiError> handleForbidden(RuntimeException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage(), null, req);
+    }
+
+    // HU-06: denegación genérica de pertenencia/rol (UserManagementService,
+    // ProviderQueryService, y cualquier @PreAuthorize que falle dentro del
+    // despachador MVC). Se usa el mismo mensaje genérico de
+    // RestAccessDeniedHandler en vez de ex.getMessage(): cuando la excepción
+    // la lanza Spring Security directamente (p. ej. @PreAuthorize) su
+    // mensaje por defecto está en inglés ("Access Denied"), y mezclar
+    // idiomas en la respuesta rompería el formato uniforme.
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, "FORBIDDEN", "No tiene permisos para realizar esta operación", null, req);
+    }
+
     // Red de seguridad genérica (errores-api-sprint-1.md sección 10): nunca
     // exponer stack traces, SQL ni detalles internos en la respuesta.
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleUnexpected(Exception ex, HttpServletRequest req) {
+        // El cliente nunca ve el detalle (sección 10), pero sin loguearlo
+        // server-side un 500 real sería indiagnosticable en producción.
+        log.error("Error interno no controlado en {} {}", req.getMethod(), req.getRequestURI(), ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR",
                 "Ocurrió un error interno al procesar la solicitud", null, req);
     }

@@ -1,4 +1,4 @@
-package com.codefactory.reservas_backend.identity.controller.dto.validation;
+package com.codefactory.reservas_backend.common.validation;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
@@ -9,6 +9,11 @@ import jakarta.validation.ConstraintValidatorContext;
  * mínimo 8 caracteres, mayúscula, minúscula y un carácter especial. Los
  * ejemplos dados en la HU (¡, *, +, °) no son un set cerrado, por eso se
  * valida "cualquier carácter no alfanumérico" en vez de una lista fija.
+ *
+ * Movido de identity.controller.dto.validation a common.validation cuando
+ * HU-03 (registro de proveedor) empezó a necesitar la misma política de
+ * contraseña: ambos módulos comparten esta regla porque las dos historias
+ * crean cuentas de acceso, no porque provider dependa de identity.
  */
 public class PasswordValidator implements ConstraintValidator<ValidPassword, String> {
 

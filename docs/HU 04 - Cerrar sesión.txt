@@ -1,0 +1,46 @@
+HU 04 - Cerrar sesión
+
+Como usuario autenticado
+
+  Quiero cerrar mi sesión
+
+  Para impedir que otras personas puedan utilizar mi cuenta sin autorización
+
+Scenario: Cierre de sesión exitoso
+
+    Given el usuario tiene una sesión activa y autenticada
+
+    When el usuario ejecuta la acción de cerrar sesión
+
+    Then la sesión activa debe quedar invalidada en todos los dispositivos asociados
+
+    And la renovación automática de la sesión quedará desactivada.
+
+
+
+Scenario: Expiración automática de sesión
+
+    Given una sesión ha superado su tiempo de vida maximo (1hora)
+
+    When el usuario intenta usar esa sesión
+
+    Then el sistema debe tratarla como revocada
+
+    And debe denegar el acceso a operaciones protegidas
+
+
+Scenario: Error al cerrar sesión
+
+   Given el usuario tiene una sesión activa
+
+   When ejecuta la acción de cerrar sesión
+
+   And ocurre un error (ej. falla de conexión con el servidor)
+
+   Then el sistema debe manejar el error apropiadamente
+
+   And debe informar al usuario si el cierre de sesión fue exitoso o no.
+
+
+
+

@@ -1,4 +1,4 @@
-package com.codefactory.reservas_backend.identity.controller.dto.validation;
+package com.codefactory.reservas_backend.common.validation;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
@@ -8,6 +8,10 @@ import jakarta.validation.ConstraintValidatorContext;
  * aparece en la propia HU ("3001234567"): celular colombiano, 10 dígitos,
  * inicia en 3. Los ejemplos inválidos del Scenario Outline ("abcde12345",
  * "12345", "123") quedan cubiertos porque no cumplen el patrón.
+ *
+ * Movido de identity.controller.dto.validation a common.validation cuando
+ * HU-03 (registro de proveedor) empezó a necesitar el mismo formato de
+ * celular (ver PasswordValidator para el mismo razonamiento).
  *
  * IMPORTANTE (ver docs/matriz-actualizaciones.md): ni HU-01 ni los nuevos
  * documentos de arquitectura (dtos-sprint-1.md, endpoints-sprint-1.md)

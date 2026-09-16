@@ -1,4 +1,4 @@
-package com.codefactory.reservas_backend.identity.controller.dto.validation;
+package com.codefactory.reservas_backend.common.validation;
 
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
@@ -6,11 +6,11 @@ import jakarta.validation.Payload;
 import java.lang.annotation.*;
 
 @Documented
-@Constraint(validatedBy = PasswordValidator.class)
+@Constraint(validatedBy = PhoneValidator.class)
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface ValidPassword {
-    String message() default "La contraseña no cumple la política de seguridad";
+public @interface ValidPhone {
+    String message() default "El número de celular no es válido";
     Class<?>[] groups() default {};
     Class<? extends Payload>[] payload() default {};
 }

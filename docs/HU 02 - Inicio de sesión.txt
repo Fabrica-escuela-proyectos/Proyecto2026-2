@@ -1,0 +1,60 @@
+HU 02 - Inicio de sesión
+
+Como usuario registrado
+quiero iniciar sesión de forma segura
+para acceder a las funcionalidades correspondientes a mi rol.
+
+
+  Scenario: Inicio de sesión exitoso con credenciales válidas
+    Given que el usuario está registrado en el sistema
+    And se encuentra en la pantalla de inicio de sesión
+    When proporciona su correo y contraseña correctos
+    And el sistema valida dichas credenciales de forma segura
+    Then el sistema le permite el acceso
+    And mantiene su sesión iniciada durante un tiempo determinado, después del cual deberá volver a iniciar sesión
+
+  Scenario: Intento de inicio de sesión con credenciales inválidas
+    Given que el usuario está en la pantalla de inicio de sesión
+    When proporciona credenciales incorrectas o incompletas
+    Then el sistema debe rechazar el intento de acceso
+    And no debe permitirle ingresar a la plataforma
+
+  Scenario: Protección de la información de acceso del usuario
+    Given que un usuario ha iniciado sesión
+    When el sistema mantiene su acceso activo
+    Then la información que identifica esa sesión debe protegerse en todo momento
+    And no debe quedar expuesta a personas no autorizadas
+
+  Scenario: Expiración de la sesión
+    Given que el usuario cuenta con una sesión activa
+    When se cumple el tiempo determinado de duración de la sesión (1 hora)
+    Then el sistema debe cerrar automáticamente su acceso
+    And debe solicitarle iniciar sesión nuevamente para continuar usando la plataforma
+
+  Scenario: Protección de datos sensibles en los registros internos del sistema
+    Given que ocurre un intento de inicio de sesión, exitoso o fallido
+    When el sistema guarda un registro interno de dicho evento
+    Then ese registro no debe incluir la contraseña ni ninguna otra información sensible del usuario
+
+  Scenario: Identificación del rol del usuario tras iniciar sesión
+    Given que el usuario ha iniciado sesión exitosamente
+    When el sistema reconoce su cuenta
+    Then debe identificar el rol asociado al usuario
+    And debe permitirle únicamente las funcionalidades correspondientes a dicho rol
+
+  Scenario: Verificación adicional para cuentas administrativas
+    Given que un usuario con rol administrativo ingresa credenciales válidas
+    When el sistema detecta que su cuenta requiere un paso adicional de verificación
+    Then debe solicitarle completar ese paso adicional
+    And solo debe darle acceso si esa verificación es correcta
+
+Scenario Outline: Verificación adicional para operaciones sensibles
+  Given que un usuario autenticado intenta realizar la operación "<operación>"
+  When el sistema identifica que esa operación requiere confirmación adicional
+  Then debe solicitarle completar esa confirmación antes de ejecutarla
+  And debe impedir la acción si la confirmación no es correcta
+
+  Examples:
+    | operación                                   | quién la realiza              |
+    | cambiar su contraseña                       | cualquier usuario autenticado |
+    | modificar los permisos de otro usuario      | Administrador                 |

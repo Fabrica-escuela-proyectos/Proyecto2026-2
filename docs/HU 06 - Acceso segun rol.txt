@@ -1,0 +1,89 @@
+HU 06 - Acceso segun rol
+
+Como usuario de la plataforma
+solo puedo acceder a las funcionalidades que el sistema tiene definidas para mi rol.
+
+
+Scenario: Cliente gestiona únicamente sus propias reservas y datos
+
+    Given un usuario con rol Cliente ha iniciado sesión
+
+    When intenta gestionar una reserva o dato que le pertenece
+
+    Then el sistema debe permitir la operación
+
+
+Scenario: Cliente intenta gestionar reservas o datos de otro usuario
+
+    Given un usuario con rol Cliente ha iniciado sesión
+
+    When intenta gestionar una reserva o dato que no le pertenece
+
+    Then el sistema debe denegar el acceso
+
+
+ 
+
+Scenario: Proveedor gestiona únicamente los recursos de su propio negocio
+
+    Given un usuario con rol Proveedor ha iniciado sesión
+
+    When intenta gestionar servicios, horarios, recursos o reservas de su propio negocio
+
+    Then el sistema debe permitir la operación
+
+
+
+
+
+
+
+Scenario: Proveedor intenta gestionar recursos de otro negocio
+
+    Given un usuario con rol Proveedor ha iniciado sesión
+
+    When intenta gestionar servicios, horarios, recursos o reservas pertenecientes a otro proveedor
+
+    Then el sistema debe denegar el acceso
+
+    And no debe considerarse suficiente que el proveedor tenga permiso general para esa acción
+
+
+
+
+Scenario: Acceso a funcionalidades autorizadas
+
+    Given un usuario con rol definido con sesion iniciada.
+
+    When intenta acceder a una funcionalidad autorizada para su rol
+
+    Then el sistema debe permitir el acceso.
+
+
+
+
+Scenario: Denegación de acceso a funcionalidades no autorizadas
+
+    Given un usuario con rol definido con sesión iniciada.
+
+    When intenta acceder a una funcionalidad  NO autorizada para su rol.
+
+    Then el sistema debe denegar el acceso.
+
+
+
+
+Scenario: Bloqueo de acceso con sesión expirada o revocada
+
+    Given un usuario cuenta con una sesión expirada/revocada o sin iniciar sesión
+
+    When intenta ejecutar una operación protegida
+
+    Then el sistema debe denegar el acceso
+
+    And debe solicitar una nueva autenticación
+
+
+
+
+

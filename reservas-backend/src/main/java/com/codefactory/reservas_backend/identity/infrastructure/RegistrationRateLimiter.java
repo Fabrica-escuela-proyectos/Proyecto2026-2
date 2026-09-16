@@ -8,12 +8,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Limitador en memoria para el registro de clientes.
- * Cubre el escenario Gherkin "Bloqueo temporal por múltiples intentos de
- * registro" de HU-01: "se detectan muchas solicitudes de registro en poco
- * tiempo desde el mismo origen" -> bloqueo temporal de nuevas solicitudes.
- * Mapea al error 429 / TOO_MANY_REQUESTS de errores-api-sprint-1.md
- * sección 9.
+ * Limitador en memoria para el registro de cuentas (clientes y, desde
+ * HU-03, proveedores). Cubre el escenario Gherkin "Bloqueo temporal por
+ * múltiples intentos de registro" de HU-01: "se detectan muchas solicitudes
+ * de registro en poco tiempo desde el mismo origen" -> bloqueo temporal de
+ * nuevas solicitudes. Mapea al error 429 / TOO_MANY_REQUESTS de
+ * errores-api-sprint-1.md sección 9, relevante también para HU-03 (misma
+ * sección, tabla del punto 12).
+ *
+ * Se reutiliza el mismo bean (misma instancia, mismo contador por IP) desde
+ * provider.application.ProviderRegistrationService en vez de duplicar este
+ * componente: es una utilidad técnica sin datos de dominio, no una
+ * dependencia hacia las entidades/repositorios internos de Identity que
+ * ADR-003-modularidad-e-interfaces.md busca evitar entre módulos. Además,
+ * compartir el contador entre /users y /providers cierra el hueco de que
+ * alguien evada el límite de HU-01 simplemente alternando de endpoint.
  *
  * Suficiente para Sprint 1 (una sola instancia). Si el backend se despliega
  * en múltiples instancias, este mecanismo debe migrar a un almacén

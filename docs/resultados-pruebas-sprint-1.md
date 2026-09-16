@@ -136,3 +136,48 @@ NpipeSocketClientProviderStrategy: failed with exception BadRequestException
 ### Cambios pendientes de commitear en `main` (actualizado)
 
 Sin cambios adicionales de código en esta ronda — el `pom.xml`, las migraciones movidas y el `docker-compose.yml` ya fueron commiteados (`Integracion Postgres y Docker para pruebas`, `Agregar spring-boot-flyway...`). El working tree está limpio.
+
+## Actualización — 2026-09-15, implementación de HU02–HU06
+
+- **Comando:** `./mvnw test -Dtest='!ReservasBackendApplicationTests,!UserRegistrationIntegrationTest,!AuthAndAccessControlIntegrationTest'`
+- **Docker:** no disponible en esta máquina/sesión (`docker version` conecta al cliente pero falla al hablar con el daemon: `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine`) — un fallo distinto y más básico que el de la actualización anterior (ahí Docker sí respondía, solo enrutaba mal); aquí el daemon de Docker Desktop directamente no está corriendo. Se intentó localizar y arrancar `Docker Desktop.exe` sin éxito (no estaba en la ruta por defecto).
+
+### Resumen
+
+| Clase | Tests | Passed | Failed | Errors |
+|---|---|---|---|---|
+| Las 7 clases ya listadas arriba (sin cambios) | 29 | — | — | — |
+| `AuthServiceImplTest` (nueva, HU02/HU04) | 8 | 8 | 0 | 0 |
+| `MfaServiceImplTest` (nueva, HU02/HU05) | 9 | 9 | 0 | 0 |
+| `UserManagementServiceImplTest` (nueva, HU05/HU06) | 14 | 14 | 0 | 0 |
+| `UserProvisioningServiceImplTest` (nueva, HU03) | 4 | 4 | 0 | 0 |
+| `ProviderRegistrationServiceTest` (nueva, HU03) | 3 | 3 | 0 | 0 |
+| `TotpServiceTest` (nueva) | 8 | 8 | 0 | 0 |
+| `PasswordValidatorTest`/`PhoneValidatorTest` (movidas a `common.validation`, mismo contenido) | 13 | 13 | 0 | 0 |
+| **Total (excluyendo las 3 clases que requieren Postgres/Docker real)** | **73** | **73** | **0** | **0** |
+
+`./mvnw compile` y `./mvnw test-compile` también se corrieron limpio sobre todo el árbol (identity, provider, common, audit).
+
+No se pudieron ejecutar en este entorno (mismo motivo de siempre: sin Docker): `ReservasBackendApplicationTests`, `UserRegistrationIntegrationTest` (ninguna de las dos es nueva) y `AuthAndAccessControlIntegrationTest` (nueva — Testcontainers, mismo patrón que `UserRegistrationIntegrationTest`, cubre login/logout/cambio de rol/eliminación/pertenencia de proveedor de punta a punta incluyendo el filtro JWT real). Quedan listas para correr en cualquier entorno con Docker funcional.
+
+## Actualización — 2026-09-15 (mismo día), verificación manual de punta a punta con Docker
+
+Con Docker Desktop ya corriendo y el contenedor `reservas-postgres` (`docker-compose.yml`) arriba, se repitió la corrida completa (`DB_PASSWORD=reservas_app_dev ./mvnw test`, sin exclusiones).
+
+- **`ReservasBackendApplicationTests` ahora pasa** contra el contenedor real, y confirma que `V3__create_provider_schema.sql`/`V4__create_mfa_table.sql` migran limpio sobre el esquema V1/V2 ya existente (`Current version: 2` → `Migrating... 3` → `Migrating... 4`).
+- **`UserRegistrationIntegrationTest` y `AuthAndAccessControlIntegrationTest` siguen sin poder correr**, pero ya no por falta de Docker: es el mismo problema de compatibilidad Testcontainers↔Docker Desktop en Windows descrito en la sección "5." de arriba (`NpipeSocketClientProviderStrategy` recibe una respuesta vacía/mal formada del daemon). Se probó explícitamente `DOCKER_HOST=npipe:////./pipe/dockerDesktopLinuxEngine` (el contexto activo real, según `docker context ls`) y falla igual — no es un problema de qué pipe se usa, sino de cómo el cliente `docker-java` que trae Testcontainers habla con esta versión de Docker Desktop (4.90.0) sobre npipe. `docker ps`/`docker version` desde la CLI funcionan perfectamente en la misma máquina. Exponer el daemon en `tcp://localhost:2375` (sugerido en la actualización anterior) seguía sin estar habilitado; requiere un cambio manual en Docker Desktop → Settings que no se aplicó por no ser una decisión unilateral de tomar en código.
+- **Como alternativa, se verificó cada endpoint manualmente** contra la app real (`./mvnw spring-boot:run`, perfil `dev`, mismo contenedor Postgres) con `curl`, cubriendo los seis HU de punta a punta: registro de cliente (éxito + 5 rechazos), login (éxito + credenciales inválidas, con y sin MFA), acceso protegido propio/ajeno (200/403/401 con token manipulado), registro de proveedor (éxito, intento de auto-asignar rol admin ignorado, correo duplicado, campo faltante), pertenencia de negocio de proveedor (200/403/404), cambio de rol (éxito, rol de Proveedor inmutable, auto-modificación bloqueada, rol inexistente, usuario inexistente, llamador no-admin), ascenso a Administrador con disparo del evento MFA pendiente, enrolamiento y activación de MFA (el código TOTP se calculó de forma independiente con un script Python propio — no reutilizando la lógica Java bajo prueba — para descartar que ambas implementaciones compartieran el mismo error), logout con invalidación real del token, y eliminación de usuario (bloqueo de auto-eliminación y de eliminar Administradores, éxito sobre Proveedor con cascada verificada en BD hacia `providers`/`businesses`).
+
+### Bug real encontrado y corregido
+
+`PATCH /api/v1/users/{userId}/role` devolvía **500** en el camino exitoso (HTTP real; los 73 tests unitarios con Mockito no lo detectaban porque mockean `UserRepository` y nunca ejercitan el comportamiento real de Hibernate).
+
+- **Causa:** `UserManagementServiceImpl.changeRole` hacía `target.setRoles(Set.of(newRole))` sobre una entidad ya gestionada (cargada con `findById`). `JpaRepository.save(...)` sobre una entidad gestionada pasa por `EntityManager.merge()`, y el algoritmo de merge de colecciones de Hibernate necesita hacer `clear()` sobre el valor asignado para reconciliarlo con la colección persistente — algo que un `Set.of()` inmutable no permite (`UnsupportedOperationException`). HU01/HU03 usan el mismo patrón (`.roles(Set.of(...))`) pero sobre una entidad **nueva** (`id` nulo), que pasa por `persist()`, no por `merge()`, así que nunca lo manifestaron.
+- **Fix:** `target.setRoles(new HashSet<>(Set.of(newRole)))` (colección mutable). Verificado corrigiendo el bug, recompilando, y repitiendo la secuencia completa de HU05 contra la app real — todos los casos (éxito, inmutabilidad de Proveedor, auto-modificación, rol inexistente, usuario inexistente, ascenso a Administrador con evento MFA) pasan.
+- **Hallazgo secundario relacionado:** `GlobalExceptionHandler.handleUnexpected` no logueaba la excepción capturada — un 500 real en producción habría sido indiagnosticable server-side (el cliente correctamente nunca ve el detalle, pero nada quedaba registrado tampoco). Se agregó `log.error(...)` con el stack trace completo antes de construir la respuesta genérica; así se encontró la causa raíz de este mismo bug.
+
+### Resultado final de esta ronda
+
+- 74 tests automatizados (73 unitarios + `ReservasBackendApplicationTests`) pasan limpio contra el contenedor Postgres real.
+- Los 6 HU quedaron verificados manualmente de punta a punta contra la app real, con un bug real encontrado y corregido en el proceso.
+- Pendiente: correr `UserRegistrationIntegrationTest` y `AuthAndAccessControlIntegrationTest` en un entorno donde Testcontainers sí pueda hablar con Docker (WSL2, Docker Desktop con el daemon expuesto por TCP, o CI con Docker nativo de Linux) — el código de ambas pruebas no cambió, el bloqueo es puramente de esta máquina/versión de Docker Desktop.

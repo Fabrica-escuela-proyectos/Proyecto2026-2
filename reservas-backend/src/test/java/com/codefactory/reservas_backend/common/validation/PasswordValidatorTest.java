@@ -1,4 +1,4 @@
-package com.codefactory.reservas_backend.identity.controller.dto.validation;
+package com.codefactory.reservas_backend.common.validation;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
