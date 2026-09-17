@@ -1,5 +1,4 @@
 # Modelo Lógico — Sprint 1 (Identidad y Acceso)
-Responsable: ANDRAUS LOPEZ JUAN SEBASTIAN
 
 ## USERS
 | Columna | Tipo | Restricción |
