@@ -1,5 +1,4 @@
 # Entidades y Relaciones — Base del Modelo Lógico y Físico
-Sprint 1 (Identidad y Acceso) — Responsable BD: ANDRAUS LOPEZ JUAN SEBASTIAN
 
 ## Entidades
 
