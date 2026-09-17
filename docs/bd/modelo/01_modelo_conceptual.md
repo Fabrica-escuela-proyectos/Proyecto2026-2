@@ -1,5 +1,4 @@
 # Modelo Conceptual — Sprint 1 (Identidad y Acceso)
-Responsable: ANDRAUS LOPEZ JUAN SEBASTIAN
 
 ## Entidades
 
