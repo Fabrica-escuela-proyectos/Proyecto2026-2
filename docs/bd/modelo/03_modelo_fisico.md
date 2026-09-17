@@ -1,5 +1,4 @@
 # Modelo Físico (PostgreSQL) — Sprint 1
-Responsable: ANDRAUS LOPEZ JUAN SEBASTIAN
 
 ## Convenciones de nombres
 - Tablas: snake_case, plural (`users`, `role_permissions`).
