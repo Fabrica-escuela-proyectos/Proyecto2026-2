@@ -1,5 +1,6 @@
 package com.codefactory.reservas_backend.identity.infrastructure;
 
+import com.codefactory.reservas_backend.identity.domain.RoleName;
 import com.codefactory.reservas_backend.identity.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -17,4 +18,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     // Reutilizada por HU02 (login) según endpoints-sprint-1.md ("Buscar el
     // usuario mediante su email").
     Optional<User> findByEmailIgnoreCase(String email);
+
+    boolean existsByRoles_Name(RoleName name);
 }
