@@ -1,0 +1,139 @@
+@startuml Diagrama_de_Paquetes_v3
+
+' ==========================================================
+' Convenciones aplicadas segun "Clase4-20232.pdf" (Descripcion
+' de la arquitectura general con UML, UdeA):
+' - Diapositiva 4: "Modele las dependencias de izquierda a
+'   derecha" -> left to right direction.
+' - Diapositivas 6-7: paquete = rectangulo con pestana; las
+'   dependencias entre paquetes son flechas punteadas que van
+'   del paquete DEPENDIENTE al paquete del cual depende
+'   (igual que UI/BO/DB -> Util Package en el ejemplo del PDF).
+' - Diapositiva 3: dentro de una misma arquitectura en capas
+'   (aqui: controller/application/infrastructure/domain por
+'   modulo) el apilamiento es vertical, igual que
+'   Presentation/Service/Domain/Persistence/DataSource Layer.
+'
+' Nota: a diferencia del diagrama de componentes, aqui NO se
+' dibuja "Authorization" como paquete propio: vive fisicamente
+' dentro de identity.application, tal como fija
+' ADR-001-monolito-modular.md (Aceptado, 7 modulos, sin
+' "authorization" en la lista). El diagrama de componentes SI
+' puede separarlo porque, segun la diapositiva 12 del PDF, "un
+' componente tiene un nivel de abstraccion mas elevado que un
+' diagrama de clase" y no requiere mapear 1:1 a un paquete.
+' ==========================================================
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam package {
+    BackgroundColor<<implementado>> #E3F2FD
+    BorderColor<<implementado>> #1565C0
+    BackgroundColor<<planeado>> #FAFAFA
+    BorderColor<<planeado>> #9E9E9E
+}
+
+package "report" <<planeado>> {
+    package "report.controller" as rep_ctrl
+    package "report.application" as rep_app
+    package "report.infrastructure" as rep_infra
+    package "report.domain" as rep_dom
+    rep_ctrl --> rep_app
+    rep_app --> rep_infra
+    rep_app --> rep_dom
+    rep_infra --> rep_dom
+}
+
+package "reservation" <<planeado>> {
+    package "reservation.controller" as rsv_ctrl
+    package "reservation.application" as rsv_app
+    package "reservation.infrastructure" as rsv_infra
+    package "reservation.domain" as rsv_dom
+    rsv_ctrl --> rsv_app
+    rsv_app --> rsv_infra
+    rsv_app --> rsv_dom
+    rsv_infra --> rsv_dom
+}
+
+package "service" <<planeado>> {
+    package "service.controller" as srv_ctrl
+    package "service.application" as srv_app
+    package "service.infrastructure" as srv_infra
+    package "service.domain" as srv_dom
+    srv_ctrl --> srv_app
+    srv_app --> srv_infra
+    srv_app --> srv_dom
+    srv_infra --> srv_dom
+}
+
+package "resource" <<planeado>> {
+    package "resource.controller" as res_ctrl
+    package "resource.application" as res_app
+    package "resource.infrastructure" as res_infra
+    package "resource.domain" as res_dom
+    res_ctrl --> res_app
+    res_app --> res_infra
+    res_app --> res_dom
+    res_infra --> res_dom
+}
+
+package "provider" <<planeado>> {
+    package "provider.controller" as prv_ctrl
+    package "provider.application" as prv_app
+    package "provider.infrastructure" as prv_infra
+    package "provider.domain" as prv_dom
+    prv_ctrl --> prv_app
+    prv_app --> prv_infra
+    prv_app --> prv_dom
+    prv_infra --> prv_dom
+}
+
+package "identity" <<implementado>> {
+    package "identity.controller" as id_ctrl
+    package "identity.application" as id_app
+    package "identity.infrastructure" as id_infra
+    package "identity.domain" as id_dom
+    id_ctrl --> id_app
+    id_app --> id_infra
+    id_app --> id_dom
+    id_infra --> id_dom
+}
+note bottom of id_app
+  Incluye tambien AuthorizationService.
+  No tiene paquete propio (ver ADR-001).
+end note
+
+package "audit" <<implementado>> {
+    package "audit.application" as aud_app
+    package "audit.infrastructure" as aud_infra
+    package "audit.domain" as aud_dom
+    aud_app --> aud_infra
+    aud_app --> aud_dom
+    aud_infra --> aud_dom
+}
+
+' ================= DEPENDENCIAS ENTRE MODULOS =================
+' Van del paquete dependiente al paquete del cual depende,
+' todas a nivel de application (ADR-003: los modulos solo se
+' comunican via la capa de aplicacion del otro).
+
+rep_app ..> rsv_app : datos de reservas
+rsv_app ..> srv_app : servicio
+rsv_app ..> res_app : recurso
+srv_app ..> prv_app : pertenencia
+res_app ..> prv_app : pertenencia
+
+prv_app ..> id_app : identidad / autorización
+rsv_app ..> id_app : identidad / autorización
+srv_app ..> id_app : autorización
+res_app ..> id_app : autorización
+rep_app ..> id_app : autorización
+
+id_app  ..> aud_app : auditoría
+prv_app ..> aud_app : auditoría
+rsv_app ..> aud_app : auditoría
+srv_app ..> aud_app : auditoría
+res_app ..> aud_app : auditoría
+
+@enduml
