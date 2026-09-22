@@ -1,6 +1,6 @@
 # Estado del proyecto — Sprint 1
 
-Fecha de este corte: 2026-09-15. Alcance: `reservas-backend/` (único código existente en el repo). Basado en lectura directa del código fuente, los tests y la documentación en `docs/`.
+Fecha de este corte: 2026-09-15, actualizado 2026-09-22. Alcance: `reservas-backend/` (único código existente en el repo). Basado en lectura directa del código fuente, los tests y la documentación en `docs/`.
 
 ## Resumen ejecutivo
 
@@ -47,13 +47,28 @@ Sigue sin resolverse el riesgo ya documentado antes: **el modelo de base de dato
 
 ## 2. Qué falta / riesgos abiertos
 
-### No hay endpoint de bootstrap para el primer Administrador
+### Bootstrap del primer Administrador — resuelto
 
-Todas las rutas que requieren rol `ADMINISTRADOR` (cambio de rol, eliminación de usuario) solo se pueden invocar si ya existe al menos un usuario con ese rol — y no hay forma de crear el primero por HTTP (ningún registro público asigna `ADMINISTRADOR`, por diseño de HU01/HU03/HU05). En este sprint se resolvió únicamente para las pruebas de integración (fixture creado directamente por repositorio). Antes de un despliegue real hace falta decidir el mecanismo: semilla en una migración con contraseña forzada a rotar, comando administrativo fuera de la API, etc. — no es una decisión que corresponda tomar de forma unilateral en código.
+Ya no es un riesgo abierto: `identity/application/AdminBootstrapRunner.java` crea el primer `ADMINISTRADOR` al arrancar la app, leyendo `BOOTSTRAP_ADMIN_EMAIL`/`BOOTSTRAP_ADMIN_PASSWORD`/`BOOTSTRAP_ADMIN_CELLPHONE` (y opcionalmente `BOOTSTRAP_ADMIN_FULL_NAME`) del entorno. No expone ninguna ruta HTTP, no hace nada si ya existe un Administrador (reiniciar no duplica), y valida los datos con las mismas reglas de contraseña/celular del resto de la app. Ver `.env.example` y [docs/guia-despliegue-render.md](guia-despliegue-render.md).
 
-### Dos modelos de base de datos sin conciliar (persiste de sprints anteriores)
+### Verificación detallada de criterios de aceptación (2026-09-22)
 
-Sigue abierto: el modelo "formal" de Andraus (BIGSERIAL, tablas `permissions`/`role_permissions`, columnas `phone`/`is_active`) y el esquema real de Flyway (UUID, sin esas tablas, `phone_number`/`enabled`) no se conciliaron. `V3`/`V4` (nuevas) siguen el esquema real por consistencia con V1/V2, y agregan `providers`/`businesses`/`mfa` con nombres de tabla que sí coinciden con el modelo lógico documentado, aunque no con sus tipos de PK.
+Se hizo un cruce escenario por escenario de los 6 Gherkin (`docs/HU-*.txt`) contra el código — no solo "¿existe el endpoint?" sino cada condición puntual de cada `Then`. Resultado: **34 de 39 criterios implementados, 2 no implementados, 3 parciales.** Detalle completo con archivo:línea en [docs/verificacion-criterios-aceptacion-sprint-1.md](verificacion-criterios-aceptacion-sprint-1.md). Los 5 puntos que no cumplen el Gherkin al 100%:
+
+1. **No existe endpoint para cambiar la propia contraseña** (HU-02) — funcionalidad ausente, no solo sin el paso de confirmación adicional que pide el escenario.
+2. **`PATCH /users/{id}/role` no exige confirmación adicional** antes de ejecutar el cambio (mismo escenario de HU-02, rama "modificar permisos de otro usuario").
+3. **El registro (HU-01) no deja al usuario autenticado** — cumple la rama "o redirige a login" del criterio (que es un OR), pero no está señalado como decisión intencional en el código.
+4. **Doble logout / logout sin sesión dan el mismo 401 genérico** (HU-04) — no hay un mensaje distinto para "la sesión ya estaba cerrada".
+5. **El mensaje de "no puede modificarse a sí mismo" (HU-05) solo se ve si quien lo intenta ya es Administrador** — un Cliente/Proveedor que lo intenta ve el mensaje genérico de rol insuficiente antes de llegar a esa validación, aunque el resultado final (rechazado) es correcto igual.
+
+### Dos modelos de base de datos sin conciliar — análisis completo (2026-09-22)
+
+Se hizo la comparación tabla por tabla entre el modelo formal de Andraus y el esquema real de Flyway (`V1`–`V4`). Detalle completo en [docs/conciliacion-modelo-bd-sprint-1.md](conciliacion-modelo-bd-sprint-1.md). Resumen:
+
+- La diferencia de fondo (UUID vs BIGSERIAL) no se recomienda resolver migrando la app real — ya está probada y desplegada contra UUID. Se recomienda en cambio actualizar los documentos del modelo formal para que describan el esquema real.
+- **Hallazgo importante:** la política `ON DELETE RESTRICT` del modelo formal, aplicada literalmente, haría imposible cumplir el `DELETE` de usuario de HU-05 (ya implementado y verificado) — la mayoría de usuarios tendría historial de auditoría/sesión y la BD rechazaría el borrado. El esquema real evita esto con `ON DELETE CASCADE` y sin FK en `audit_logs`.
+- Seed de rol `ADMIN` (modelo formal) vs `ADMINISTRADOR` (código real, usado en `@PreAuthorize`) — si el script formal se ejecutara tal cual, ninguna verificación de rol de administrador funcionaría.
+- El modelo formal sí tiene ideas mejores que vale la pena adoptar sin urgencia: historial de cambios de rol en `user_roles`, y un `CHECK` de duración máxima de sesión a nivel de BD.
 
 ### Interpretaciones tomadas donde el Gherkin/documento dejaba una decisión abierta
 
@@ -74,6 +89,9 @@ Estas decisiones están documentadas también como comentarios Javadoc en el có
 
 ## Referencias
 
+- Verificación criterio por criterio de las 6 HU: [docs/verificacion-criterios-aceptacion-sprint-1.md](verificacion-criterios-aceptacion-sprint-1.md)
+- Conciliación del modelo de base de datos: [docs/conciliacion-modelo-bd-sprint-1.md](conciliacion-modelo-bd-sprint-1.md)
+- Guía de despliegue: [docs/guia-despliegue-render.md](guia-despliegue-render.md)
 - Especificación de endpoints: [docs/api/endpoints-sprint-1.md](api/endpoints-sprint-1.md) y [docs/api/dtos-sprint-1.md](api/dtos-sprint-1.md)
 - Arquitectura: [docs/arquitectura/arquitectura-sprint-1.md](arquitectura/arquitectura-sprint-1.md) y ADRs en `docs/arquitectura/adr/`
 - Historias de usuario: `docs/HU-01-Registrar-cliente.txt`, `docs/HU 02 - Inicio de sesión.txt`, `docs/HU - 03 Registro de proveedor de se.txt`, `docs/HU 04 - Cerrar sesión.txt`, `docs/HU 05 - Gestionar roles y permisos.txt`, `docs/HU 06 - Acceso segun rol.txt`
