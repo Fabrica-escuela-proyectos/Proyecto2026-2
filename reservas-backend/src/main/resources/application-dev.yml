@@ -1,4 +1,9 @@
 spring:
+  datasource:
+    # Coincide con POSTGRES_PASSWORD de docker-compose.yml (contraseña de
+    # desarrollo local, ya pública en ese archivo). En otros perfiles no hay
+    # valor por defecto: se exige DB_PASSWORD.
+    password: ${DB_PASSWORD:reservas_app_dev}
   jpa:
     hibernate:
       ddl-auto: validate
