@@ -1,0 +1,112 @@
+name: Reporte de bug
+description: Reportar un error/anomalía encontrado
+title: "[BUG] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Reporte de defecto
+        Completa la información necesaria para que el equipo pueda reproducir y corregir el problema.
+
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción del problema
+      description: Describe brevemente qué problema encontraste.
+      placeholder: Explica qué ocurrió y en qué contexto.
+    validations:
+      required: true
+
+  - type: input
+    id: hu
+    attributes:
+      label: HU relacionada
+      description: Indica el ID de la historia de usuario donde se encontró el defecto.
+      placeholder: Ejemplo: HU-01 Registro de cliente
+    validations:
+      required: true
+
+  - type: input
+    id: caso_prueba
+    attributes:
+      label: Caso de prueba relacionado
+      description: Indica el ID del caso de prueba que falló, si ya existe.
+      placeholder: Ejemplo: TC-REG-001
+    validations:
+      required: false
+
+  - type: dropdown
+    id: ambiente
+    attributes:
+      label: Ambiente
+      description: Indica dónde se encontró el defecto.
+      options:
+        - Local
+        - Desarrollo
+        - Pruebas
+    validations:
+      required: true
+
+  - type: textarea
+    id: precondiciones
+    attributes:
+      label: Precondiciones
+      description: Indica qué condiciones deben cumplirse antes de reproducir el problema.
+      placeholder: |
+        Ejemplo:
+        - Usuario registrado
+        - Usuario autenticado
+        - Cuenta con rol de cliente
+    validations:
+      required: false
+
+  - type: textarea
+    id: pasos_reproducir
+    attributes:
+      label: Pasos para reproducir
+      description: Describe paso a paso cómo reproducir el defecto.
+      placeholder: |
+        1. Ingresar a...
+        2. Seleccionar...
+        3. Introducir...
+        4. Presionar...
+    validations:
+      required: true
+
+  - type: textarea
+    id: resultado_esperado
+    attributes:
+      label: Resultado esperado
+      description: Describe qué debería ocurrir según los requisitos.
+      placeholder: Describe el comportamiento esperado.
+    validations:
+      required: true
+
+  - type: textarea
+    id: resultado_actual
+    attributes:
+      label: Resultado actual
+      description: Describe qué ocurre realmente.
+      placeholder: Describe el comportamiento observado.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidencia
+    attributes:
+      label: Evidencia
+      description: Adjunta capturas, videos, logs u otra evidencia relevante.
+      placeholder: Arrastra aquí los archivos o agrega enlaces si es necesario.
+    validations:
+      required: false
+
+  - type: textarea
+    id: informacion_adicional
+    attributes:
+      label: Información adicional
+      description: Agrega cualquier información que pueda ayudar a analizar el defecto.
+      placeholder: Información adicional, observaciones, etc.
+    validations:
+      required: false
