@@ -24,16 +24,16 @@ body:
     attributes:
       label: HU relacionada
       description: Indica el ID de la historia de usuario donde se encontró el defecto.
-      placeholder: Ejemplo: HU-01 Registro de cliente
+      placeholder: "Ejemplo: HU-01 Registro de cliente"
     validations:
-      required: true
+      required: false
 
   - type: input
     id: caso_prueba
     attributes:
       label: Caso de prueba relacionado
       description: Indica el ID del caso de prueba que falló, si ya existe.
-      placeholder: Ejemplo: TC-REG-001
+      placeholder: "Ejemplo: TC-REG-001"
     validations:
       required: false
 
