@@ -83,7 +83,11 @@ class AuthorizationServiceImplTest {
 
     @Test
     void hasPermissionDebeFallarExplicitamentePorqueNoHayCatalogoDePermisosAun() {
-        assertThatThrownBy(() -> service.hasPermission(UUID.randomUUID(), "cualquier-permiso"))
+        // Arrange
+        UUID userId = UUID.randomUUID();
+
+        // Act + Assert
+        assertThatThrownBy(() -> service.hasPermission(userId, "cualquier-permiso"))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 }
