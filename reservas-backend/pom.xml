@@ -28,7 +28,9 @@
 	</scm>
 	<properties>
 		<java.version>17</java.version>
+        <sonar.projectKey>Fabrica-escuela-proyectos_Proyecto2026-2</sonar.projectKey>
         <sonar.organization>fabrica-escuela-proyectos</sonar.organization>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
 	</properties>
 	<dependencies>
         <dependency>
