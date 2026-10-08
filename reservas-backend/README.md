@@ -1,1 +1,2 @@
+[![CI/CD Pipeline](https://github.com/Fabrica-escuela-proyectos/Proyecto2026-2/actions/workflows/build.yml/badge.svg)](https://github.com/Fabrica-escuela-proyectos/Proyecto2026-2/actions/workflows/build.yml)
 # Proyecto2026-2
