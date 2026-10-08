@@ -76,7 +76,8 @@ public class AdminBootstrapRunner implements ApplicationRunner {
         provisioningService.provisionUser(name, email, cellphone, password, RoleName.ADMINISTRADOR);
         auditService.registerEvent(AuditEventType.OPERACION_SENSIBLE, email, "SUCCESS",
                 "Administrador inicial creado por bootstrap", "bootstrap");
-        log.info("Administrador inicial creado: {}", email);
+        // Sin MFA activa solo puede usar /auth/mfa/** y logout (ADR-004, MfaEnrollmentFilter).
+        log.info("Administrador inicial creado: {} (debe enrolar su MFA: POST /api/v1/auth/mfa/setup y /activate)", email);
     }
 
     private void validateConfiguration() {

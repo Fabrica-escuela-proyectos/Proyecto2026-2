@@ -75,7 +75,7 @@ curl -X POST https://proyecto2026-2-5zoo.onrender.com/api/v1/auth/logout \
 
 Después de esto, repetir el paso 3 con el **mismo** token debe dar `401` — el token deja de servir aunque no haya expirado, porque la sesión quedó revocada en el servidor.
 
-## 6. Gestión de roles (HU-05, requiere una cuenta de Administrador)
+## 6. Gestión de roles (HU-05, requiere una cuenta de Administrador con MFA)
 
 Estos pasos necesitan iniciar sesión como Administrador (repetir el paso 2 con estas credenciales):
 
@@ -84,17 +84,26 @@ email: admin@example.com
 password: Segura#2026
 ```
 
-Con el token de administrador (`<ADMIN_TOKEN>`):
+> **MFA obligatorio para administradores (desde el Sprint 2, ADR-004).** Un administrador que todavía no configuró su verificación en dos pasos puede iniciar sesión, pero **solo** puede usar `/api/v1/auth/mfa/*` y el cierre de sesión; cualquier otra ruta responde `403` con `"error": "MFA_ENROLLMENT_REQUIRED"`. Hay que enrolarla una sola vez:
+>
+> 1. Con el token del administrador: `POST /api/v1/auth/mfa/setup` → la respuesta trae `otpauthUri` (`otpauth://totp/...?secret=<CLAVE>&...`).
+> 2. En Google/Microsoft Authenticator: *Agregar cuenta → Ingresar clave de configuración*, con esa `<CLAVE>` (tipo basado en tiempo). Sin teléfono, el código se calcula con el script de `docs/sprint-2/cierre-pendientes-sprint-1.md` §2.6.
+> 3. `POST /api/v1/auth/mfa/activate` con `{"code":"<6 dígitos>"}` → `204`.
+>
+> Desde ese momento **el login del administrador exige el código** (`"mfaCode":"<6 dígitos>"` en el cuerpo; sin él, `401` con `"error": "MFA_REQUIRED"`) y **las operaciones sensibles exigen el código vigente en el header `X-MFA-Code`** (sin él, `401 MFA_REQUIRED`; con uno incorrecto, `401`). Cinco códigos incorrectos seguidos bloquean el intento 15 minutos (`429`).
+
+Con el token de administrador (`<ADMIN_TOKEN>`, obtenido con el código MFA) y el código vigente (`<MFA_CODE>`):
 
 **Cambiar el rol de un usuario:**
 ```bash
 curl -X PATCH https://proyecto2026-2-5zoo.onrender.com/api/v1/users/<USER_ID>/role \
   -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -H "X-MFA-Code: <MFA_CODE>" \
   -H "Content-Type: application/json" \
   -d '{"role":"PROVEEDOR"}'
 ```
 
-**Casos de rechazo para probar:**
+**Casos de rechazo para probar** (con el header `X-MFA-Code` vigente; sin él se responde `401 MFA_REQUIRED` antes de evaluar el caso):
 - El administrador intenta cambiar su propio rol → `403`.
 - Intentar cambiar el rol de un usuario que ya es Proveedor → `403`.
 - Pedir un rol que no existe (`{"role":"SUPERADMIN"}`) → `400`.
@@ -103,7 +112,8 @@ curl -X PATCH https://proyecto2026-2-5zoo.onrender.com/api/v1/users/<USER_ID>/ro
 **Eliminar un usuario:**
 ```bash
 curl -X DELETE https://proyecto2026-2-5zoo.onrender.com/api/v1/users/<USER_ID> \
-  -H "Authorization: Bearer <ADMIN_TOKEN>"
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -H "X-MFA-Code: <MFA_CODE>"
 ```
 Respuesta esperada: `204`. Una consulta posterior a ese id da `404`.
 
@@ -115,15 +125,16 @@ Respuesta esperada: `204`. Una consulta posterior a ese id da `404`.
 | POST | `/api/v1/providers` | No | — (público) |
 | POST | `/api/v1/auth/login` | No | — (público) |
 | POST | `/api/v1/auth/logout` | Sí | Cualquiera |
+| POST | `/api/v1/auth/mfa/setup` · `/activate` | Sí | Cualquiera (obligatorio para Administrador) |
 | GET | `/api/v1/users/{id}` | Sí | Propio, o Administrador |
 | GET | `/api/v1/providers/me` | Sí | Proveedor (el suyo) |
 | GET | `/api/v1/providers/{id}` | Sí | Propio, o Administrador |
-| PATCH | `/api/v1/users/{id}/role` | Sí | Administrador |
-| DELETE | `/api/v1/users/{id}` | Sí | Administrador |
+| PATCH | `/api/v1/users/{id}/role` | Sí + `X-MFA-Code` | Administrador |
+| DELETE | `/api/v1/users/{id}` | Sí + `X-MFA-Code` | Administrador |
 | GET | `/actuator/health` | No | — (público) |
 
 ## Qué no está implementado en este sprint
 
 - Servicios, recursos, reservas y reportes (previstos para sprints posteriores).
 - Cambio de la propia contraseña.
-- MFA para administradores está implementado (`/api/v1/auth/mfa/setup` y `/activate`), pero no es necesario para el flujo de prueba de este documento.
+- Pendiente de MFA (política en ADR-004): que un mismo código no se pueda reutilizar dentro de su ventana, cifrar el secreto en reposo, reinicio de MFA por otro administrador y códigos de recuperación.

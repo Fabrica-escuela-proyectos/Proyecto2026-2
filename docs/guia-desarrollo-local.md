@@ -45,6 +45,19 @@ La app solo necesita un Postgres alcanzable con un rol y una base específicos �
    Tomcat started on port 8080 (http)
    ```
 
+## 3.1 Correr las pruebas
+
+```bash
+cd reservas-backend
+./mvnw -B test                                                         # todo (unitarias + integración)
+./mvnw -B test -Dtest='!*IntegrationTest,!ReservasBackendApplicationTests'   # solo unitarias (no necesita Docker)
+```
+
+- Las **pruebas de integración** (`*IntegrationTest` y `ReservasBackendApplicationTests`) levantan su propio PostgreSQL 16 con **Testcontainers**, así que necesitan **Docker encendido** y ya **no dependen de un Postgres en `localhost:5432`**. Todas extienden `AbstractIntegrationTest` (un solo contenedor para toda la corrida).
+- Con **Docker Desktop 29 o superior** hace falta **Testcontainers 1.21.4 o más** (el `pom.xml` ya lo trae). Con la 1.21.3 aparecía "Could not find a valid Docker environment" aunque Docker estuviera corriendo.
+- Cobertura: `./mvnw test jacoco:report` → `target/site/jacoco/index.html`.
+- Si una prueba nueva registra cuentas, usa correos y celulares propios (`uniqueEmail(...)`, `uniquePhone()` de `AbstractIntegrationTest`): la base se comparte entre clases.
+
 ## 4. Flujo de Git para hacer y subir cambios
 
 **Regla de oro: nunca usar "Add files via upload" en la web de GitHub.** No hace un merge real con git, no corre nada localmente (ni compila, ni corre tests), y fácilmente sobrescribe o borra archivos de otras personas sin que te enteres — eso es justo lo que rompió `main` hace poco (se perdió una dependencia del `pom.xml` y se filtró una contraseña real de base de datos en un archivo). Todo cambio se hace con `git` desde tu terminal o tu IDE.

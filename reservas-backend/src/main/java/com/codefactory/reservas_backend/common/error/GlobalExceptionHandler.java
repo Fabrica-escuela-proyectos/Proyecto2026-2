@@ -5,7 +5,9 @@ import com.codefactory.reservas_backend.identity.domain.DuplicateEmailException;
 import com.codefactory.reservas_backend.identity.domain.DuplicatePhoneException;
 import com.codefactory.reservas_backend.identity.domain.InvalidCredentialsException;
 import com.codefactory.reservas_backend.identity.domain.InvalidMfaCodeException;
+import com.codefactory.reservas_backend.identity.domain.MfaEnrollmentRequiredException;
 import com.codefactory.reservas_backend.identity.domain.MfaNotConfiguredException;
+import com.codefactory.reservas_backend.identity.domain.MfaRequiredException;
 import com.codefactory.reservas_backend.identity.domain.ProviderRoleImmutableException;
 import com.codefactory.reservas_backend.identity.domain.RoleNotFoundException;
 import com.codefactory.reservas_backend.identity.domain.SelfModificationException;
@@ -15,16 +17,31 @@ import com.codefactory.reservas_backend.provider.domain.ProviderNotFoundExceptio
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -36,6 +53,11 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    // SQLSTATE de PostgreSQL que se traducen a respuestas de cliente.
+    private static final String SQLSTATE_UNIQUE_VIOLATION = "23505";
+    private static final String SQLSTATE_VALUE_TOO_LONG = "22001";
+    private static final Pattern CONSTRAINT_IN_MESSAGE = Pattern.compile("constraint \"([^\"]+)\"");
 
     // Escenarios "Formato de correo inválido", "Número de celular con
     // formato inválido", "Contraseña que no cumple política" y "Campo
@@ -83,6 +105,22 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), null, req);
     }
 
+    // ADR-004 (P5/P6): contraseña válida pero falta el código MFA (login) o el
+    // header X-MFA-Code (operación sensible). Código propio para que el
+    // cliente sepa que debe pedir el código; un código incorrecto sigue siendo
+    // el 401 genérico de InvalidCredentialsException.
+    @ExceptionHandler(MfaRequiredException.class)
+    public ResponseEntity<ApiError> handleMfaRequired(MfaRequiredException ex, HttpServletRequest req) {
+        return build(HttpStatus.UNAUTHORIZED, "MFA_REQUIRED", ex.getMessage(), null, req);
+    }
+
+    // ADR-004 (P4): administrador sin MFA activa fuera de /auth/mfa/** (la
+    // ruta normal la bloquea MfaEnrollmentFilter; esto cubre el step-up).
+    @ExceptionHandler(MfaEnrollmentRequiredException.class)
+    public ResponseEntity<ApiError> handleMfaEnrollmentRequired(MfaEnrollmentRequiredException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, "MFA_ENROLLMENT_REQUIRED", ex.getMessage(), null, req);
+    }
+
     // Errores de validación de negocio que no vienen de Bean Validation
     // (@Valid), pero que igualmente son "datos de entrada inválidos":
     // rol inexistente (HU-05) y código/estado de MFA inválido. Se
@@ -122,6 +160,77 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, "FORBIDDEN", "No tiene permisos para realizar esta operación", null, req);
     }
 
+    // Issue #10: la verificación "¿existe el correo?" y el INSERT no son
+    // atómicos, así que dos registros simultáneos pueden llegar a la BD y
+    // perder contra la restricción única. Esa violación (SQLSTATE 23505) es un
+    // conflicto del cliente, no un error interno.
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest req) {
+        String sqlState = sqlStateOf(ex);
+        if (SQLSTATE_UNIQUE_VIOLATION.equals(sqlState)) {
+            return build(HttpStatus.CONFLICT, "CONFLICT", uniqueViolationMessage(violatedConstraintOf(ex)), null, req);
+        }
+        if (SQLSTATE_VALUE_TOO_LONG.equals(sqlState)) {
+            return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                    "Alguno de los valores enviados supera la longitud permitida", null, req);
+        }
+        return handleUnexpected(ex, req);
+    }
+
+    // Issue #11: cuerpo vacío o JSON mal formado. El mensaje es fijo a
+    // propósito: el detalle del parser (Jackson) no se expone al cliente.
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleUnreadableBody(HttpMessageNotReadableException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                "El cuerpo de la solicitud es inválido o está vacío", null, req);
+    }
+
+    // Issue #11: UUID o número mal formado en la ruta o en un parámetro
+    // (p. ej. GET /api/v1/users/abc). Se nombra el parámetro, nunca su valor.
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                "El parámetro '" + ex.getName() + "' tiene un formato inválido", null, req);
+    }
+
+    // Faltan parámetros de consulta, cabeceras o variables de ruta obligatorios.
+    @ExceptionHandler(ServletRequestBindingException.class)
+    public ResponseEntity<ApiError> handleMissingRequestValue(ServletRequestBindingException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                "Falta un parámetro o cabecera obligatoria de la solicitud", null, req);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiError> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest req) {
+        HttpHeaders headers = new HttpHeaders();
+        Set<HttpMethod> allowed = ex.getSupportedHttpMethods();
+        if (allowed != null && !allowed.isEmpty()) {
+            headers.setAllow(allowed);
+        }
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).headers(headers).body(
+                body(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED",
+                        "El método HTTP no está permitido para este recurso", null, req));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiError> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex, HttpServletRequest req) {
+        return build(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_MEDIA_TYPE",
+                "El tipo de contenido no es compatible; use application/json", null, req);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+    public ResponseEntity<ApiError> handleMediaTypeNotAcceptable(HttpMediaTypeNotAcceptableException ex, HttpServletRequest req) {
+        return build(HttpStatus.NOT_ACCEPTABLE, "NOT_ACCEPTABLE",
+                "El servidor solo responde en application/json", null, req);
+    }
+
+    // Ruta que no corresponde a ningún endpoint (con sesión válida; sin
+    // sesión, SecurityConfig responde 401 antes de llegar aquí).
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ApiError> handleNoHandler(Exception ex, HttpServletRequest req) {
+        return build(HttpStatus.NOT_FOUND, "NOT_FOUND", "El recurso solicitado no existe", null, req);
+    }
+
     // Red de seguridad genérica (errores-api-sprint-1.md sección 10): nunca
     // exponer stack traces, SQL ni detalles internos en la respuesta.
     @ExceptionHandler(Exception.class)
@@ -135,7 +244,12 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<ApiError> build(HttpStatus status, String error, String message,
                                             Map<String, String> fields, HttpServletRequest req) {
-        ApiError apiError = ApiError.builder()
+        return ResponseEntity.status(status).body(body(status, error, message, fields, req));
+    }
+
+    private ApiError body(HttpStatus status, String error, String message,
+                          Map<String, String> fields, HttpServletRequest req) {
+        return ApiError.builder()
                 .timestamp(LocalDateTime.now())
                 .status(status.value())
                 .error(error)
@@ -143,6 +257,41 @@ public class GlobalExceptionHandler {
                 .path(req.getRequestURI())
                 .fields(fields)
                 .build();
-        return ResponseEntity.status(status).body(apiError);
+    }
+
+    // --- Lectura del error de BD detrás de una DataIntegrityViolationException ---
+
+    private static String sqlStateOf(Throwable ex) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            if (t instanceof SQLException sql && sql.getSQLState() != null) {
+                return sql.getSQLState();
+            }
+        }
+        return null;
+    }
+
+    /** Nombre de la restricción violada, tomado del mensaje de PostgreSQL ("... constraint "uk_users_email""). */
+    private static String violatedConstraintOf(Throwable ex) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            if (t.getMessage() != null) {
+                Matcher m = CONSTRAINT_IN_MESSAGE.matcher(t.getMessage());
+                if (m.find()) {
+                    return m.group(1);
+                }
+            }
+        }
+        return null;
+    }
+
+    // Mismos mensajes que DuplicateEmailException / DuplicatePhoneException,
+    // para que el cliente reciba lo mismo gane o pierda la carrera.
+    private static String uniqueViolationMessage(String constraint) {
+        if ("uk_users_email".equals(constraint)) {
+            return "El correo electrónico ya está en uso";
+        }
+        if ("uk_users_phone".equals(constraint)) {
+            return "El número de celular ya está en uso";
+        }
+        return "Ya existe un registro con los datos enviados";
     }
 }

@@ -52,8 +52,11 @@ public class UserManagementServiceImpl implements UserManagementService {
         return UserResponse.from(user);
     }
 
+    // noRollbackFor: los tres rechazos de abajo se auditan (REJECTED) y luego se
+    // lanza la excepción; antes de lanzarlas no se ha modificado ningún dato.
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = {SelfModificationException.class, ProviderRoleImmutableException.class,
+            RoleNotFoundException.class})
     public ChangeUserRoleResponse changeRole(UUID targetUserId, String requestedRoleRaw, UserIdentity admin, String originIp) {
         // Escenario "Usuario intenta modificar sus propios permisos".
         if (admin.id().equals(targetUserId)) {

@@ -7,7 +7,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
-import java.time.Instant;
+import java.time.Clock;
 import java.util.Locale;
 
 /**
@@ -29,6 +29,18 @@ public class TotpService {
     private static final int CLOCK_DRIFT_STEPS = 1;
     private static final String BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
+    private final Clock clock;
+
+    public TotpService() {
+        this(Clock.systemUTC());
+    }
+
+    // Reloj inyectable solo para pruebas: permite verificar la ventana de
+    // tolerancia y los vectores de la RFC 6238 en instantes fijos.
+    TotpService(Clock clock) {
+        this.clock = clock;
+    }
+
     public String generateSecret() {
         byte[] randomBytes = new byte[SECRET_BYTES];
         new SecureRandom().nextBytes(randomBytes);
@@ -39,7 +51,7 @@ public class TotpService {
         if (base32Secret == null || code == null || !code.matches("\\d{" + CODE_DIGITS + "}")) {
             return false;
         }
-        long currentStep = Instant.now().getEpochSecond() / STEP_SECONDS;
+        long currentStep = clock.instant().getEpochSecond() / STEP_SECONDS;
         for (long step = currentStep - CLOCK_DRIFT_STEPS; step <= currentStep + CLOCK_DRIFT_STEPS; step++) {
             if (generateCode(base32Secret, step).equals(code)) {
                 return true;

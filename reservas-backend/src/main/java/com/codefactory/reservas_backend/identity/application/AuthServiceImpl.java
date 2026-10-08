@@ -5,10 +5,13 @@ import com.codefactory.reservas_backend.audit.domain.AuditEventType;
 import com.codefactory.reservas_backend.identity.controller.dto.LoginRequest;
 import com.codefactory.reservas_backend.identity.controller.dto.LoginResponse;
 import com.codefactory.reservas_backend.identity.domain.InvalidCredentialsException;
+import com.codefactory.reservas_backend.identity.domain.MfaRequiredException;
 import com.codefactory.reservas_backend.identity.domain.RoleName;
 import com.codefactory.reservas_backend.identity.domain.Session;
 import com.codefactory.reservas_backend.identity.domain.User;
+import com.codefactory.reservas_backend.identity.infrastructure.AuthAttemptLimiter;
 import com.codefactory.reservas_backend.identity.infrastructure.SessionRepository;
+import com.codefactory.reservas_backend.identity.infrastructure.TooManyRequestsException;
 import com.codefactory.reservas_backend.identity.infrastructure.UserRepository;
 import com.codefactory.reservas_backend.identity.infrastructure.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -42,10 +45,24 @@ public class AuthServiceImpl implements AuthService {
     private final SessionRepository sessionRepository;
     private final MfaService mfaService;
     private final AuditService auditService;
+    private final AuthAttemptLimiter attemptLimiter;
 
+    // noRollbackFor: todo lo que se lanza aquí ocurre antes de escribir nada
+    // salvo el evento de auditoría. Sin esto, la excepción revertiría la
+    // transacción y el REJECTED recién auditado se perdería con ella.
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = {InvalidCredentialsException.class, MfaRequiredException.class,
+            TooManyRequestsException.class})
     public LoginResponse login(LoginRequest request, String originIp) {
+        String attemptKey = AuthAttemptLimiter.loginKey(originIp, request.getEmail());
+
+        // Fuerza bruta (OWASP A07, ADR-004 P7): clave bloqueada -> 429 sin
+        // tocar BCrypt ni la BD. La clave se arma con lo que escribió el
+        // cliente, exista o no la cuenta, para no permitir enumerar usuarios.
+        if (attemptLimiter.isBlocked(attemptKey)) {
+            throw new TooManyRequestsException("Demasiados intentos fallidos. Intente de nuevo más tarde.");
+        }
+
         User user = userRepository.findByEmailIgnoreCase(request.getEmail())
                 .filter(u -> passwordEncoder.matches(request.getPassword(), u.getPasswordHash()))
                 .filter(User::isEnabled)
@@ -56,23 +73,34 @@ public class AuthServiceImpl implements AuthService {
         // incorrecta o cuenta deshabilitada (errores-api-sprint-1.md sección
         // 5: no revelar cuál de las validaciones falló).
         if (user == null) {
+            attemptLimiter.recordFailure(attemptKey);
             auditService.registerEvent(AuditEventType.LOGIN, request.getEmail(), "REJECTED", "credenciales inválidas", originIp);
             throw new InvalidCredentialsException("Las credenciales no son válidas");
         }
 
         String role = primaryRole(user);
 
-        // Escenario "Verificación adicional para cuentas administrativas":
-        // solo se exige el código si la cuenta ya completó el enrolamiento
-        // de MFA (mfaService.isEnabled) — evita el bloqueo de un admin
-        // recién ascendido que todavía no ha llamado a /mfa/activate (ver
-        // MfaServiceImpl.triggerMandatorySetup).
-        if (RoleName.ADMINISTRADOR.name().equals(role)
-                && mfaService.isEnabled(user.getId())
-                && !mfaService.verifyCode(user.getId(), request.getMfaCode())) {
-            auditService.registerEvent(AuditEventType.LOGIN, user.getEmail(), "REJECTED", "código MFA inválido", originIp);
-            throw new InvalidCredentialsException("Las credenciales no son válidas");
+        // Escenario "Verificación adicional para cuentas administrativas"
+        // (login en dos pasos, ADR-004 P5): solo se exige el código si la
+        // cuenta ya completó el enrolamiento (mfaService.isEnabled); mientras
+        // tanto MfaEnrollmentFilter solo le deja usar /auth/mfa/** y logout.
+        // Contraseña válida + MFA activa + sin código -> 401 MFA_REQUIRED (el
+        // cliente debe pedir el código; no cuenta como fallo). Código
+        // incorrecto -> el mismo 401 genérico de credenciales inválidas.
+        if (RoleName.ADMINISTRADOR.name().equals(role) && mfaService.isEnabled(user.getId())) {
+            String mfaCode = request.getMfaCode();
+            if (mfaCode == null || mfaCode.isBlank()) {
+                auditService.registerEvent(AuditEventType.LOGIN, user.getEmail(), "REJECTED", "se requiere código MFA", originIp);
+                throw new MfaRequiredException("Se requiere el código de verificación (MFA) para iniciar sesión");
+            }
+            if (!mfaService.verifyCode(user.getId(), mfaCode)) {
+                attemptLimiter.recordFailure(attemptKey);
+                auditService.registerEvent(AuditEventType.LOGIN, user.getEmail(), "REJECTED", "código MFA inválido", originIp);
+                throw new InvalidCredentialsException("Las credenciales no son válidas");
+            }
         }
+
+        attemptLimiter.reset(attemptKey);
 
         JwtTokenProvider.IssuedToken issued = jwtTokenProvider.issueToken(user.getId().toString());
 

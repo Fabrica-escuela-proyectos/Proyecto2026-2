@@ -13,3 +13,11 @@ spring:
 security:
   jwt:
     secret: test-only-secret-not-for-production-use-change-me-32b
+  rate-limit:
+    registration:
+      # Las pruebas de integración registran decenas de cuentas desde la misma
+      # IP (127.0.0.1) dentro de un mismo contexto de Spring; con el límite de
+      # producción (5) los registros posteriores recibirían 429. El
+      # comportamiento del límite se prueba aparte (AttemptLimiterTest y
+      # RegistrationRateLimitIntegrationTest, que fija su propio valor).
+      max-attempts: 1000

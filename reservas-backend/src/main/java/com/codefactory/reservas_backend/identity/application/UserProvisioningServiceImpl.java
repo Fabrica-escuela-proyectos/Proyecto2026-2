@@ -22,8 +22,11 @@ public class UserProvisioningServiceImpl implements UserProvisioningService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
+    // noRollbackFor: quien llama (ProviderRegistrationService) audita el
+    // rechazo por duplicado dentro de su propia transacción; si esta marcara la
+    // transacción compartida como "solo rollback", ese evento se perdería.
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = {DuplicateEmailException.class, DuplicatePhoneException.class})
     public ProvisionedUser provisionUser(String fullName, String email, String cellphone, String rawPassword, RoleName roleName) {
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new DuplicateEmailException("El correo electrónico ya está en uso");

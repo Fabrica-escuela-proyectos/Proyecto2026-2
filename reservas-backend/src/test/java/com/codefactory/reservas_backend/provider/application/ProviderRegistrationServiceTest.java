@@ -69,7 +69,7 @@ class ProviderRegistrationServiceTest {
         UUID providerId = UUID.randomUUID();
         UUID businessId = UUID.randomUUID();
 
-        when(rateLimiter.isBlocked(any())).thenReturn(false);
+        when(rateLimiter.tryAcquire(any())).thenReturn(true);
         when(userProvisioningService.provisionUser(
                 request.getFullName(), request.getEmail(), request.getCellphone(),
                 request.getPassword(), RoleName.PROVEEDOR))
@@ -97,7 +97,7 @@ class ProviderRegistrationServiceTest {
 
     @Test
     void debeBloquearTemporalmenteTrasMultiplesIntentos() {
-        when(rateLimiter.isBlocked(any())).thenReturn(true);
+        when(rateLimiter.tryAcquire(any())).thenReturn(false);
 
         assertThatThrownBy(() -> service.register(request, "127.0.0.1"))
                 .isInstanceOf(TooManyRequestsException.class);
@@ -106,7 +106,7 @@ class ProviderRegistrationServiceTest {
 
     @Test
     void debePropagarYAuditarCorreoDuplicadoSinCrearProviderNiBusiness() {
-        when(rateLimiter.isBlocked(any())).thenReturn(false);
+        when(rateLimiter.tryAcquire(any())).thenReturn(true);
         when(userProvisioningService.provisionUser(any(), any(), any(), any(), eq(RoleName.PROVEEDOR)))
                 .thenThrow(new DuplicateEmailException("El correo electrónico ya está en uso"));
 

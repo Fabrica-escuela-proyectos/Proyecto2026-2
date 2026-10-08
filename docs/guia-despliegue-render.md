@@ -46,6 +46,8 @@ Ambos archivos están sin commitear todavía — revísalos y commitéalos antes
 
 6. **Crear el primer administrador (opcional, solo para la primera vez):** agrega también `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD` y `BOOTSTRAP_ADMIN_CELLPHONE`. El `AdminBootstrapRunner` solo actúa si todavía no existe ningún administrador, así que no hay riesgo de duplicar nada en despliegues posteriores. **Después de confirmar que se creó** (revisa los logs del deploy, deberías ver `Administrador inicial creado: ...`), vuelve a Environment Variables y **borra `BOOTSTRAP_ADMIN_PASSWORD`** — no dejarla ahí es la única forma de que no quede la contraseña real guardada de más.
 
+   **Desde el Sprint 2 (MFA obligatorio, ADR-004):** ese administrador puede iniciar sesión, pero hasta que enrole su verificación en dos pasos solo puede usar `/api/v1/auth/mfa/*` y el cierre de sesión (cualquier otra ruta responde `403 MFA_ENROLLMENT_REQUIRED`). **Enrólalo apenas se cree** (login → `POST /api/v1/auth/mfa/setup` → agregar la clave a Google/Microsoft Authenticator → `POST /api/v1/auth/mfa/activate`): mientras esté pendiente, quien robe su token podría enrolar su propio autenticador. Pasos y comandos en `docs/guia-prueba-aplicacion-desplegada.md` §6. Opcionales: `RATE_LIMIT_REGISTRATION_MAX_ATTEMPTS` y `RATE_LIMIT_AUTH_MAX_ATTEMPTS` (por defecto 5) para ajustar los límites de intentos; no subir el de registro en producción.
+
 7. **Create Web Service.** Render construye la imagen con tu `Dockerfile` y la despliega. Sigue el log del build ahí mismo.
 
 ## 4. Verificar que funcionó

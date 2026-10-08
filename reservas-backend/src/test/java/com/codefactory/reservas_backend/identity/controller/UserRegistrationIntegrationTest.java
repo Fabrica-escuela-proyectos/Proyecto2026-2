@@ -1,18 +1,8 @@
 package com.codefactory.reservas_backend.identity.controller;
 
 import com.codefactory.reservas_backend.identity.controller.dto.RegisterUserRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.codefactory.reservas_backend.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,38 +12,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Prueba de integración de HU-01 contra una base de datos PostgreSQL real
  * en contenedor, tal como exige Lineamientos Sec. 3.5 ("automatización:
  * pruebas unitarias, integración con base de datos real o contenedor y
- * aceptación del backend").
+ * aceptación del backend"). El contenedor y el contexto los provee
+ * {@link AbstractIntegrationTest}.
  *
  * Las aserciones de error usan el esquema {status, error, message, path,
  * fields} de errores-api-sprint-1.md (antes: errorCode/details/traceId).
- *
- * Requiere Docker disponible en la máquina/pipeline donde se ejecute; no se
- * pudo correr dentro de este entorno de generación por no tener acceso a
- * red/Docker (ver docs/HU-01-checklist.md, sección "Estado de ejecución").
  */
-@Testcontainers
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class UserRegistrationIntegrationTest {
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("reservas__test")
-            .withUsername("reservas__test")
-            .withPassword("reservas__test");
-
-    @DynamicPropertySource
-    static void configureDatasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
-
-    @Autowired
-    private MockMvc mockMvc;
-    @Autowired
-    private ObjectMapper objectMapper;
+class UserRegistrationIntegrationTest extends AbstractIntegrationTest {
 
     private RegisterUserRequest validRequest(String email, String cellphone) {
         RegisterUserRequest request = new RegisterUserRequest();

@@ -1,28 +1,9 @@
 package com.codefactory.reservas_backend.identity.controller;
 
 import com.codefactory.reservas_backend.identity.controller.dto.LoginRequest;
-import com.codefactory.reservas_backend.identity.controller.dto.RegisterUserRequest;
-import com.codefactory.reservas_backend.identity.domain.Role;
-import com.codefactory.reservas_backend.identity.domain.RoleName;
 import com.codefactory.reservas_backend.identity.domain.User;
-import com.codefactory.reservas_backend.identity.infrastructure.RoleRepository;
-import com.codefactory.reservas_backend.identity.infrastructure.UserRepository;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.codefactory.reservas_backend.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.util.Set;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -35,87 +16,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Prueba de integración de HU-02 (login), HU-04 (logout) y del mecanismo
  * transversal de HU-06 (control de acceso por rol/pertenencia) contra una
  * base de datos PostgreSQL real en contenedor — mismo enfoque que
- * UserRegistrationIntegrationTest (HU-01).
+ * UserRegistrationIntegrationTest (HU-01). El contenedor, el contexto y los
+ * ayudantes (registrar, iniciar sesión, administrador con MFA) vienen de
+ * {@link AbstractIntegrationTest}.
  *
- * Requiere Docker disponible en la máquina/pipeline donde se ejecute; no se
- * pudo correr dentro de este entorno de generación por no tener acceso a
- * Docker (mismo caso ya documentado en UserRegistrationIntegrationTest).
+ * Las operaciones sensibles de un administrador (cambiar rol, eliminar
+ * usuario) exigen su código MFA en el header X-MFA-Code (ADR-004), así que
+ * estas pruebas usan un administrador enrolado con MFA; el flujo de MFA en
+ * sí se prueba en MfaFlowIntegrationTest.
  */
-@Testcontainers
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class AuthAndAccessControlIntegrationTest {
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("reservas__test")
-            .withUsername("reservas__test")
-            .withPassword("reservas__test");
-
-    @DynamicPropertySource
-    static void configureDatasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
-
-    @Autowired
-    private MockMvc mockMvc;
-    @Autowired
-    private ObjectMapper objectMapper;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private RoleRepository roleRepository;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    private static final String PASSWORD = "Segura#2026";
-
-    private void registerClient(String email, String cellphone) throws Exception {
-        RegisterUserRequest request = new RegisterUserRequest();
-        request.setFullName("Usuario de Prueba");
-        request.setEmail(email);
-        request.setCellphone(cellphone);
-        request.setPassword(PASSWORD);
-
-        mockMvc.perform(post("/api/v1/users")
-                .contentType("application/json")
-                .content(objectMapper.writeValueAsString(request)));
-    }
-
-    private String login(String email) throws Exception {
-        LoginRequest request = new LoginRequest();
-        request.setEmail(email);
-        request.setPassword(PASSWORD);
-
-        String body = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-
-        JsonNode json = objectMapper.readTree(body);
-        return json.get("token").asText();
-    }
-
-    /** Crea (o promueve) directamente en BD un usuario ADMINISTRADOR: no hay
-     * endpoint de bootstrap para el primer administrador de la plataforma
-     * (fuera del alcance de las HU documentadas), así que las pruebas que
-     * necesitan un admin arrancan el fixture por repositorio. */
-    private String createAdminAndLogin(String email, String cellphone) throws Exception {
-        Role adminRole = roleRepository.findByName(RoleName.ADMINISTRADOR).orElseThrow();
-        User admin = User.builder()
-                .fullName("Administradora de Prueba")
-                .email(email)
-                .cellphone(cellphone)
-                .passwordHash(passwordEncoder.encode(PASSWORD))
-                .roles(Set.of(adminRole))
-                .build();
-        userRepository.save(admin);
-        return login(email);
-    }
+class AuthAndAccessControlIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void loginExitosoDebeDevolverTokenYRolDelUsuario() throws Exception {
@@ -131,7 +41,10 @@ class AuthAndAccessControlIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("CLIENTE"))
                 .andExpect(jsonPath("$.token").isNotEmpty())
-                .andExpect(jsonPath("$.expiresIn").value(3600));
+                // 1 hora (ADR-002); se calcula a partir de "ahora", así que puede llegar 3599 por el redondeo.
+                .andExpect(jsonPath("$.expiresIn").value(org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.greaterThanOrEqualTo(3590),
+                        org.hamcrest.Matchers.lessThanOrEqualTo(3600))));
     }
 
     @Test
@@ -199,11 +112,12 @@ class AuthAndAccessControlIntegrationTest {
     @Test
     void administradorDebePoderCambiarElRolDeUnCliente() throws Exception {
         registerClient("asciende@example.com", "3108888888");
-        String tokenAdmin = createAdminAndLogin("admin.cambia.rol@example.com", "3109999999");
+        AdminSession admin = createEnrolledAdmin("admin.cambia.rol@example.com");
         User cliente = userRepository.findByEmailIgnoreCase("asciende@example.com").orElseThrow();
 
         mockMvc.perform(patch("/api/v1/users/" + cliente.getId() + "/role")
-                        .header("Authorization", "Bearer " + tokenAdmin)
+                        .header("Authorization", "Bearer " + admin.token())
+                        .header("X-MFA-Code", admin.code())
                         .contentType("application/json")
                         .content("{\"role\":\"PROVEEDOR\"}"))
                 .andExpect(status().isOk())
@@ -212,11 +126,11 @@ class AuthAndAccessControlIntegrationTest {
 
     @Test
     void administradorNoDebePoderModificarSuPropioRol() throws Exception {
-        String tokenAdmin = createAdminAndLogin("admin.autocambio@example.com", "3110000000");
-        User admin = userRepository.findByEmailIgnoreCase("admin.autocambio@example.com").orElseThrow();
+        AdminSession admin = createEnrolledAdmin("admin.autocambio@example.com");
 
-        mockMvc.perform(patch("/api/v1/users/" + admin.getId() + "/role")
-                        .header("Authorization", "Bearer " + tokenAdmin)
+        mockMvc.perform(patch("/api/v1/users/" + admin.userId() + "/role")
+                        .header("Authorization", "Bearer " + admin.token())
+                        .header("X-MFA-Code", admin.code())
                         .contentType("application/json")
                         .content("{\"role\":\"CLIENTE\"}"))
                 .andExpect(status().isForbidden());
@@ -226,11 +140,12 @@ class AuthAndAccessControlIntegrationTest {
     void administradorDebePoderEliminarUnClienteYElClienteEliminadoPierdeElAcceso() throws Exception {
         registerClient("eliminado@example.com", "3115555555");
         String tokenCliente = login("eliminado@example.com");
-        String tokenAdmin = createAdminAndLogin("admin.elimina@example.com", "3116666666");
+        AdminSession admin = createEnrolledAdmin("admin.elimina@example.com");
         User cliente = userRepository.findByEmailIgnoreCase("eliminado@example.com").orElseThrow();
 
         mockMvc.perform(delete("/api/v1/users/" + cliente.getId())
-                        .header("Authorization", "Bearer " + tokenAdmin))
+                        .header("Authorization", "Bearer " + admin.token())
+                        .header("X-MFA-Code", admin.code()))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/v1/users/" + cliente.getId())
@@ -281,8 +196,10 @@ class AuthAndAccessControlIntegrationTest {
                 {"fullName":"Proveedor B","email":"proveedor.b@example.com","cellphone":"3114444444","password":"%s","businessName":"Negocio B"}
                 """.formatted(PASSWORD);
 
-        mockMvc.perform(post("/api/v1/providers").contentType("application/json").content(payloadA));
+        mockMvc.perform(post("/api/v1/providers").contentType("application/json").content(payloadA))
+                .andExpect(status().isCreated());
         String bodyB = mockMvc.perform(post("/api/v1/providers").contentType("application/json").content(payloadB))
+                .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         String providerIdB = objectMapper.readTree(bodyB).get("providerId").asText();
 

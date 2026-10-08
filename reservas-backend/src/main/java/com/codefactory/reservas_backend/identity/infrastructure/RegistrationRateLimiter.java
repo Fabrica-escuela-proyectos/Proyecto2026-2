@@ -1,11 +1,9 @@
 package com.codefactory.reservas_backend.identity.infrastructure;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.time.Instant;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Limitador en memoria para el registro de cuentas (clientes y, desde
@@ -16,6 +14,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  * errores-api-sprint-1.md sección 9, relevante también para HU-03 (misma
  * sección, tabla del punto 12).
  *
+ * Por defecto: 5 intentos por origen en una ventana de 10 minutos; el 6.º
+ * intento se rechaza y bloquea el origen 15 minutos. Los valores salen de
+ * {@code security.rate-limit.registration.*} para poder relajarlos en el
+ * perfil de pruebas de integración (que registra decenas de cuentas desde la
+ * misma IP).
+ *
  * Se reutiliza el mismo bean (misma instancia, mismo contador por IP) desde
  * provider.application.ProviderRegistrationService en vez de duplicar este
  * componente: es una utilidad técnica sin datos de dominio, no una
@@ -24,43 +28,26 @@ import java.util.concurrent.atomic.AtomicInteger;
  * compartir el contador entre /users y /providers cierra el hueco de que
  * alguien evada el límite de HU-01 simplemente alternando de endpoint.
  *
- * Suficiente para Sprint 1 (una sola instancia). Si el backend se despliega
- * en múltiples instancias, este mecanismo debe migrar a un almacén
- * compartido (p. ej. Redis) — se deja anotado como evolución futura, no
- * como deuda oculta (ver docs/ADR-002-insumos.md).
+ * La lógica de conteo (atómica) vive en {@link AttemptLimiter}.
  */
 @Component
 public class RegistrationRateLimiter {
 
-    private static final int MAX_ATTEMPTS = 5;
-    private static final Duration WINDOW = Duration.ofMinutes(10);
-    private static final Duration BLOCK_DURATION = Duration.ofMinutes(15);
+    private final AttemptLimiter limiter;
 
-    private final ConcurrentHashMap<String, AtomicInteger> attemptsByOrigin = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Instant> blockedUntil = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Instant> windowStartedAt = new ConcurrentHashMap<>();
-
-    public boolean isBlocked(String originIp) {
-        Instant until = blockedUntil.get(originIp);
-        return until != null && Instant.now().isBefore(until);
+    public RegistrationRateLimiter(
+            @Value("${security.rate-limit.registration.max-attempts:5}") int maxAttempts,
+            @Value("${security.rate-limit.registration.window-minutes:10}") long windowMinutes,
+            @Value("${security.rate-limit.registration.block-minutes:15}") long blockMinutes) {
+        this.limiter = new AttemptLimiter(maxAttempts, Duration.ofMinutes(windowMinutes), Duration.ofMinutes(blockMinutes));
     }
 
-    public void registerAttempt(String originIp) {
-        Instant now = Instant.now();
-        windowStartedAt.compute(originIp, (key, start) -> {
-            if (start == null || Duration.between(start, now).compareTo(WINDOW) > 0) {
-                attemptsByOrigin.put(originIp, new AtomicInteger(0));
-                return now;
-            }
-            return start;
-        });
-
-        int attempts = attemptsByOrigin
-                .computeIfAbsent(originIp, key -> new AtomicInteger(0))
-                .incrementAndGet();
-
-        if (attempts > MAX_ATTEMPTS) {
-            blockedUntil.put(originIp, now.plus(BLOCK_DURATION));
-        }
+    /**
+     * Cuenta el intento de registro del origen. {@code true} = se permite
+     * (los primeros 5); {@code false} = el origen está bloqueado (el 6.º
+     * intento y los siguientes hasta que termine el bloqueo).
+     */
+    public boolean tryAcquire(String originIp) {
+        return limiter.tryAcquire(originIp);
     }
 }

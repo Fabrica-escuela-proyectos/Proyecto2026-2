@@ -3,6 +3,7 @@ package com.codefactory.reservas_backend.identity.infrastructure;
 import com.codefactory.reservas_backend.common.security.RestAccessDeniedHandler;
 import com.codefactory.reservas_backend.common.security.RestAuthenticationEntryPoint;
 import com.codefactory.reservas_backend.identity.infrastructure.security.JwtAuthenticationFilter;
+import com.codefactory.reservas_backend.identity.infrastructure.security.MfaEnrollmentFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -47,6 +48,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final MfaEnrollmentFilter mfaEnrollmentFilter;
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
     private final RestAccessDeniedHandler restAccessDeniedHandler;
 
@@ -69,7 +71,9 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/health").permitAll()
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            // ADR-004 (P4): un administrador sin MFA activa solo puede enrolarla o cerrar sesión.
+            .addFilterAfter(mfaEnrollmentFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 }

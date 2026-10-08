@@ -82,6 +82,13 @@ Los tests citados están en `reservas-backend/src/test/java/com/codefactory/rese
 
 Ninguna de estas 5 brechas es un defecto de lógica de negocio incorrecta — son omisiones (1 y 2) o matices de mensaje/documentación (3, 4, 5) frente al texto literal del Gherkin.
 
+### Actualización del 2026-10-07 (Sprint 2, política de MFA — [ADR-004](arquitectura/adr/ADR-004-politica-mfa.md))
+
+- **Brecha 2 cerrada:** `PATCH /users/{id}/role` y `DELETE /users/{id}` exigen ahora el código MFA vigente del administrador en el header `X-MFA-Code` (`401 MFA_REQUIRED` sin él, `401` si es incorrecto, `429` tras 5 fallos). Cubierto por `MfaFlowIntegrationTest` y `UserControllerSecurityTest`.
+- **Criterio 16 reforzado:** el login de un administrador con MFA activa es ahora en dos pasos (`401 MFA_REQUIRED` cuando falta el código) y la MFA es obligatoria: un administrador sin MFA activa solo puede enrolarla (`403 MFA_ENROLLMENT_REQUIRED`). Criterio 28 (evento MFA obligatorio al ascender): ahora además bloquea la operación hasta enrolar.
+- **Siguen abiertas** las brechas 1 (cambiar la propia contraseña, SP1-01), 3, 4 y 5 (SP1-02..04).
+- Los issues de Calidad #8–#11 (límite de registro, longitud de campos, concurrencia, cuerpo vacío) quedaron corregidos; ver `docs/sprint-2/cierre-pendientes-sprint-1.md` §3 y `docs/resultados-pruebas-sprint-2.md`.
+
 ## Referencias
 
 - Historias de usuario originales: `docs/HU-01-Registrar-cliente.txt`, `docs/HU 02 - Inicio de sesión.txt`, `docs/HU - 03 Registro de proveedor de se.txt`, `docs/HU 04 - Cerrar sesión.txt`, `docs/HU 05 - Gestionar roles y permisos.txt`, `docs/HU 06 - Acceso segun rol.txt`

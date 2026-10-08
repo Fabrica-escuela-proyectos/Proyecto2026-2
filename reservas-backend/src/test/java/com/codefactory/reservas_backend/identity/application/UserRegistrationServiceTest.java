@@ -67,7 +67,7 @@ class UserRegistrationServiceTest {
     void debeCrearUsuarioConDatosValidosYRolCliente() {
         // Arrange
         Role clienteRole = Role.builder().id(UUID.randomUUID()).name(RoleName.CLIENTE).build();
-        when(rateLimiter.isBlocked(any())).thenReturn(false);
+        when(rateLimiter.tryAcquire(any())).thenReturn(true);
         when(userRepository.existsByEmailIgnoreCase(request.getEmail())).thenReturn(false);
         when(userRepository.existsByCellphone(request.getCellphone())).thenReturn(false);
         when(roleRepository.findByName(RoleName.CLIENTE)).thenReturn(Optional.of(clienteRole));
@@ -91,7 +91,7 @@ class UserRegistrationServiceTest {
     @Test
     void debeRechazarRegistroConCorreoDuplicado() {
         // Arrange
-        when(rateLimiter.isBlocked(any())).thenReturn(false);
+        when(rateLimiter.tryAcquire(any())).thenReturn(true);
         when(userRepository.existsByEmailIgnoreCase(request.getEmail())).thenReturn(true);
 
         // Act / Assert
@@ -103,7 +103,7 @@ class UserRegistrationServiceTest {
     @Test
     void debeRechazarRegistroConCelularDuplicado() {
         // Arrange
-        when(rateLimiter.isBlocked(any())).thenReturn(false);
+        when(rateLimiter.tryAcquire(any())).thenReturn(true);
         when(userRepository.existsByEmailIgnoreCase(request.getEmail())).thenReturn(false);
         when(userRepository.existsByCellphone(request.getCellphone())).thenReturn(true);
 
@@ -116,7 +116,7 @@ class UserRegistrationServiceTest {
     @Test
     void debeBloquearTemporalmenteTrasMultiplesIntentos() {
         // Arrange
-        when(rateLimiter.isBlocked(any())).thenReturn(true);
+        when(rateLimiter.tryAcquire(any())).thenReturn(false);
 
         // Act / Assert
         assertThatThrownBy(() -> service.register(request, "127.0.0.1"))
@@ -128,7 +128,7 @@ class UserRegistrationServiceTest {
     void debeAlmacenarContrasenaComoHashNoReversible() {
         // Arrange
         Role clienteRole = Role.builder().id(UUID.randomUUID()).name(RoleName.CLIENTE).build();
-        when(rateLimiter.isBlocked(any())).thenReturn(false);
+        when(rateLimiter.tryAcquire(any())).thenReturn(true);
         when(userRepository.existsByEmailIgnoreCase(any())).thenReturn(false);
         when(userRepository.existsByCellphone(any())).thenReturn(false);
         when(roleRepository.findByName(RoleName.CLIENTE)).thenReturn(Optional.of(clienteRole));
@@ -150,7 +150,7 @@ class UserRegistrationServiceTest {
         // Arrange: refleja un problema de datos semilla (seed de roles
         // faltante), no un caso de HU-01 en sí, pero es una salvaguarda
         // útil para detectar un entorno mal configurado.
-        when(rateLimiter.isBlocked(any())).thenReturn(false);
+        when(rateLimiter.tryAcquire(any())).thenReturn(true);
         when(userRepository.existsByEmailIgnoreCase(any())).thenReturn(false);
         when(userRepository.existsByCellphone(any())).thenReturn(false);
         when(roleRepository.findByName(RoleName.CLIENTE)).thenReturn(Optional.empty());

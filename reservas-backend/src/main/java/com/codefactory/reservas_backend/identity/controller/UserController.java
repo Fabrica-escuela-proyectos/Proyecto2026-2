@@ -1,6 +1,7 @@
 package com.codefactory.reservas_backend.identity.controller;
 
 import com.codefactory.reservas_backend.identity.application.IdentityService;
+import com.codefactory.reservas_backend.identity.application.StepUpService;
 import com.codefactory.reservas_backend.identity.application.UserIdentity;
 import com.codefactory.reservas_backend.identity.application.UserManagementService;
 import com.codefactory.reservas_backend.identity.application.UserRegistrationService;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -41,6 +43,7 @@ public class UserController {
     private final UserRegistrationService userRegistrationService;
     private final UserManagementService userManagementService;
     private final IdentityService identityService;
+    private final StepUpService stepUpService;
 
     @PostMapping
     public ResponseEntity<RegisterUserResponse> register(
@@ -57,22 +60,34 @@ public class UserController {
         return ResponseEntity.ok(userManagementService.getUser(userId, currentUser()));
     }
 
+    // Operación sensible (HU-02, "Verificación adicional para operaciones
+    // sensibles"; ADR-004 P6): además del rol, exige el código MFA vigente del
+    // administrador en el header X-MFA-Code.
     @PatchMapping("/{userId}/role")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<ChangeUserRoleResponse> changeRole(
             @PathVariable UUID userId,
             @Valid @RequestBody ChangeUserRoleRequest request,
+            @RequestHeader(value = StepUpService.MFA_CODE_HEADER, required = false) String mfaCode,
             HttpServletRequest httpRequest) {
 
+        UserIdentity admin = currentUser();
+        stepUpService.requireValidCode(admin, mfaCode, "CAMBIO_ROL", httpRequest.getRemoteAddr());
         ChangeUserRoleResponse response = userManagementService.changeRole(
-                userId, request.getRole(), currentUser(), httpRequest.getRemoteAddr());
+                userId, request.getRole(), admin, httpRequest.getRemoteAddr());
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{userId}")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
-    public ResponseEntity<Void> deleteUser(@PathVariable UUID userId, HttpServletRequest httpRequest) {
-        userManagementService.deleteUser(userId, currentUser(), httpRequest.getRemoteAddr());
+    public ResponseEntity<Void> deleteUser(
+            @PathVariable UUID userId,
+            @RequestHeader(value = StepUpService.MFA_CODE_HEADER, required = false) String mfaCode,
+            HttpServletRequest httpRequest) {
+
+        UserIdentity admin = currentUser();
+        stepUpService.requireValidCode(admin, mfaCode, "ELIMINACION_USUARIO", httpRequest.getRemoteAddr());
+        userManagementService.deleteUser(userId, admin, httpRequest.getRemoteAddr());
         return ResponseEntity.noContent().build();
     }
 

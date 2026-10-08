@@ -1,6 +1,7 @@
 package com.codefactory.reservas_backend.identity.controller.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,5 +14,6 @@ import lombok.Setter;
 public class ChangeUserRoleRequest {
 
     @NotBlank(message = "El rol es obligatorio")
+    @Size(max = 30, message = "El rol no es válido")
     private String role;
 }

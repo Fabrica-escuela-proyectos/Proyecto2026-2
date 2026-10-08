@@ -55,4 +55,30 @@ class PasswordValidatorTest {
     void debeRechazarContrasenaNula() {
         assertThat(validator.isValid(null, null)).isFalse();
     }
+
+    // --- Tope de 72 bytes (BCrypt, issue #9) ---
+
+    @Test
+    void debeAceptarUnaContrasenaDeExactamente72Bytes() {
+        // "Aa#" + 69 caracteres ASCII = 72 bytes
+        String exacta = "Aa#" + "x".repeat(69);
+
+        assertThat(validator.isValid(exacta, null)).isTrue();
+    }
+
+    @Test
+    void debeRechazarUnaContrasenaDe73Bytes() {
+        String demasiadoLarga = "Aa#" + "x".repeat(70);
+
+        assertThat(validator.isValid(demasiadoLarga, null)).isFalse();
+    }
+
+    @Test
+    void debeContarBytesYNoCaracteresParaElTopeDeBcrypt() {
+        // 37 "ñ" son 37 caracteres pero 74 bytes en UTF-8; con "Aa#" suman 77 bytes.
+        String multibyte = "Aa#" + "ñ".repeat(37);
+
+        assertThat(multibyte.length()).isLessThan(72);
+        assertThat(validator.isValid(multibyte, null)).isFalse();
+    }
 }

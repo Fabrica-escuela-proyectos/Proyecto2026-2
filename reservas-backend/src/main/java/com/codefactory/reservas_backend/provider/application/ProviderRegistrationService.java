@@ -35,17 +35,18 @@ public class ProviderRegistrationService {
     private final AuditService auditService;
     private final RegistrationRateLimiter rateLimiter;
 
-    @Transactional
+    // noRollbackFor: ver UserRegistrationService.register — el rechazo por
+    // duplicado se audita y debe sobrevivir a la excepción.
+    @Transactional(noRollbackFor = {DuplicateEmailException.class, DuplicatePhoneException.class})
     public RegisterProviderResponse register(RegisterProviderRequest request, String originIp) {
 
         // Mismo mecanismo y mismo contador que HU-01 (ver Javadoc de
         // RegistrationRateLimiter) — errores-api-sprint-1.md sección 12
         // también lista 429 como error relevante de HU-03.
-        if (rateLimiter.isBlocked(originIp)) {
+        if (!rateLimiter.tryAcquire(originIp)) {
             throw new TooManyRequestsException(
                     "Se han detectado demasiadas solicitudes de registro desde este origen. Intenta más tarde.");
         }
-        rateLimiter.registerAttempt(originIp);
 
         UserProvisioningService.ProvisionedUser provisionedUser;
         try {

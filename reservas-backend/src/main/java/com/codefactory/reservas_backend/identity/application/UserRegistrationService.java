@@ -40,15 +40,20 @@ public class UserRegistrationService {
     private final AuditService auditService;
     private final RegistrationRateLimiter rateLimiter;
 
-    @Transactional
+    // noRollbackFor: los rechazos por correo/celular duplicado se auditan
+    // (REJECTED) y luego se lanza la excepción; sin esto la transacción se
+    // revertiría y el evento auditado se perdería con ella. Antes de lanzarlas
+    // no se ha escrito nada más, así que no hay nada que deshacer.
+    @Transactional(noRollbackFor = {DuplicateEmailException.class, DuplicatePhoneException.class})
     public RegisterUserResponse register(RegisterUserRequest request, String originIp) {
 
-        // Escenario: "Bloqueo temporal por múltiples intentos de registro"
-        if (rateLimiter.isBlocked(originIp)) {
+        // Escenario: "Bloqueo temporal por múltiples intentos de registro".
+        // tryAcquire cuenta y decide en un solo paso atómico: los primeros 5
+        // intentos pasan, el 6.º (y los siguientes) se rechazan (issue #8).
+        if (!rateLimiter.tryAcquire(originIp)) {
             throw new TooManyRequestsException(
                     "Se han detectado demasiadas solicitudes de registro desde este origen. Intenta más tarde.");
         }
-        rateLimiter.registerAttempt(originIp);
 
         // Escenario: "Registro con correo ya existente"
         if (userRepository.existsByEmailIgnoreCase(request.getEmail())) {

@@ -26,6 +26,18 @@ security:
     # JWT_SECRET debe definirse como variable de entorno real. No hay
     # filtro que use este secreto todavia en Sprint 1 (ver JwtTokenProvider).
     secret: ${JWT_SECRET:}
+  # Control de fuerza bruta en memoria (una sola instancia). Los valores por
+  # defecto están también en el código (RegistrationRateLimiter y
+  # AuthAttemptLimiter); se exponen aquí para poder ajustarlos por entorno.
+  rate-limit:
+    registration:        # POST /users y /providers: cada intento cuenta; el (max+1)-ésimo se rechaza
+      max-attempts: ${RATE_LIMIT_REGISTRATION_MAX_ATTEMPTS:5}
+      window-minutes: 10
+      block-minutes: 15
+    auth:                # login, código MFA y operaciones sensibles: cuentan los fallos
+      max-attempts: ${RATE_LIMIT_AUTH_MAX_ATTEMPTS:5}
+      window-minutes: 15
+      block-minutes: 15
 
 management:
   endpoints:
