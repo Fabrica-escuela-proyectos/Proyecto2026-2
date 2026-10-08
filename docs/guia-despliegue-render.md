@@ -68,9 +68,16 @@ curl -X POST https://reservas-backend-xxxx.onrender.com/api/v1/users \
   -d '{"fullName":"Prueba Demo","email":"demo@example.com","cellphone":"3001234567","password":"Segura#2026"}'
 ```
 
-## 5. Despliegues siguientes
+## 5. Despliegues siguientes (desde el pipeline de CI/CD)
 
-Render se conecta directo a GitHub: cada push a `main` reconstruye y redespliega solo, sin necesidad de ningún archivo de CI. No hace falta el `github/workflows/ci.yml` que se intentó subir antes (y que además quedó en una ruta que GitHub Actions ni siquiera lee, por faltarle el punto inicial).
+Desde el Sprint 2 el despliegue lo dispara GitHub Actions (`.github/workflows/build.yml`), no Render por su cuenta. En cada push a `main` corren, en orden: pruebas → SonarCloud → build del JAR → **Deploy to Render**. Ese último job llama al *deploy hook* de Render (secret `RENDER_DEPLOY_HOOK_URL`), Render reconstruye la imagen con el `Dockerfile` y el job espera a que `/actuator/health` responda 200. Si algún job anterior falla, no se despliega.
+
+Configuración necesaria (una sola vez):
+1. Render → Web Service → *Settings → Build & Deploy → Auto-Deploy* en **Off** (si no, desplegaría dos veces y se saltaría el CI).
+2. Render → *Settings → Deploy Hook*: copiar la URL (es secreta; no versionarla).
+3. GitHub → *Settings → Secrets and variables → Actions*: secret `RENDER_DEPLOY_HOOK_URL`. Para Sonar, secret `SONAR_TOKEN`.
+
+Límite conocido: el smoke test puede dar verde con la versión anterior aún viva (Render mantiene la vieja hasta que la nueva está lista). El JAR subido como artefacto por el job `Build` no es el que se despliega: Render recompila desde el `Dockerfile`.
 
 ## Qué no cubre esta guía
 
