@@ -1,2 +1,4 @@
 [![CI/CD Pipeline](https://github.com/Fabrica-escuela-proyectos/Proyecto2026-2/actions/workflows/build.yml/badge.svg)](https://github.com/Fabrica-escuela-proyectos/Proyecto2026-2/actions/workflows/build.yml)
+[![Quality gate status](https://sonarcloud.io/api/project_badges/measure?project=Fabrica-escuela-proyectos_Proyecto2026-2&metric=alert_status&token=a43ea8fbb63051c3419326a17818e445fec666d6)](https://sonarcloud.io/summary/new_code?id=Fabrica-escuela-proyectos_Proyecto2026-2)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Fabrica-escuela-proyectos_Proyecto2026-2&metric=coverage&token=a43ea8fbb63051c3419326a17818e445fec666d6)](https://sonarcloud.io/summary/new_code?id=Fabrica-escuela-proyectos_Proyecto2026-2)
 # Proyecto2026-2

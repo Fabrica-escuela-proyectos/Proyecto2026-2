@@ -23,10 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -48,13 +48,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # Historial completo: Sonar lo necesita para atribuir código nuevo y blame
           fetch-depth: 0
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -77,10 +77,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -97,3 +97,45 @@ jobs:
           # upload-artifact no usa working-directory: la ruta es desde la raíz del repo
           path: reservas-backend/target/reservas-backend-0.0.1-SNAPSHOT.jar
           if-no-files-found: error
+
+  # Deploy's job: solo en main (nunca en PR) y solo si tests, Sonar y build pasaron
+  deploy:
+    name: Deploy to Render
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    # Este job no hace checkout: anula el working-directory global
+    defaults:
+      run:
+        working-directory: .
+    env:
+      APP_URL: https://proyecto2026-2-5zoo.onrender.com
+    steps:
+      # El deploy hook es una URL secreta de Render (Settings > Deploy Hook).
+      # Render reconstruye la imagen con reservas-backend/Dockerfile (compila el
+      # JAR y lo empaqueta en un contenedor JRE 17) y la despliega.
+      - name: Trigger Render deploy
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::error::Falta el secret RENDER_DEPLOY_HOOK_URL"
+            exit 1
+          fi
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
+
+      # Smoke test: espera a que la app responda UP (el build en Render tarda
+      # unos minutos y el plan gratis puede estar dormido)
+      - name: Wait for application health
+        run: |
+          for i in $(seq 1 40); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' "$APP_URL/actuator/health" || true)
+            echo "Intento $i: HTTP $status"
+            if [ "$status" = "200" ]; then
+              echo "Aplicación desplegada y saludable"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::La aplicación no respondió UP en 10 minutos"
+          exit 1
