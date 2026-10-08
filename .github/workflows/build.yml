@@ -1,112 +1,99 @@
-#Workflow name
+# Workflow name
 name: CI/CD Pipeline
 on:
-  #Manually trigger workflow runs
+  # Manually trigger workflow runs
   workflow_dispatch:
-  #Trigger the workflow on push from the main branch
+  # Push a main y validación de cada PR hacia main (Lineamientos: PR con CI verde)
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+
+# El proyecto Maven vive en reservas-backend/, no en la raíz del repo
+defaults:
+  run:
+    working-directory: reservas-backend
+
 jobs:
-  #Test's job
+  # Test's job
   tests:
     name: Unit tests
-    #Run on Ubuntu using the latest version
     runs-on: ubuntu-latest
-    #Job's steps
     steps:
-      #Check-out your repository under $GITHUB_WORKSPACE, so your workflow can access it
-      - uses: actions/checkout@v3
-      #Set up JDK 17
-      - name: Set up JDK
-        uses: actions/setup-java@v1
-        with:
-          java-version: '17'
-      #Set up Maven cache
-      - name: Cache Maven packages
-        #This action allows caching dependencies and build outputs to improve workflow execution time.
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      #Run Tests
-      - name: Run Tests
-        run: mvn -B test
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  #Sonar's Job
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Corre las pruebas unitarias y las de integración (Testcontainers usa el
+      # Docker que ya trae ubuntu-latest) y genera el reporte de JaCoCo
+      - name: Run Tests
+        run: mvn -B verify
+
+  # Sonar's job
   sonar:
     name: SonarCloud analysis
     needs: tests
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Historial completo: Sonar lo necesita para atribuir código nuevo y blame
+          fetch-depth: 0
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v5
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
           cache: maven
 
-      - name: Java version
-        run: java -version
-
-      - name: Maven version
-        run: mvn -version
-
-      - name: Build project
-        run: mvn -B clean verify
-
-      - name: SonarCloud analysis
+      # projectKey, organization y host están en las propiedades del pom.xml
+      # Un solo comando: compila, corre pruebas, genera jacoco.xml y lo analiza
+      - name: Build and SonarCloud analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >
-          mvn -B
+          mvn -B verify
           org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
-          -Dsonar.projectKey=Simonbetan_Lab2p2026
-          -Dsonar.organization=simonbetan
-          -Dsonar.host.url=https://sonarcloud.io
-          -Dsonar.token=$SONAR_TOKEN
-    
-  #Build's job
+
+  # Build's job
   build:
-  #Depends on sonar's job
-    needs: sonar
     name: Build
-    #Run on Ubuntu using the latest version
+    needs: sonar
     runs-on: ubuntu-latest
     steps:
-    #Check-out your repository under $GITHUB_WORKSPACE, so your workflow can access it
-      - uses: actions/checkout@v3
-      #Set up JDK 11
-      - name: Set up JDK
-        uses: actions/setup-java@v1
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
+          distribution: temurin
           java-version: '17'
-      #Set up Maven cache
-      - name: Cache Maven packages
-      #This action allows caching dependencies and build outputs to improve workflow execution time.
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      #Build the application using Maven
+          cache: maven
+
+      # Las pruebas ya corrieron en los jobs anteriores
       - name: Build with Maven
-        run: mvn -B package -DskipTests --file pom.xml
-      #Build the application using Maven
+        run: mvn -B package -DskipTests
+
       - name: Upload JAR
-      #This uploads artifacts from your workflow allowing you to share data between jobs and store data once a workflow is complete.
         uses: actions/upload-artifact@v4
         with:
-          #Set artifact name
-          name: artifact
-          #From this path
-          path: target/tester-0.0.1-SNAPSHOT.jar
-
+          name: reservas-backend
+          # upload-artifact no usa working-directory: la ruta es desde la raíz del repo
+          path: reservas-backend/target/reservas-backend-0.0.1-SNAPSHOT.jar
+          if-no-files-found: error
