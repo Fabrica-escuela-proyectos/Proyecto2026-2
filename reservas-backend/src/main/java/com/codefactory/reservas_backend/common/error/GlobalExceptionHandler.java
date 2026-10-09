@@ -15,6 +15,7 @@ import com.codefactory.reservas_backend.identity.domain.UserNotFoundException;
 import com.codefactory.reservas_backend.identity.infrastructure.TooManyRequestsException;
 import com.codefactory.reservas_backend.provider.domain.BusinessNotFoundException;
 import com.codefactory.reservas_backend.provider.domain.ProviderNotFoundException;
+import com.codefactory.reservas_backend.resource.domain.DuplicateResourceNameException;
 import com.codefactory.reservas_backend.service.domain.DuplicateServiceNameException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -96,8 +97,9 @@ public class GlobalExceptionHandler {
     }
 
     // HU-09: nombre de servicio repetido dentro del mismo negocio.
-    @ExceptionHandler(DuplicateServiceNameException.class)
-    public ResponseEntity<ApiError> handleDuplicateService(DuplicateServiceNameException ex, HttpServletRequest req) {
+    // HU-14: lo mismo para el nombre de un recurso dentro del mismo negocio.
+    @ExceptionHandler({DuplicateServiceNameException.class, DuplicateResourceNameException.class})
+    public ResponseEntity<ApiError> handleDuplicateService(RuntimeException ex, HttpServletRequest req) {
         return build(HttpStatus.CONFLICT, "CONFLICT", ex.getMessage(), null, req);
     }
 
@@ -135,7 +137,8 @@ public class GlobalExceptionHandler {
     // mantienen dentro del vocabulario de errores documentado
     // (errores-api-sprint-1.md sección 3) en vez de inventar un nuevo
     // "error" además de los ya definidos.
-    @ExceptionHandler({RoleNotFoundException.class, InvalidMfaCodeException.class, MfaNotConfiguredException.class})
+    @ExceptionHandler({RoleNotFoundException.class, InvalidMfaCodeException.class, MfaNotConfiguredException.class,
+            InvalidPaginationException.class})
     public ResponseEntity<ApiError> handleBusinessValidation(RuntimeException ex, HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage(), null, req);
     }
@@ -302,6 +305,9 @@ public class GlobalExceptionHandler {
         }
         if ("uk_services_business_name".equals(constraint)) {
             return "Ya existe un servicio con ese nombre en el negocio";
+        }
+        if ("uk_resources_business_name".equals(constraint)) {
+            return "Ya existe un recurso con ese nombre en el negocio";
         }
         return "Ya existe un registro con los datos enviados";
     }

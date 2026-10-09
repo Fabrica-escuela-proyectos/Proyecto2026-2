@@ -10,5 +10,7 @@ public interface ServiceOfferingRepository extends JpaRepository<ServiceOffering
 
     List<ServiceOffering> findByBusinessIdOrderByCreatedAtAsc(UUID businessId);
 
+    List<ServiceOffering> findByBusinessIdAndActiveTrueOrderByNameAsc(UUID businessId);
+
     boolean existsByBusinessIdAndNameIgnoreCase(UUID businessId, String name);
 }

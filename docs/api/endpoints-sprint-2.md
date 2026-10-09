@@ -58,3 +58,42 @@ Respuesta `200`: `{ "businessId": "…", "hours": 1 }`
 `hours`: entero 1..720 (*supuesto*: tope de 30 días). Respuesta `200` con el mismo formato del `GET`. Valores inválidos (`0`, `-2`, `721`, `"abc"`, vacío, nulo) → `400` y **se conserva el valor anterior**. El cambio se audita (`CONFIGURACION_NEGOCIO`).
 
 **Para HU-22:** `BusinessSettingsService.minAdvanceHoursOf(businessId)` devuelve la antelación para exigir "inicio ≥ ahora + antelación" al crear una reserva. Los casos CP-HU08-07 (no afecta reservas ya confirmadas) y CP-HU08-08 (se aplica en HU-22) se prueban cuando exista el módulo de reservas.
+
+## HU-13 — Consultar negocios y servicios (implementado)
+
+Solo lectura, para **cualquier usuario autenticado** (cliente, proveedor o administrador); sin sesión: 401. **Decidido (2026-10-08):** HU-13 y HU-20 exigen un cliente con sesión iniciada; el AC de HU-20 dice "un cliente consulta".
+
+### `GET /api/v1/businesses?page=0&size=20`
+Negocios ordenados por nombre (sin distinguir mayúsculas). `page` desde 0 (defecto 0); `size` defecto 20 y **tope 50** (uno mayor se recorta a 50). `page < 0` o `size < 1` → 400; no numérico → 400; una página fuera de rango devuelve lista vacía con 200.
+
+```json
+{ "items": [ { "id": "…", "name": "Barbería Central" } ],
+  "page": 0, "size": 20, "totalElements": 1, "totalPages": 1, "message": null }
+```
+`message` solo viene con el catálogo realmente vacío (`"Aún no hay negocios registrados"`).
+
+### `GET /api/v1/businesses/{businessId}`
+```json
+{ "id": "…", "name": "Barbería Central",
+  "services": [ { "id": "…", "name": "Corte", "description": "Con lavado", "durationMinutes": 45, "priceCop": 30000 } ],
+  "message": null }
+```
+Solo servicios **activos**, ordenados por nombre. Sin servicios activos: `services: []` y `message: "Este negocio aún no tiene servicios disponibles"`. Negocio inexistente → 404; `businessId` que no es UUID → 400.
+
+## HU-14 — Registrar recurso (implementado)
+
+Solo el **PROVEEDOR dueño del negocio** (cliente o administrador: 403; sin sesión: 401; negocio ajeno: 403; negocio inexistente: 404). El negocio sale de la **ruta**; si el cuerpo trae un `businessId` (aunque sea de otro negocio) **se ignora**, como pide el escenario "Intentar asociar el recurso a otro negocio".
+
+### `POST /api/v1/businesses/{businessId}/resources`
+```json
+{ "name": "Sala 1", "type": "SALA" }
+```
+| Campo | Regla |
+|---|---|
+| `name` | Obligatorio, máx. 150; se recorta; único por negocio **sin distinguir mayúsculas** (409) |
+| `type` | Obligatorio; `SALA`, `EQUIPO` o `PERSONAL` (cualquier combinación de mayúsculas; se guarda en mayúsculas). *Supuesto:* lista fija, a confirmar con QA/PO frente a "consultorio, sala, cancha, puesto" |
+
+Respuesta `201`: `{ "id": "…", "businessId": "…", "name": "Sala 1", "type": "SALA", "active": true, "createdAt": "…" }`. El recurso nace **activo** y se audita (`REGISTRO_RECURSO`). Errores `400` por campo (`fields.name`, `fields.type`; un tipo fuera de la lista dice "El tipo debe ser SALA, EQUIPO o PERSONAL").
+
+### `GET /api/v1/businesses/{businessId}/resources`
+Lista los recursos del negocio (activos e inactivos) en orden de creación; vacía si no hay. Mismas reglas de acceso.

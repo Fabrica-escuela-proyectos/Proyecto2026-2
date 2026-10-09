@@ -85,7 +85,7 @@ Tareas de HU: Tier 1 = 200 h, Tier 2 = 70 h (estimación nominal, sin asistente 
 
 | Código | Tarea | Actividad | Estado | h | Prio | Resp. |
 |---|---|---|---|---:|---:|---|
-| HU20-API | Motor de disponibilidad: consulta pública de los horarios libres de un servicio por fecha (reglas de negocio y API REST) | Development | New | 19 | 1 | B |
+| HU20-API | Motor de disponibilidad: consulta de los horarios libres de un servicio por fecha (cliente con sesión) (reglas de negocio y API REST) | Development | New | 19 | 1 | B |
 
 ### HU 22 - Crear reserva — ID Azure 87
 

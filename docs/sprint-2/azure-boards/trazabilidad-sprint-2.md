@@ -69,7 +69,7 @@
 - **Tablas/datos:** (sin tablas nuevas; consultas sobre businesses y services)
 - **API propuesta:** `GET /api/v1/businesses?page=&size=`; `GET /api/v1/businesses/{businessId}`
 - **Reglas de negocio:**
-  - Solo usuarios autenticados (conflicto con HU-20, que es pública: confirmar con QA/PO)
+  - Solo usuarios autenticados; HU-20 también exige sesión (decidido 2026-10-08)
   - Solo negocios con proveedor registrado; cada servicio muestra nombre, descripción, duración y precio
   - Solo servicios ACTIVOS; solo lectura; paginación con tope máximo
   - Catálogo vacío -> lista vacía + mensaje; negocio inexistente -> 404; sin sesión 401
@@ -145,12 +145,12 @@
 
 - **Módulo:** reservation (disponibilidad) · **Responsable:** Dev B (Juan Esteban González) · Catálogo, disponibilidad y reservas del cliente · **Depende de:** HU-18, HU-19
 - **Tablas/datos:** (sin tablas nuevas; consulta sobre resource_availability, service_resources y bookings)
-- **API propuesta:** `GET /api/v1/services/{serviceId}/availability?date=yyyy-MM-dd   (pública, sin token)`
+- **API propuesta:** `GET /api/v1/services/{serviceId}/availability?date=yyyy-MM-dd   (cliente con sesión; sin token 401)`
 - **Reglas de negocio:**
   - Fecha ISO yyyy-MM-dd; inválida (32/13/2026, ab/cd/efgh, 2026-99-99) -> 400; pasada -> 400; sin fecha = hoy
   - Horarios = disponibilidad de recursos activos asignados - reservas CONFIRMADAS - (ahora + antelación mínima)
   - Sin disponibilidad o todo reservado -> mensaje 'no hay horarios'; servicio inexistente/inactivo -> 404 'no disponible'
-  - Pública (según HU-20); los cambios de horario del recurso se ven en la consulta siguiente
+  - Requiere cliente con sesión (AC de HU-20: "un cliente consulta"); los cambios de horario del recurso se ven en la consulta siguiente
   - Rendimiento: índices por (resource_id, start_at) y paginación/tope de rango de fechas
 - **Casos de prueba:**
   - CP-HU20-01 horarios libres
