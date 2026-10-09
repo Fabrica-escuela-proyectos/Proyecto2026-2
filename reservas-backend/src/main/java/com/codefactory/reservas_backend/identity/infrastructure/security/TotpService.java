@@ -1,5 +1,6 @@
 package com.codefactory.reservas_backend.identity.infrastructure.security;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
@@ -27,10 +28,13 @@ public class TotpService {
     private static final int CODE_DIGITS = 6;
     private static final long STEP_SECONDS = 30;
     private static final int CLOCK_DRIFT_STEPS = 1;
+    // Una sola instancia: SecureRandom es seguro entre hilos y crearlo en cada llamada es costoso (Sonar S2119)
+    private static final SecureRandom RANDOM = new SecureRandom();
     private static final String BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
     private final Clock clock;
 
+    @Autowired
     public TotpService() {
         this(Clock.systemUTC());
     }
@@ -43,7 +47,7 @@ public class TotpService {
 
     public String generateSecret() {
         byte[] randomBytes = new byte[SECRET_BYTES];
-        new SecureRandom().nextBytes(randomBytes);
+        RANDOM.nextBytes(randomBytes);
         return base32Encode(randomBytes);
     }
 

@@ -4,6 +4,7 @@ import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 
 /**
  * Política exigida por HU-01 (Scenario Outline "Contraseña que no cumple la
@@ -24,9 +25,11 @@ public class PasswordValidator implements ConstraintValidator<ValidPassword, Str
     // pocos caracteres multibyte, como "ñ" o emojis, que ya suman 72 bytes)
     // se truncaría en silencio o la rechazaría el codificador (issue #9).
     private static final int MAX_BYTES = 72;
-    private static final String UPPERCASE = ".*[A-ZÁÉÍÓÚÑ].*";
-    private static final String LOWERCASE = ".*[a-záéíóúñ].*";
-    private static final String SPECIAL_CHAR = ".*[^a-zA-Z0-9].*";
+    // Se busca con find() sin ".*" al inicio y al final: evita el backtracking
+    // super-lineal que Sonar señala (S8786) y significa lo mismo.
+    private static final Pattern UPPERCASE = Pattern.compile("[A-ZÁÉÍÓÚÑ]");
+    private static final Pattern LOWERCASE = Pattern.compile("[a-záéíóúñ]");
+    private static final Pattern SPECIAL_CHAR = Pattern.compile("[^a-zA-Z0-9]");
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
@@ -34,6 +37,7 @@ public class PasswordValidator implements ConstraintValidator<ValidPassword, Str
                 || value.getBytes(StandardCharsets.UTF_8).length > MAX_BYTES) {
             return false;
         }
-        return value.matches(UPPERCASE) && value.matches(LOWERCASE) && value.matches(SPECIAL_CHAR);
+        return UPPERCASE.matcher(value).find() && LOWERCASE.matcher(value).find()
+                && SPECIAL_CHAR.matcher(value).find();
     }
 }

@@ -2,6 +2,10 @@ package com.codefactory.reservas_backend;
 
 import com.codefactory.reservas_backend.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Comprueba que el contexto completo arranca contra un PostgreSQL real con
@@ -12,8 +16,12 @@ import org.junit.jupiter.api.Test;
  */
 class ReservasBackendApplicationTests extends AbstractIntegrationTest {
 
+	@Autowired
+	private ApplicationContext context;
+
 	@Test
 	void contextLoads() {
+		assertThat(context.getBeanDefinitionCount()).isPositive();
 	}
 
 }
