@@ -116,7 +116,7 @@ Cada una debe quedar como ADR con contexto, alternativas, elección, consecuenci
 | 3 | HU-26/28 | Los AC usan estados compuestos ("Cancelada por proveedor") | Estado + motivo (regla acordada) | Equipo |
 | 4 | HU-28 | Incluye eliminar la **propia** cuenta (cliente/proveedor) | Solo Administrador en Sprint 2; autoeliminación al backlog | Equipo + Calidad |
 | 5 | Notificaciones | Los AC de HU-21/25/26/28 piden "notificar" pero están **fuera de alcance** | Se registra un evento de auditoría; sin correo/push | Calidad |
-| 6 | HU-13 vs HU-20 | El catálogo exige sesión; la disponibilidad se describía como pública | 2026-10-08 (Simon): ambas con sesión (AC "un cliente consulta"). **Reabierto al implementar HU-20:** otro escenario del AC dice que un usuario sin sesión puede ver los horarios (CP-HU20-09) | Pendiente de Simon |
+| 6 | HU-13 vs HU-20 | El catálogo exige sesión; la disponibilidad se describía como pública | **Decidido el 2026-10-08 (Simon):** el catálogo (HU-13) exige sesión; la disponibilidad (HU-20) es **pública**, por el escenario "usuario sin sesión" de su AC (CP-HU20-09) | Decidido |
 | 7 | HU-14 | Tipos de recurso: "sala, equipo, personal" vs "consultorio, cancha, puesto" | Enum `SALA`, `EQUIPO`, `PERSONAL` | Equipo |
 | 8 | HU-08 | Unidad y tope de la antelación | Horas enteras, mínimo 1, máximo 720 | Equipo |
 | 9 | HU-22 | El AC pide que el cliente envíe hora de fin | El cliente envía solo el inicio; fin = inicio + duración (si envía fin, se valida) | Equipo |

@@ -15,6 +15,8 @@ import com.codefactory.reservas_backend.identity.domain.UserNotFoundException;
 import com.codefactory.reservas_backend.identity.infrastructure.TooManyRequestsException;
 import com.codefactory.reservas_backend.provider.domain.BusinessNotFoundException;
 import com.codefactory.reservas_backend.provider.domain.ProviderNotFoundException;
+import com.codefactory.reservas_backend.reservation.domain.InvalidBookingException;
+import com.codefactory.reservas_backend.reservation.domain.SlotNotAvailableException;
 import com.codefactory.reservas_backend.resource.domain.DuplicateResourceNameException;
 import com.codefactory.reservas_backend.resource.domain.InvalidAvailabilityException;
 import com.codefactory.reservas_backend.resource.domain.ResourceNotFoundException;
@@ -66,6 +68,8 @@ public class GlobalExceptionHandler {
     // SQLSTATE de PostgreSQL que se traducen a respuestas de cliente.
     private static final String SQLSTATE_UNIQUE_VIOLATION = "23505";
     private static final String SQLSTATE_VALUE_TOO_LONG = "22001";
+    // HU-22: la restricción EXCLUDE de bookings (dos reservas confirmadas traslapadas en un recurso).
+    private static final String SQLSTATE_EXCLUSION_VIOLATION = "23P01";
     private static final Pattern CONSTRAINT_IN_MESSAGE = Pattern.compile("constraint \"([^\"]+)\"");
 
     // Escenarios "Formato de correo inválido", "Número de celular con
@@ -104,7 +108,8 @@ public class GlobalExceptionHandler {
 
     // HU-09: nombre de servicio repetido dentro del mismo negocio.
     // HU-14: lo mismo para el nombre de un recurso dentro del mismo negocio.
-    @ExceptionHandler({DuplicateServiceNameException.class, DuplicateResourceNameException.class})
+    @ExceptionHandler({DuplicateServiceNameException.class, DuplicateResourceNameException.class,
+            SlotNotAvailableException.class})
     public ResponseEntity<ApiError> handleDuplicateService(RuntimeException ex, HttpServletRequest req) {
         return build(HttpStatus.CONFLICT, "CONFLICT", ex.getMessage(), null, req);
     }
@@ -145,7 +150,8 @@ public class GlobalExceptionHandler {
     // "error" además de los ya definidos.
     @ExceptionHandler({RoleNotFoundException.class, InvalidMfaCodeException.class, MfaNotConfiguredException.class,
             InvalidPaginationException.class, InvalidResourceAssignmentException.class,
-            InvalidAvailabilityException.class, InvalidAvailabilityQueryException.class})
+            InvalidAvailabilityException.class, InvalidAvailabilityQueryException.class,
+            InvalidBookingException.class})
     public ResponseEntity<ApiError> handleBusinessValidation(RuntimeException ex, HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage(), null, req);
     }
@@ -188,6 +194,9 @@ public class GlobalExceptionHandler {
         String sqlState = sqlStateOf(ex);
         if (SQLSTATE_UNIQUE_VIOLATION.equals(sqlState)) {
             return build(HttpStatus.CONFLICT, "CONFLICT", uniqueViolationMessage(violatedConstraintOf(ex)), null, req);
+        }
+        if (SQLSTATE_EXCLUSION_VIOLATION.equals(sqlState)) {
+            return build(HttpStatus.CONFLICT, "CONFLICT", "El horario seleccionado no está disponible: ya tiene una reserva", null, req);
         }
         if (SQLSTATE_VALUE_TOO_LONG.equals(sqlState)) {
             return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",

@@ -91,7 +91,7 @@
   - Solo Proveedor autenticado (Cliente 403); nombre y tipo obligatorios
   - Tipo: lista fija SALA | EQUIPO | PERSONAL (a confirmar vs. 'consultorio, sala, cancha, puesto' de la descripción)
   - Nombre único dentro del negocio (409)
-  - El recurso queda SIEMPRE en el negocio del proveedor autenticado; un negocio enviado en el body se ignora
+  - El recurso queda SIEMPRE en el negocio de la ruta del proveedor autenticado (ajeno 403); un negocio enviado en el body se ignora
 - **Casos de prueba:**
   - CP-HU14-01 registro válido
   - CP-HU14-02 sin nombre
@@ -108,7 +108,7 @@
 - **API propuesta:** `PUT /api/v1/services/{serviceId}/resources  {resourceIds:[...]}`; `GET /api/v1/services/{serviceId}/resources`
 - **Reglas de negocio:**
   - Servicio y recursos deben pertenecer al negocio del proveedor autenticado
-  - Recurso ajeno o inexistente -> se rechaza TODA la operación (atómica), sin asignar nada
+  - Recurso ajeno o inexistente -> 400 y se rechaza TODA la operación (atómica), sin asignar nada; mismo mensaje en ambos casos
   - PUT reemplaza el conjunto (idempotente); permite varios recursos por servicio
   - Es requisito de HU-20 (disponibilidad) y HU-22 (reserva)
 - **Casos de prueba:**
@@ -145,7 +145,7 @@
 
 - **Módulo:** reservation (disponibilidad) · **Responsable:** Dev B (Juan Esteban González) · Catálogo, disponibilidad y reservas del cliente · **Depende de:** HU-18, HU-19
 - **Tablas/datos:** (sin tablas nuevas; consulta sobre resource_availability, service_resources y bookings)
-- **API propuesta:** `GET /api/v1/services/{serviceId}/availability?date=yyyy-MM-dd   (cliente con sesión; sin token 401)`
+- **API propuesta:** `GET /api/v1/services/{serviceId}/availability?date=yyyy-MM-dd   (pública, sin sesión)`
 - **Reglas de negocio:**
   - Fecha ISO yyyy-MM-dd; inválida (32/13/2026, ab/cd/efgh, 2026-99-99) -> 400; pasada -> 400; sin fecha = hoy
   - Horarios = disponibilidad de recursos activos asignados - reservas CONFIRMADAS - (ahora + antelación mínima)
@@ -161,7 +161,7 @@
   - CP-HU20-06 fecha inválida (3 ejemplos)
   - CP-HU20-07 servicio inexistente
   - CP-HU20-08 sin fecha = hoy
-  - CP-HU20-09 sin sesión permitido
+  - CP-HU20-09 sin sesión permitido (público)
   - CP-HU20-10 dos consultas simultáneas
 
 ## HU 22 - Crear reserva (Azure 87)

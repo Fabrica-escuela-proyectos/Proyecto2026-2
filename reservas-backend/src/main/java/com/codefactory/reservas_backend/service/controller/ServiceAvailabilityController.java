@@ -13,10 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 /**
- * HU-20 - Consultar disponibilidad de un servicio. Solo lectura. Hoy exige
- * sesión iniciada (regla general de SecurityConfig): decisión del 2026-10-08,
- * pendiente de confirmar porque el escenario "usuario sin sesión iniciada" de la
- * HU dice que debería ser público (ver docs/api/endpoints-sprint-2.md).
+ * HU-20 - Consultar disponibilidad de un servicio. Solo lectura y PÚBLICA (sin
+ * sesión), como pide el escenario "usuario sin sesión iniciada" de la HU: la
+ * excepción está en SecurityConfig y solo cubre este GET.
  */
 @RestController
 @RequestMapping("/api/v1/services/{serviceId}/availability")

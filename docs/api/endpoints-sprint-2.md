@@ -154,9 +154,7 @@ Ambos responden `200` con el horario completo vigente (mismo formato del `GET`).
 
 ### `GET /api/v1/services/{serviceId}/availability?date=yyyy-MM-dd`
 
-Solo lectura. **Hoy exige sesión iniciada** (cualquier rol; sin sesión: 401), por la decisión del 2026-10-08.
-
-> **⚠ Conflicto abierto con el criterio de aceptación.** La HU incluye el escenario *"Consulta de horarios libres por parte de un usuario sin sesión iniciada → el sistema permite ver los horarios disponibles sin requerir autenticación"*, y el caso de prueba `CP-HU20-09` lo verificará. La decisión tomada (exigir sesión) lo incumple. Cambiarlo es una línea en `SecurityConfig` (`.requestMatchers(HttpMethod.GET, "/api/v1/services/*/availability").permitAll()`) más actualizar la prueba `sinSesionDevuelve401`. **Falta que Simon confirme cuál prevalece.**
+Solo lectura y **pública: no requiere sesión** (decidido el 2026-10-08, según el escenario *"usuario sin sesión iniciada"* del criterio de aceptación y `CP-HU20-09`). Es la única ruta pública de `/api/v1/services/**`: solo el `GET` de `/availability`; la asignación de recursos (HU-18) y todo lo demás siguen exigiendo sesión y rol. Con un token inválido responde igual (se ignora). El catálogo de HU-13 sí exige sesión, como dice su historia.
 
 `date` es opcional: sin fecha se usa **hoy** (hora de Bogotá). *Ambigüedad:* el escenario dice "a partir de la fecha actual"; se interpretó como los horarios de hoy, no un rango.
 
@@ -172,7 +170,43 @@ Un mismo horario atendible por varios recursos sale **una sola vez** con todos s
 | Código | Cuándo |
 |---|---|
 | 400 | Fecha con formato inválido (`32/13/2026`, `ab/cd/efgh`, `2026-99-99`, `2026-02-30`, `2026-1-5`), anterior a hoy (*"Debe seleccionar una fecha futura o la fecha actual"*), a más de 365 días (*supuesto*), o `serviceId` que no es UUID |
-| 401 | Sin sesión (ver el conflicto de arriba) |
 | 404 | *"El servicio no está disponible"*: no existe, está inactivo o la cuenta de su proveedor está inactiva (mismo mensaje en todos los casos) |
 
 Dos consultas simultáneas ven el mismo horario libre (es de solo lectura); en cuanto una reserva exista (HU-22) el horario deja de mostrarse al otro cliente.
+
+## HU-22 — Crear reserva (implementado)
+
+### `POST /api/v1/bookings`
+
+Solo el rol **CLIENTE** (proveedor o administrador: 403; sin sesión: 401). El cliente sale de la sesión, nunca del cuerpo: la reserva queda asociada únicamente a quien la creó.
+
+```json
+{ "serviceId": "<uuid>", "date": "2026-10-19", "startTime": "10:00", "endTime": "11:00", "resourceId": "<uuid, opcional>" }
+```
+| Campo | Regla |
+|---|---|
+| `serviceId` | Obligatorio; servicio activo de un proveedor con cuenta activa |
+| `date` | Obligatoria, `yyyy-MM-dd`, hoy o futura (hora de Bogotá) |
+| `startTime`, `endTime` | Obligatorias, `HH:mm`; **fin posterior al inicio**; la duración debe ser **igual a la del servicio** (*supuesto*: precio fijo por servicio, así que no se admiten duraciones libres) |
+| `resourceId` | Opcional. Sin él, el sistema asigna el **primer recurso libre por nombre**; con él, debe estar asignado al servicio (HU-18) y activo |
+
+Además, el inicio debe cumplir la **antelación mínima** del negocio (HU-08) y el rango entero debe caber dentro de un rango de atención del recurso ese día (HU-19). El inicio **no tiene que caer en la cuadrícula** que muestra HU-20: cualquier minuto libre dentro del horario es válido (`10:30-11:30` si está libre).
+
+Respuesta `201` (estado inicial `CONFIRMADA`, devuelve el **id**):
+```json
+{ "id": "…", "status": "CONFIRMADA", "serviceId": "…", "serviceName": "Corte", "businessId": "…", "businessName": "Barbería",
+  "resourceId": "…", "resourceName": "Sala 1", "date": "2026-10-19", "startTime": "10:00", "endTime": "11:00",
+  "priceCop": 25000, "createdAt": "…" }
+```
+La reserva guarda **copias** del nombre del servicio, recurso, negocio y del **precio vigente** al reservar (sobreviven a ediciones o eliminaciones) y se audita (`CREACION_RESERVA`).
+
+| Código | Cuándo |
+|---|---|
+| 400 | Campo obligatorio faltante (`fields.date`, `fields.startTime`…), formato inválido, **fin ≤ inicio** (*"El rango de horas es inválido…"*), fecha pasada, duración distinta a la del servicio, antelación insuficiente, `resourceId` no asignado o inactivo |
+| 401 / 403 | Sin sesión / rol distinto de CLIENTE |
+| 404 | *"El servicio no está disponible"* (no existe, inactivo o proveedor inactivo) |
+| 409 | *"El horario seleccionado no está disponible"*: ya hay una reserva activa **o** cae fuera del horario de atención (mensajes distintos). También ante dos peticiones simultáneas |
+
+**Anti-overbooking en la base de datos:** la tabla `bookings` tiene `EXCLUDE USING gist (resource_id WITH =, tstzrange(start_at, end_at) WITH &&) WHERE (status = 'CONFIRMADA')`: dos reservas confirmadas de un recurso no pueden traslaparse ni aunque lleguen a la vez (una gana con 201 y la otra recibe 409). *Supuesto:* el límite es **por recurso** (un servicio con varios recursos admite varias reservas simultáneas, una por recurso), no por servicio. Una reserva CANCELADA o COMPLETADA no ocupa el horario. Con asignación automática, si otra petición toma el recurso elegido en el mismo instante, esta recibe 409 y puede reintentar.
+
+**Integración con HU-20:** las reservas CONFIRMADAS se descuentan de los horarios libres (`BookingBusyTimeSource`): en cuanto se reserva, el horario deja de mostrarse. HU-19 (CP "reserva dentro/fuera del horario") y HU-08 (CP-HU08-08, antelación) quedan cubiertas con esta HU.

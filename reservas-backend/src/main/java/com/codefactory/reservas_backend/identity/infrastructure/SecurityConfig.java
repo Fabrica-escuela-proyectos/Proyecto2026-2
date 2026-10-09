@@ -68,6 +68,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/providers").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                // HU-20: consultar horarios libres de un servicio es público (escenario "usuario sin
+                // sesión iniciada" del criterio de aceptación). Solo GET y solo esta ruta; el resto de
+                // /api/v1/services/** (asignación de recursos, HU-18) sigue exigiendo sesión y rol.
+                .requestMatchers(HttpMethod.GET, "/api/v1/services/*/availability").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .anyRequest().authenticated()
             )

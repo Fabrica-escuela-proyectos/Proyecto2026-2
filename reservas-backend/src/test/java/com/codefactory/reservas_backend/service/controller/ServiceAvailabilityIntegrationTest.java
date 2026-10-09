@@ -241,10 +241,32 @@ class ServiceAvailabilityIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void sinSesionDevuelve401() throws Exception {
+    void unUsuarioSinSesionPuedeVerLosHorariosLibres() throws Exception {
         Fixture f = fixture();
 
-        assertThat(query(f.serviceId(), null, nextMonday().toString()).getResponse().getStatus()).isEqualTo(401);
+        MvcResult result = query(f.serviceId(), null, nextMonday().toString());
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        assertThat(starts(json(result))).containsExactly("09:00", "10:00", "11:00", "14:00", "15:00");
+    }
+
+    @Test
+    void sinSesionLosErroresDeLaConsultaSiguenSiendo400Y404YNoSeAbreOtraRuta() throws Exception {
+        Fixture f = fixture();
+
+        assertThat(query(f.serviceId(), null, "2026-99-99").getResponse().getStatus()).isEqualTo(400);
+        assertThat(query(UUID.randomUUID(), null, nextMonday().toString()).getResponse().getStatus()).isEqualTo(404);
+        // Solo el GET de /availability es público: la asignación de recursos y otras rutas siguen protegidas.
+        mockMvc.perform(get("/api/v1/services/" + f.serviceId() + "/resources")).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/services/" + f.serviceId() + "/availability")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/services/" + f.serviceId() + "/availability/otra")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void conUnTokenInvalidoLaConsultaPublicaTambienResponde() throws Exception {
+        Fixture f = fixture();
+
+        assertThat(query(f.serviceId(), "token-basura", nextMonday().toString()).getResponse().getStatus()).isEqualTo(200);
     }
 
     @Test

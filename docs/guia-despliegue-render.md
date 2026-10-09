@@ -68,6 +68,10 @@ curl -X POST https://reservas-backend-xxxx.onrender.com/api/v1/users \
   -d '{"fullName":"Prueba Demo","email":"demo@example.com","cellphone":"3001234567","password":"Segura#2026"}'
 ```
 
+## 4.1 Extensión `btree_gist` (desde el Sprint 2)
+
+La migración `V10__create_bookings_table.sql` ejecuta `CREATE EXTENSION IF NOT EXISTS btree_gist` para la restricción anti-overbooking de las reservas. En PostgreSQL 13+ esa extensión es *trusted*: la puede crear el dueño de la base sin ser superusuario, así que **debería funcionar en Render sin cambios**, pero no se ha probado allí. Si el despliegue falla en esa migración (`permission denied to create extension`), créala una vez desde un cliente con el usuario de la base (`CREATE EXTENSION btree_gist;`) y vuelve a desplegar.
+
 ## 5. Despliegues siguientes (desde el pipeline de CI/CD)
 
 Desde el Sprint 2 el despliegue lo dispara GitHub Actions (`.github/workflows/build.yml`), no Render por su cuenta. En cada push a `main` corren, en orden: pruebas → SonarCloud → build del JAR → **Deploy to Render**. Ese último job llama al *deploy hook* de Render (secret `RENDER_DEPLOY_HOOK_URL`), Render reconstruye la imagen con el `Dockerfile` y el job espera a que `/actuator/health` responda 200. Si algún job anterior falla, no se despliega.
