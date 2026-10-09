@@ -97,3 +97,25 @@ Respuesta `201`: `{ "id": "…", "businessId": "…", "name": "Sala 1", "type": 
 
 ### `GET /api/v1/businesses/{businessId}/resources`
 Lista los recursos del negocio (activos e inactivos) en orden de creación; vacía si no hay. Mismas reglas de acceso.
+
+## HU-18 — Asignar recursos a un servicio (implementado)
+
+Solo el **PROVEEDOR dueño del negocio del servicio** (cliente o administrador: 403; sin sesión: 401; servicio de otro proveedor: 403; servicio inexistente: 404). Es requisito de HU-20 (disponibilidad) y HU-22 (reserva).
+
+### `PUT /api/v1/services/{serviceId}/resources`
+```json
+{ "resourceIds": ["<uuid de recurso>", "<uuid de recurso>"] }
+```
+**Reemplaza** el conjunto de recursos del servicio (idempotente: repetir la petición no cambia nada). Permite varios recursos por servicio; los ids repetidos cuentan una vez; una lista **vacía** deja el servicio sin recursos; máximo 100 ids (*supuesto*).
+
+**Atómico:** si algún recurso no existe o pertenece a otro negocio, responde `400` con *"Uno o más recursos no existen o no pertenecen al negocio del servicio"* (mismo mensaje en ambos casos, para no revelar si un id es de otro negocio) y **no se cambia nada**, ni lo nuevo ni lo que ya estaba asignado. Respuesta `200`:
+
+```json
+{ "serviceId": "…", "resources": [ { "id": "…", "name": "Sala 1", "type": "SALA", "active": true } ] }
+```
+Los recursos vienen ordenados por nombre. Dos `PUT` simultáneos sobre el mismo servicio se serializan (bloqueo de la fila del servicio). Se audita (`ASIGNACION_RECURSOS`) solo cuando el conjunto cambia. Cuerpo ausente, `resourceIds` nulo o con ids que no son UUID → `400`.
+
+### `GET /api/v1/services/{serviceId}/resources`
+Mismo formato de respuesta; lista vacía si no tiene recursos. Mismas reglas de acceso.
+
+> Se pueden asignar recursos **inactivos** (podrían reactivarse con HU-17); la disponibilidad (HU-20) solo debe contar los activos.

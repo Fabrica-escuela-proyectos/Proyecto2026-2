@@ -150,7 +150,7 @@ HUS = [
          tablas="service_resources (service_id, resource_id, PK compuesta, FK ON DELETE CASCADE)",
          endpoints=["PUT /api/v1/services/{serviceId}/resources  {resourceIds:[...]}", "GET /api/v1/services/{serviceId}/resources"],
          reglas=["Servicio y recursos deben pertenecer al negocio del proveedor autenticado",
-                 "Recurso ajeno o inexistente -> se rechaza TODA la operación (atómica), sin asignar nada",
+                 "Recurso ajeno o inexistente -> 400 y se rechaza TODA la operación (atómica), sin asignar nada; mismo mensaje en ambos casos",
                  "PUT reemplaza el conjunto (idempotente); permite varios recursos por servicio",
                  "Es requisito de HU-20 (disponibilidad) y HU-22 (reserva)"],
          pruebas=["CP-HU18-01 asignar un recurso", "CP-HU18-02 asignar varios", "CP-HU18-03 recurso de otro negocio",

@@ -19,8 +19,8 @@ Equipo de Arquitectura de Software: **Simon Betancur** (el usuario), **Juan Este
 export PATH="/usr/bin:/bin:/mingw64/bin:$PATH"            # el PATH de la herramienta viene incompleto
 export JAVA_HOME="C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot"   # JDK 17 OBLIGATORIO (con JDK 24 Lombok no genera código y no avisa)
 cd reservas-backend
-./mvnw -B clean test jacoco:report   # TODO: 343 pruebas (232 unitarias + 111 de integración); necesita Docker encendido; ≈ 1 min; cobertura en target/site/jacoco/jacoco.csv
-./mvnw -B test -Dtest='!*IntegrationTest,!ReservasBackendApplicationTests'   # solo unitarias (232), sin Docker
+./mvnw -B clean test jacoco:report   # TODO: 371 pruebas (246 unitarias + 125 de integración); necesita Docker encendido; ≈ 1 min; cobertura en target/site/jacoco/jacoco.csv
+./mvnw -B test -Dtest='!*IntegrationTest,!ReservasBackendApplicationTests'   # solo unitarias (246), sin Docker
 ./mvnw spring-boot:run               # perfil dev; Postgres: docker compose up -d (usuario/BD reservas_app/reservas; clave de dev en application-dev.yml)
 ```
 Primer admin: variables `BOOTSTRAP_ADMIN_EMAIL/PASSWORD/CELLPHONE` (solo actúa si no existe un admin; quitar la contraseña después). **Desde ADR-004 ese admin debe enrolar su MFA** (`/auth/mfa/setup` + `/activate`) para poder usar cualquier otra ruta. Docker Desktop: si está apagado, `Start-Process "C:\Users\Simon\AppData\Local\Programs\DockerDesktop\Docker Desktop.exe"` en PowerShell (≈ 1 min, verificar con `docker ps`). El servicio de Windows `postgresql-x64-17` debe estar detenido (Manual) para liberar el 5432 — detenerlo lo bloquea el clasificador de permisos, pídeselo al usuario.
@@ -50,4 +50,4 @@ Primer admin: variables `BOOTSTRAP_ADMIN_EMAIL/PASSWORD/CELLPHONE` (solo actúa 
 | Plantilla de bugs de Calidad | `.github/ISSUE_TEMPLATE/bug_report.yml` |
 
 ## Estado en una línea
-Sprint 1 (HU-01..06) completo y desplegado; Sprint 2 (HU-07..28, Azure IDs 72–93): corte Arquisoft/BD **13 oct**, review **20 oct**. Al 2026-10-07 están hechos (sin commitear ni desplegar) los bugs de Calidad #8–#11 y el MFA mínimo (ADR-004), con 343 pruebas en verde. **HU-09 (crear servicio), HU-08 (antelación mínima), HU-13 (catálogo) y HU-14 (recursos) implementadas** (`service/`, migración V5, `docs/api/endpoints-sprint-2.md`); HU-08 pasó a Tier 1. Pendientes críticos: aprobar ADR-004, CI/Sonar, credenciales demo expuestas, convenciones de BD (UUID, sin `RESTRICT` hacia `users`), y empezar las HU de servicios/recursos/reservas. Ver `handoff-contexto.md` §7.
+Sprint 1 (HU-01..06) completo y desplegado; Sprint 2 (HU-07..28, Azure IDs 72–93): corte Arquisoft/BD **13 oct**, review **20 oct**. Al 2026-10-07 están hechos (sin commitear ni desplegar) los bugs de Calidad #8–#11 y el MFA mínimo (ADR-004), con 371 pruebas en verde. **HU-09 (crear servicio), HU-08 (antelación mínima), HU-13 (catálogo), HU-14 (recursos) y HU-18 (asignar recursos a servicios) implementadas** (`service/`, migración V5, `docs/api/endpoints-sprint-2.md`); HU-08 pasó a Tier 1. Pendientes críticos: aprobar ADR-004, CI/Sonar, credenciales demo expuestas, convenciones de BD (UUID, sin `RESTRICT` hacia `users`), y empezar las HU de servicios/recursos/reservas. Ver `handoff-contexto.md` §7.
