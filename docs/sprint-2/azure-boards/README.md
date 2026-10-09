@@ -70,7 +70,7 @@ Resultado actual: **28 tareas / 348 h** en un solo lote (`L01`), frente a las 17
 
 ## 5. Convenciones
 
-- **Códigos:** `HUnn-DATOS` / `HUnn-API` (tareas de HU), `SEG-nn` · `PLT-nn` · `ARQ-nn` (tareas técnicas), `CHG-nnn` (componentes nuevos). Checklist interno: `MFA-nn`, `SP1-nn`, `SEC-nn`, `CI-nn`, `API-nn`, `OWASP-nn`, `DOC-nn`, `BD-nn`, `EST-xx`, `BUG-n` (n = n.º del issue de GitHub). El código va en el título (`[HU09-API] …`) y en `Tags`.
+- **Códigos:** `HUnn-DATOS` / `HUnn-API` (tareas de HU), `SEG-nn` · `PLT-nn` · `ARQ-nn` (tareas técnicas), `CHG-nnn` (componentes nuevos). Checklist interno: `MFA-nn`, `SP1-nn`, `SEC-nn`, `CI-nn`, `API-nn`, `OWASP-nn`, `DOC-nn`, `BD-nn`, `EST-xx`, `BUG-n` (n = n.º del issue de GitHub). El código va en el título (`[HU09-API] …`). **El CSV no lleva `Tags`**: el usuario de Azure no tiene permiso para crear etiquetas (TF401289) y el import falla.
 - **Prioridad:** 1 = Tier 1 / bloqueante, 2 = Tier 2.
 - **Horas:** esfuerzo nominal sin asistente de IA; incluye pruebas y revisión (Definición de hecho §9.1 de los Lineamientos); sirven para detectar capacidad vs demanda (ver el plan, §2).
 - **Actividad (Activity):** `Development`, `Design`, `Deployment`.

@@ -13,14 +13,14 @@
 | **Total que se sube a Azure** | **28** | **348** |
 | Checklist interno (NO se sube; 22 de sus 64 ítems quedan agrupados en las tareas técnicas) | 64 | 218 |
 | **Trabajo nominal total** (HU + checklist interno; base de la capacidad del plan) | | **488** |
-| &nbsp;&nbsp;↳ ya hecho del checklist (14 ítems, 2 parciales sin contar) | | 58 |
+| &nbsp;&nbsp;↳ ya hecho del checklist (14 ítems, 3 parciales sin contar) | | 58 |
 | &nbsp;&nbsp;↳ **por hacer** (HU + checklist pendiente) | | **430** |
 
 ## Lotes (un CSV por lote; un lote ya subido NO se vuelve a importar)
 
 | Lote | Archivo | Estado | Historias | Tareas | Horas |
 |---|---|---|---:|---:|---:|
-| L01 | `lotes/azure-import_L01_tareas-por-componente.csv` | pendiente | 18 | 28 | 348 |
+| L01 | `lotes/azure-import_L01_tareas-por-componente.csv` | subido | 18 | 28 | 348 |
 
 ## Esfuerzo nominal por responsable (HU + checklist interno)
 
@@ -31,9 +31,9 @@
 | Dev C (Santiago Rendón) · Recursos, horarios, cancelaciones, CI/CD y despliegue | 141 | 141 |
 | Bases de Datos (Juan Sebastián Andraus, con apoyo de los 3 de Arquisoft) | 8 | 8 |
 
-Tareas de HU: Tier 1 = 187 h, Tier 2 = 83 h (estimación nominal, sin asistente de IA).
+Tareas de HU: Tier 1 = 200 h, Tier 2 = 70 h (estimación nominal, sin asistente de IA).
 
-## L01 · tareas-por-componente (pendiente)
+## L01 · tareas-por-componente (subido)
 
 ### HU 09 - Crear servicio — ID Azure 74
 
@@ -122,11 +122,11 @@ Tareas de HU: Tier 1 = 187 h, Tier 2 = 83 h (estimación nominal, sin asistente 
 
 ### HU 08 - Definir antelación mínima de reserva — ID Azure 73
 
-3 pts · Tier 2 · Dev B (Juan Esteban González) · Catálogo, disponibilidad y reservas del cliente · depende de: HU-03
+3 pts · Tier 1 · Dev B (Juan Esteban González) · Catálogo, disponibilidad y reservas del cliente · depende de: HU-03
 
 | Código | Tarea | Actividad | Estado | h | Prio | Resp. |
 |---|---|---|---|---:|---:|---|
-| HU08-API | Configuración del negocio: antelación mínima de reserva por negocio (reglas de negocio y API REST) | Development | New | 13 | 2 | B |
+| HU08-API | Configuración del negocio: antelación mínima de reserva por negocio (reglas de negocio y API REST) | Development | New | 13 | 1 | B |
 
 ### HU 16 - Desactivar recurso — ID Azure 81
 
@@ -185,7 +185,7 @@ Documentación interactiva de la API (Swagger), modelo de datos coordinado con B
 | Código | Tarea | Actividad | Estado | h | Prio | Resp. | Avance / estado sugerido en Azure |
 |---|---|---|---|---:|---:|---|---|
 | ARQ-01 | Documentación interactiva de la API (Swagger/OpenAPI) | Development | New | 7 | 1 | B | New |
-| ARQ-02 | Modelo de datos del Sprint 2: convenciones y migraciones Flyway coordinadas con BD | Design | New | 7 | 1 | A | New |
+| ARQ-02 | Modelo de datos del Sprint 2: convenciones y migraciones Flyway coordinadas con BD | Design | New | 7 | 1 | A | Active (0/2 ítems hechos, 1 parcial) |
 | ARQ-03 | Arquitectura del Sprint 2: diagrama de despliegue, diagrama de componentes y ADRs | Design | New | 12 | 1 | C | New |
 | ARQ-04 | Seguridad OWASP Top 10: revisión del código y endurecimiento (cabeceras, CORS, límites de entrada) | Development | New | 9 | 1 | A | New |
 
@@ -236,7 +236,7 @@ Códigos que citan los demás documentos del sprint. La columna *Azure* indica l
 | DOC-03 | API, seguridad y documentación | Diagramas de componentes y paquetes del Sprint 2 con tabla de conexiones | Design | 4 | 2 | C | ARQ-03 |  |
 | DOC-04 | API, seguridad y documentación | Evidencias del sprint: reportes Sonar/JaCoCo, pipeline verde, Postman, capturas | Documentation | 3 | 2 | B | — |  |
 | DOC-05 | API, seguridad y documentación | Actualizar resultados de pruebas y estado del proyecto (Sprint 2) | Documentation | 2 | 2 | B | — |  |
-| BD-01 | Modelo de datos | Acordar convenciones (UUID, TIMESTAMPTZ, ON DELETE, nombres) y alinear el modelo formal con el esquema Flyway real | Design | 3 | 1 | A | ARQ-02 |  |
+| BD-01 | Modelo de datos | Acordar convenciones (UUID, TIMESTAMPTZ, ON DELETE, nombres) y alinear el modelo formal con el esquema Flyway real | Design | 3 | 1 | A | ARQ-02 | ◐ 2026-10-08 · docs/bd/convenciones-bd.md redactado como propuesta; falta acordarlo con BD (Andraus) y alinear el modelo formal |
 | BD-02 | Modelo de datos | MER y entidades Sprint 2: services, resources, service_resources, resource_availability, bookings (+ columnas de businesses) | Design | 4 | 1 | BD | — |  |
 | BD-03 | Modelo de datos | Modelo físico y DDL propuesto → migraciones Flyway V5+ revisadas por Arquisoft | Development | 4 | 1 | A | ARQ-02 |  |
 | BD-04 | Modelo de datos | Restricción anti-overbooking (EXCLUDE USING gist, btree_gist) + índices de disponibilidad + prueba de concurrencia | Development | 4 | 1 | A | — |  |

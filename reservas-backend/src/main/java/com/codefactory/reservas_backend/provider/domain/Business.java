@@ -31,6 +31,11 @@ public class Business {
     @Column(name = "name", nullable = false, length = 150)
     private String name;
 
+    /** HU-08: horas mínimas entre "ahora" y el inicio de una reserva nueva (1..720, por defecto 1). */
+    @Column(name = "min_advance_hours", nullable = false)
+    @Builder.Default
+    private int minAdvanceHours = 1;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

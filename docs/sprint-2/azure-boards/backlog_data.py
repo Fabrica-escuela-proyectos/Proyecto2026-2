@@ -219,7 +219,7 @@ HUS = [
          pruebas=["CP-HU25-01 cancelación exitosa", "CP-HU25-02 con menos de 1 h", "CP-HU25-03 reserva ajena 403",
                   "CP-HU25-04 ya cancelada 409", "CP-HU25-05 el horario vuelve a estar disponible (HU-20)",
                   "CP-HU25-06 sin sesión 401"]),
-    dict(hu="HU-08", pts=3, tier=2, owner="B", deps="HU-03",
+    dict(hu="HU-08", pts=3, tier=1, owner="B", deps="HU-03",
          tablas="businesses (+ min_advance_hours INT NOT NULL DEFAULT 1)",
          endpoints=["PUT /api/v1/businesses/{businessId}/booking-lead-time  {hours}", "GET /api/v1/businesses/{businessId}"],
          reglas=["Valor por defecto 1 hora; cada negocio tiene el suyo; unidad: horas enteras >= 1 (a confirmar)",
@@ -449,6 +449,7 @@ AVANCE = {
     "SP1-05": ("hecho", "2026-10-07 · AbstractIntegrationTest (contenedor único); ReservasBackendApplicationTests ya no depende de localhost:5432"),
     "SP1-07": ("hecho", "2026-10-07 · noRollbackFor; AuditPersistenceIntegrationTest"),
     "SP1-08": ("hecho", "2026-10-07 · 258 pruebas en verde con Docker"),
+    "BD-01": ("parcial", "2026-10-08 · docs/bd/convenciones-bd.md redactado como propuesta; falta acordarlo con BD (Andraus) y alinear el modelo formal"),
 }
 
 # ---------------------------------------------------------------------------
@@ -478,11 +479,11 @@ def chg(codigo, titulo, activity, horas, padre, desc="", estado="New", lote="L02
 
 # IDs de Azure de las historias técnicas ya creadas por un import (anotar después de importar L01;
 # los lotes siguientes cuelgan de ese ID en vez de crear otra historia).
-TECH_IDS = {}   # p. ej. {"TECH-01": 140, "TECH-03": 142}
+TECH_IDS = {"TECH-01": 114, "TECH-02": 117, "TECH-03": 120}
 
 # Estado de subida de cada lote a Azure (editar cuando el usuario confirme que lo importó).
 # Un lote que no esté aquí se considera "pendiente".
 # NOTA 2026-10-07: la primera versión (L01-L07, 173 tareas) se DESCARTÓ por demasiado detallada; nunca se
 # marcó como subida. L01 es ahora la línea base simplificada.
-ESTADO_LOTES = {"L01": "pendiente"}
+ESTADO_LOTES = {"L01": "subido"}
 NOMBRE_LOTES = {"L01": "tareas-por-componente"}

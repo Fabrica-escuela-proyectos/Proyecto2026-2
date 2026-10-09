@@ -4,6 +4,7 @@
 
 | HU | Pts | Tier | Módulo (paquete) | API propuesta | Tabla(s) | Reglas | Casos |
 |---|---:|---:|---|---|---|---:|---:|
+| HU-08 | 3 | 1 | provider | `PUT /api/v1/businesses/{businessId}/booking-lead-time`<br>`GET /api/v1/businesses/{businessId}` | businesses | 4 | 8 |
 | HU-09 | 5 | 1 | service | `POST /api/v1/businesses/{businessId}/services`<br>`GET /api/v1/businesses/{businessId}/services` | services | 5 | 10 |
 | HU-13 | 3 | 1 | service (catálogo) | `GET /api/v1/businesses?page=&size=`<br>`GET /api/v1/businesses/{businessId}` | — | 4 | 7 |
 | HU-14 | 5 | 1 | resource | `POST /api/v1/businesses/{businessId}/resources`<br>`GET /api/v1/businesses/{businessId}/resources` | resources | 4 | 7 |
@@ -14,11 +15,30 @@
 | HU-23 | 5 | 1 | reservation | `GET /api/v1/bookings/me?status=&page=&size=` | — | 4 | 6 |
 | HU-24 | 5 | 1 | reservation | `GET /api/v1/businesses/{businessId}/bookings?from=&to=&status=&page=&size=` | — | 3 | 6 |
 | HU-25 | 5 | 1 | reservation | `POST /api/v1/bookings/{bookingId}/cancellation` | — | 4 | 6 |
-| HU-08 | 3 | 2 | provider | `PUT /api/v1/businesses/{businessId}/booking-lead-time`<br>`GET /api/v1/businesses/{businessId}` | businesses | 4 | 8 |
 | HU-16 | 5 | 2 | resource | `POST /api/v1/resources/{resourceId}/deactivation` | — | 4 | 7 |
 | HU-17 | 3 | 2 | resource | `POST /api/v1/resources/{resourceId}/reactivation` | — | 3 | 5 |
 | HU-26 | 5 | 2 | reservation | `POST /api/v1/bookings/{bookingId}/provider-cancellation` | — | 4 | 6 |
 | HU-28 | 5 | 2 | identity + reservation | `DELETE /api/v1/users/{userId}` | — | 5 | 6 |
+
+## HU 08 - Definir antelación mínima de reserva (Azure 73)
+
+- **Módulo:** provider · **Responsable:** Dev B (Juan Esteban González) · Catálogo, disponibilidad y reservas del cliente · **Depende de:** HU-03
+- **Tablas/datos:** businesses (+ min_advance_hours INT NOT NULL DEFAULT 1)
+- **API propuesta:** `PUT /api/v1/businesses/{businessId}/booking-lead-time  {hours}`; `GET /api/v1/businesses/{businessId}`
+- **Reglas de negocio:**
+  - Valor por defecto 1 hora; cada negocio tiene el suyo; unidad: horas enteras >= 1 (a confirmar)
+  - Solo el dueño del negocio (ajeno 403, Cliente 403, sin sesión 401)
+  - Valores inválidos (0, -2, abc) -> 400 y se conserva el anterior
+  - No afecta reservas ya confirmadas; HU-22 lo exige en las nuevas
+- **Casos de prueba:**
+  - CP-HU08-01 valor por defecto
+  - CP-HU08-02 definir 2 h
+  - CP-HU08-03 inválidos 0/-2/abc
+  - CP-HU08-04 negocio ajeno 403
+  - CP-HU08-05 Cliente 403
+  - CP-HU08-06 sin sesión 401
+  - CP-HU08-07 reservas previas intactas
+  - CP-HU08-08 se aplica en HU-22
 
 ## HU 09 - Crear servicio (Azure 74)
 
@@ -221,26 +241,6 @@
   - CP-HU25-04 ya cancelada 409
   - CP-HU25-05 el horario vuelve a estar disponible (HU-20)
   - CP-HU25-06 sin sesión 401
-
-## HU 08 - Definir antelación mínima de reserva (Azure 73)
-
-- **Módulo:** provider · **Responsable:** Dev B (Juan Esteban González) · Catálogo, disponibilidad y reservas del cliente · **Depende de:** HU-03
-- **Tablas/datos:** businesses (+ min_advance_hours INT NOT NULL DEFAULT 1)
-- **API propuesta:** `PUT /api/v1/businesses/{businessId}/booking-lead-time  {hours}`; `GET /api/v1/businesses/{businessId}`
-- **Reglas de negocio:**
-  - Valor por defecto 1 hora; cada negocio tiene el suyo; unidad: horas enteras >= 1 (a confirmar)
-  - Solo el dueño del negocio (ajeno 403, Cliente 403, sin sesión 401)
-  - Valores inválidos (0, -2, abc) -> 400 y se conserva el anterior
-  - No afecta reservas ya confirmadas; HU-22 lo exige en las nuevas
-- **Casos de prueba:**
-  - CP-HU08-01 valor por defecto
-  - CP-HU08-02 definir 2 h
-  - CP-HU08-03 inválidos 0/-2/abc
-  - CP-HU08-04 negocio ajeno 403
-  - CP-HU08-05 Cliente 403
-  - CP-HU08-06 sin sesión 401
-  - CP-HU08-07 reservas previas intactas
-  - CP-HU08-08 se aplica en HU-22
 
 ## HU 16 - Desactivar recurso (Azure 81)
 

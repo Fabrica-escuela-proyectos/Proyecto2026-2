@@ -13,7 +13,9 @@ import com.codefactory.reservas_backend.identity.domain.RoleNotFoundException;
 import com.codefactory.reservas_backend.identity.domain.SelfModificationException;
 import com.codefactory.reservas_backend.identity.domain.UserNotFoundException;
 import com.codefactory.reservas_backend.identity.infrastructure.TooManyRequestsException;
+import com.codefactory.reservas_backend.provider.domain.BusinessNotFoundException;
 import com.codefactory.reservas_backend.provider.domain.ProviderNotFoundException;
+import com.codefactory.reservas_backend.service.domain.DuplicateServiceNameException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,6 +95,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, "CONFLICT", ex.getMessage(), null, req);
     }
 
+    // HU-09: nombre de servicio repetido dentro del mismo negocio.
+    @ExceptionHandler(DuplicateServiceNameException.class)
+    public ResponseEntity<ApiError> handleDuplicateService(DuplicateServiceNameException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, "CONFLICT", ex.getMessage(), null, req);
+    }
+
     @ExceptionHandler(TooManyRequestsException.class)
     public ResponseEntity<ApiError> handleTooManyRequests(TooManyRequestsException ex, HttpServletRequest req) {
         return build(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_REQUESTS", ex.getMessage(), null, req);
@@ -133,7 +141,7 @@ public class GlobalExceptionHandler {
     }
 
     // HU-05/HU-06: el usuario/proveedor objetivo de la operación no existe.
-    @ExceptionHandler({UserNotFoundException.class, ProviderNotFoundException.class})
+    @ExceptionHandler({UserNotFoundException.class, ProviderNotFoundException.class, BusinessNotFoundException.class})
     public ResponseEntity<ApiError> handleNotFound(RuntimeException ex, HttpServletRequest req) {
         return build(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage(), null, req);
     }
@@ -291,6 +299,9 @@ public class GlobalExceptionHandler {
         }
         if ("uk_users_phone".equals(constraint)) {
             return "El número de celular ya está en uso";
+        }
+        if ("uk_services_business_name".equals(constraint)) {
+            return "Ya existe un servicio con ese nombre en el negocio";
         }
         return "Ya existe un registro con los datos enviados";
     }

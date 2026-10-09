@@ -26,6 +26,8 @@ COLUMNAS = ["ID", "Work Item Type", "Title 1", "Title 2", "Description", "Assign
             "Story Points", "Iteration Path", "Area Path"]
 
 LOTE_BASE = "L01"
+# Sin esto Azure deja los ítems nuevos en la raíz del proyecto y no salen en el Taskboard del sprint.
+ITERACION = r"Service Booking Plataform\Sprint 2"
 
 
 def h(texto):
@@ -198,22 +200,30 @@ def filas_csv(it):
     filas = []
     padre = fila(**{"Work Item Type": "User Story", "Title 1": it.titulo})
     if it.existing_id:
+        # Con ID se actualiza la historia existente (no se duplica). Azure rechaza el
+        # import si State va vacío, y las HU del sprint están en "New".
         padre["ID"] = it.existing_id
+        padre["State"] = "New"
     else:
         padre["State"] = "New"
+        padre["Iteration Path"] = ITERACION
         padre["Description"] = h(it.desc)
-        padre["Tags"] = it.tags
         if it.puntos != "":
             padre["Story Points"] = it.puntos
         if it.prioridad != "":
             padre["Priority"] = it.prioridad
     filas.append(padre)
     for t in it.tareas:
-        cerrada = t["estado"] == "Closed"
+        estado = t["estado"]
+        if estado == "New" and t.get("cubre"):
+            # Tareas técnicas: reflejan el avance real (Active / Closed) de lo ya hecho
+            sug = estado_sugerido(t)
+            estado = "Closed" if sug.startswith("Closed") else "Active" if sug.startswith("Active") else "New"
+        cerrada = estado == "Closed"
         filas.append(fila(**{
             "Work Item Type": "Task", "Title 2": f"[{t['codigo']}] {t['titulo']}",
-            "Description": h(t["desc"]), "Assigned To": asignado(t["owner"]), "State": t["estado"],
-            "Tags": t["tags"], "Activity": t["activity"], "Original Estimate": t["horas"],
+            "Description": h(t["desc"]), "Assigned To": asignado(t["owner"]), "State": estado,
+            "Iteration Path": ITERACION, "Activity": t["activity"], "Original Estimate": t["horas"],
             "Remaining Work": 0 if cerrada else t["horas"], "Completed Work": t["horas"] if cerrada else "",
             "Priority": t["prio"]}))
     return filas

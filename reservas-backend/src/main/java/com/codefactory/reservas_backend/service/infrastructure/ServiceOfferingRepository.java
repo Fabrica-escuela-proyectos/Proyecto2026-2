@@ -1,0 +1,14 @@
+package com.codefactory.reservas_backend.service.infrastructure;
+
+import com.codefactory.reservas_backend.service.domain.ServiceOffering;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.UUID;
+
+public interface ServiceOfferingRepository extends JpaRepository<ServiceOffering, UUID> {
+
+    List<ServiceOffering> findByBusinessIdOrderByCreatedAtAsc(UUID businessId);
+
+    boolean existsByBusinessIdAndNameIgnoreCase(UUID businessId, String name);
+}
