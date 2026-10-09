@@ -149,3 +149,30 @@ Ambos responden `200` con el horario completo vigente (mismo formato del `GET`).
 **Errores `400` (el recurso conserva su horario anterior; la operación es atómica):** formato de hora inválido (`ab:cd`, `25:00`, `9:00`, `24:00`, vacío) → *"El rango horario no es válido: use el formato HH:mm…"*; inicio ≥ fin (`14:00-10:00`, `09:00-09:00`) → *"…la hora de inicio debe ser anterior a la de fin"*; rangos del mismo día superpuestos (incluido uno contenido en otro) → *"Los rangos horarios de un mismo día no pueden superponerse"*; día fuera de 1..7 o repetido en la semana; más de 10 rangos en un día (*supuesto*); lista ausente o nula. Dos ediciones simultáneas del mismo recurso se serializan (bloqueo de la fila del recurso). Cada cambio se audita (`DISPONIBILIDAD_RECURSO`).
 
 > **Pendiente de HU-19:** los escenarios "reserva dentro/fuera del horario" (CP del motor de reservas) se prueban cuando exista HU-22; esta HU solo guarda el horario.
+
+## HU-20 — Consultar disponibilidad de un servicio (implementado)
+
+### `GET /api/v1/services/{serviceId}/availability?date=yyyy-MM-dd`
+
+Solo lectura. **Hoy exige sesión iniciada** (cualquier rol; sin sesión: 401), por la decisión del 2026-10-08.
+
+> **⚠ Conflicto abierto con el criterio de aceptación.** La HU incluye el escenario *"Consulta de horarios libres por parte de un usuario sin sesión iniciada → el sistema permite ver los horarios disponibles sin requerir autenticación"*, y el caso de prueba `CP-HU20-09` lo verificará. La decisión tomada (exigir sesión) lo incumple. Cambiarlo es una línea en `SecurityConfig` (`.requestMatchers(HttpMethod.GET, "/api/v1/services/*/availability").permitAll()`) más actualizar la prueba `sinSesionDevuelve401`. **Falta que Simon confirme cuál prevalece.**
+
+`date` es opcional: sin fecha se usa **hoy** (hora de Bogotá). *Ambigüedad:* el escenario dice "a partir de la fecha actual"; se interpretó como los horarios de hoy, no un rango.
+
+**Cómo se calculan los horarios:** para cada **recurso activo** asignado al servicio (HU-18) se toman los rangos de ese día de la semana (HU-19) y se parten en horarios consecutivos de la **duración del servicio** (supuesto: paso = duración; con 45 min y rango 09:00-12:00 → 09:00, 09:45, 10:30, 11:15; los que no caben completos se descartan). Se descuentan los horarios que empiezan antes de **ahora + antelación mínima del negocio** (HU-08) y los que se traslapan con tiempos ocupados (reservas confirmadas; punto de extensión `BusyTimeSource`, que implementará HU-22). Sin caché: un cambio de horario del recurso se ve en la consulta siguiente.
+
+```json
+{ "serviceId": "…", "serviceName": "Corte", "date": "2026-10-19", "timezone": "America/Bogota", "durationMinutes": 60,
+  "slots": [ { "start": "09:00", "end": "10:00", "resources": [ { "id": "…", "name": "Sala 1" } ] } ],
+  "message": null }
+```
+Un mismo horario atendible por varios recursos sale **una sola vez** con todos sus recursos (HU-22 recibe `startAt` y, opcionalmente, un recurso). `message` solo viene sin horarios: *"No hay horarios disponibles ese día: el servicio no tiene horario definido"* (día sin horario, sin recursos o recursos inactivos) o *"No quedan horarios disponibles ese día"* (todo ocupado o fuera de antelación).
+
+| Código | Cuándo |
+|---|---|
+| 400 | Fecha con formato inválido (`32/13/2026`, `ab/cd/efgh`, `2026-99-99`, `2026-02-30`, `2026-1-5`), anterior a hoy (*"Debe seleccionar una fecha futura o la fecha actual"*), a más de 365 días (*supuesto*), o `serviceId` que no es UUID |
+| 401 | Sin sesión (ver el conflicto de arriba) |
+| 404 | *"El servicio no está disponible"*: no existe, está inactivo o la cuenta de su proveedor está inactiva (mismo mensaje en todos los casos) |
+
+Dos consultas simultáneas ven el mismo horario libre (es de solo lectura); en cuanto una reserva exista (HU-22) el horario deja de mostrarse al otro cliente.

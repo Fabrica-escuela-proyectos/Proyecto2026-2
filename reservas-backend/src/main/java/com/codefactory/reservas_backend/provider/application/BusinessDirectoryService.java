@@ -14,4 +14,10 @@ public interface BusinessDirectoryService {
 
     /** @throws com.codefactory.reservas_backend.provider.domain.BusinessNotFoundException si no existe */
     BusinessInfo get(UUID businessId);
+
+    /**
+     * {@code true} si el negocio existe y la cuenta de su proveedor está habilitada
+     * (HU-20: el servicio de un proveedor inactivo no está disponible).
+     */
+    boolean isOwnerEnabled(UUID businessId);
 }

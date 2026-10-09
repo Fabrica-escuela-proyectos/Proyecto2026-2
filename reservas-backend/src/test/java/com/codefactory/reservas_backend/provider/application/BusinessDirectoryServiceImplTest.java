@@ -1,8 +1,11 @@
 package com.codefactory.reservas_backend.provider.application;
 
+import com.codefactory.reservas_backend.identity.application.AccountStatusService;
 import com.codefactory.reservas_backend.provider.domain.Business;
+import com.codefactory.reservas_backend.provider.domain.Provider;
 import com.codefactory.reservas_backend.provider.domain.BusinessNotFoundException;
 import com.codefactory.reservas_backend.provider.infrastructure.BusinessRepository;
+import com.codefactory.reservas_backend.provider.infrastructure.ProviderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,12 +31,16 @@ class BusinessDirectoryServiceImplTest {
 
     @Mock
     private BusinessRepository businessRepository;
+    @Mock
+    private ProviderRepository providerRepository;
+    @Mock
+    private AccountStatusService accountStatusService;
 
     private BusinessDirectoryServiceImpl directory;
 
     @BeforeEach
     void setUp() {
-        directory = new BusinessDirectoryServiceImpl(businessRepository);
+        directory = new BusinessDirectoryServiceImpl(businessRepository, providerRepository, accountStatusService);
     }
 
     @Test
@@ -71,5 +78,33 @@ class BusinessDirectoryServiceImplTest {
         when(businessRepository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> directory.get(id)).isInstanceOf(BusinessNotFoundException.class);
+    }
+
+    @Test
+    void isOwnerEnabledDebeConsultarElEstadoDeLaCuentaDelProveedor() {
+        UUID businessId = UUID.randomUUID();
+        UUID providerId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        when(businessRepository.findById(businessId)).thenReturn(Optional.of(
+                Business.builder().id(businessId).providerId(providerId).name("Spa").build()));
+        when(providerRepository.findById(providerId)).thenReturn(Optional.of(
+                Provider.builder().id(providerId).userId(userId).build()));
+        when(accountStatusService.isEnabled(userId)).thenReturn(true, false);
+
+        assertThat(directory.isOwnerEnabled(businessId)).isTrue();
+        assertThat(directory.isOwnerEnabled(businessId)).isFalse();
+    }
+
+    @Test
+    void isOwnerEnabledDebeSerFalsoSiElNegocioONoExisteOSuProveedorYaNo() {
+        UUID businessId = UUID.randomUUID();
+        UUID providerId = UUID.randomUUID();
+        when(businessRepository.findById(businessId)).thenReturn(Optional.empty());
+        assertThat(directory.isOwnerEnabled(businessId)).isFalse();
+
+        when(businessRepository.findById(businessId)).thenReturn(Optional.of(
+                Business.builder().id(businessId).providerId(providerId).name("Spa").build()));
+        when(providerRepository.findById(providerId)).thenReturn(Optional.empty());
+        assertThat(directory.isOwnerEnabled(businessId)).isFalse();
     }
 }

@@ -19,7 +19,9 @@ import com.codefactory.reservas_backend.resource.domain.DuplicateResourceNameExc
 import com.codefactory.reservas_backend.resource.domain.InvalidAvailabilityException;
 import com.codefactory.reservas_backend.resource.domain.ResourceNotFoundException;
 import com.codefactory.reservas_backend.service.domain.DuplicateServiceNameException;
+import com.codefactory.reservas_backend.service.domain.InvalidAvailabilityQueryException;
 import com.codefactory.reservas_backend.service.domain.InvalidResourceAssignmentException;
+import com.codefactory.reservas_backend.service.domain.ServiceNotAvailableException;
 import com.codefactory.reservas_backend.service.domain.ServiceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -143,14 +145,14 @@ public class GlobalExceptionHandler {
     // "error" además de los ya definidos.
     @ExceptionHandler({RoleNotFoundException.class, InvalidMfaCodeException.class, MfaNotConfiguredException.class,
             InvalidPaginationException.class, InvalidResourceAssignmentException.class,
-            InvalidAvailabilityException.class})
+            InvalidAvailabilityException.class, InvalidAvailabilityQueryException.class})
     public ResponseEntity<ApiError> handleBusinessValidation(RuntimeException ex, HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage(), null, req);
     }
 
     // HU-05/HU-06: el usuario/proveedor objetivo de la operación no existe.
     @ExceptionHandler({UserNotFoundException.class, ProviderNotFoundException.class, BusinessNotFoundException.class,
-            ServiceNotFoundException.class, ResourceNotFoundException.class})
+            ServiceNotFoundException.class, ResourceNotFoundException.class, ServiceNotAvailableException.class})
     public ResponseEntity<ApiError> handleNotFound(RuntimeException ex, HttpServletRequest req) {
         return build(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage(), null, req);
     }

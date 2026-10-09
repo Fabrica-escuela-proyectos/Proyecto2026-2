@@ -176,7 +176,7 @@ HUS = [
                  "Rendimiento: índices por (resource_id, start_at) y paginación/tope de rango de fechas"],
          pruebas=["CP-HU20-01 horarios libres", "CP-HU20-02 excluye reservados", "CP-HU20-03 día sin disponibilidad",
                   "CP-HU20-04 todo reservado", "CP-HU20-05 fecha pasada", "CP-HU20-06 fecha inválida (3 ejemplos)",
-                  "CP-HU20-07 servicio inexistente", "CP-HU20-08 sin fecha = hoy", "CP-HU20-09 sin sesión permitido",
+                  "CP-HU20-07 servicio inexistente", "CP-HU20-08 sin fecha = hoy", "CP-HU20-09 sin sesión (AC dice público; hoy 401: decisión pendiente)",
                   "CP-HU20-10 dos consultas simultáneas"]),
     dict(hu="HU-22", pts=8, tier=1, owner="B", deps="HU-08, HU-09, HU-14, HU-18, HU-19, HU-20",
          tablas="bookings (id, client_id, client_email, service_id, service_name, business_name, resource_id, start_at, end_at, status, cancel_reason, price_cop, created_at, cancelled_at) + EXCLUDE USING gist (anti-traslape por recurso) [requiere btree_gist]",

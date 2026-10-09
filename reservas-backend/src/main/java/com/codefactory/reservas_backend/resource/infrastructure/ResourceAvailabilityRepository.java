@@ -13,6 +13,8 @@ public interface ResourceAvailabilityRepository extends JpaRepository<ResourceAv
 
     List<ResourceAvailability> findByResourceIdOrderByDayOfWeekAscStartTimeAsc(UUID resourceId);
 
+    List<ResourceAvailability> findByResourceIdInAndDayOfWeek(java.util.Collection<UUID> resourceIds, int dayOfWeek);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from ResourceAvailability a where a.resourceId = :resourceId")
     void deleteAllOfResource(@Param("resourceId") UUID resourceId);
