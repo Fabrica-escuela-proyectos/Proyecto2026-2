@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /** Contratos de las reservas (HU-22). Fecha {@code yyyy-MM-dd} y horas {@code HH:mm} en hora local de Bogotá. */
@@ -41,6 +42,21 @@ public final class BookingDtos {
         private String endTime;
 
         private UUID resourceId;
+    }
+
+    /**
+     * Reserva en un listado (HU-23; HU-24 la reutiliza). Para una CANCELADA trae el motivo y la
+     * fecha de cancelación; en las demás ambos vienen nulos.
+     */
+    public record BookingItem(UUID id, String status, UUID serviceId, String serviceName, UUID businessId,
+                              String businessName, UUID resourceId, String resourceName, String date,
+                              String startTime, String endTime, long priceCop, String cancelReason,
+                              Instant cancelledAt, Instant createdAt) {
+    }
+
+    /** Página de reservas (numeración desde 0); {@code message} solo viene cuando no hay ninguna. */
+    public record BookingPageResponse(List<BookingItem> items, int page, int size, long totalElements,
+                                      int totalPages, String message) {
     }
 
     /** Reserva creada; {@code id} es el que devuelve HU-22 y usan HU-23..28. */

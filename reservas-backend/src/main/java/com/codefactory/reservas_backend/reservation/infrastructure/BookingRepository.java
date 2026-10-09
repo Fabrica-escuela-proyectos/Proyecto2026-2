@@ -1,6 +1,9 @@
 package com.codefactory.reservas_backend.reservation.infrastructure;
 
 import com.codefactory.reservas_backend.reservation.domain.Booking;
+import com.codefactory.reservas_backend.reservation.domain.BookingStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,6 +14,10 @@ import java.util.List;
 import java.util.UUID;
 
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
+
+    Page<Booking> findByClientId(UUID clientId, Pageable pageable);
+
+    Page<Booking> findByClientIdAndStatus(UUID clientId, BookingStatus status, Pageable pageable);
 
     /** ¿Hay una reserva CONFIRMADA del recurso que se traslape con [start, end)? */
     @Query("""

@@ -194,7 +194,7 @@ HUS = [
                   "CP-HU22-11 snapshot de precio"]),
     dict(hu="HU-23", pts=5, tier=1, owner="B", deps="HU-22",
          tablas="(sin tablas nuevas)",
-         endpoints=["GET /api/v1/bookings/me?status=&page=&size="],
+         endpoints=["GET /api/v1/bookings/me?status=&page=&size=", "GET /api/v1/users/{userId}/bookings (403 si no es el propio)"],
          reglas=["Solo las reservas del Cliente autenticado; orden por fecha de más reciente a más antigua",
                  "Cada reserva: fecha, hora inicio/fin, servicio, estado y motivo de cancelación si aplica",
                  "Lista vacía -> mensaje 'no tiene reservas'; no existe ruta para ver reservas de otro usuario (403/404)",

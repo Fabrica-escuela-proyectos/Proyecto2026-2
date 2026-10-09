@@ -210,3 +210,24 @@ La reserva guarda **copias** del nombre del servicio, recurso, negocio y del **p
 **Anti-overbooking en la base de datos:** la tabla `bookings` tiene `EXCLUDE USING gist (resource_id WITH =, tstzrange(start_at, end_at) WITH &&) WHERE (status = 'CONFIRMADA')`: dos reservas confirmadas de un recurso no pueden traslaparse ni aunque lleguen a la vez (una gana con 201 y la otra recibe 409). *Supuesto:* el límite es **por recurso** (un servicio con varios recursos admite varias reservas simultáneas, una por recurso), no por servicio. Una reserva CANCELADA o COMPLETADA no ocupa el horario. Con asignación automática, si otra petición toma el recurso elegido en el mismo instante, esta recibe 409 y puede reintentar.
 
 **Integración con HU-20:** las reservas CONFIRMADAS se descuentan de los horarios libres (`BookingBusyTimeSource`): en cuanto se reserva, el horario deja de mostrarse. HU-19 (CP "reserva dentro/fuera del horario") y HU-08 (CP-HU08-08, antelación) quedan cubiertas con esta HU.
+
+## HU-23 — Consultar mis reservas (implementado)
+
+Solo el rol **CLIENTE** y solo **sus** reservas (proveedor o administrador: 403; sin sesión: 401).
+
+### `GET /api/v1/bookings/me?status=&page=0&size=20`
+- **Orden:** de la más reciente a la más antigua por **fecha de inicio** (desempate por id, paginación estable).
+- `status` (opcional): `CONFIRMADA`, `CANCELADA` o `COMPLETADA`, sin distinguir mayúsculas; otro valor → 400.
+- `page` desde 0 (defecto 0); `size` defecto 20 y **tope 50** (uno mayor se recorta); `page < 0`, `size < 1` o valores no numéricos → 400; una página fuera de rango devuelve lista vacía con 200.
+
+```json
+{ "items": [ { "id": "…", "status": "CANCELADA", "serviceId": "…", "serviceName": "Corte", "businessId": "…",
+               "businessName": "Barbería", "resourceId": "…", "resourceName": "Sala 1", "date": "2026-10-19",
+               "startTime": "10:00", "endTime": "11:00", "priceCop": 25000,
+               "cancelReason": "No puedo asistir", "cancelledAt": "2026-10-15T12:00:00Z", "createdAt": "…" } ],
+  "page": 0, "size": 20, "totalElements": 1, "totalPages": 1, "message": null }
+```
+Fecha y horas en hora de Bogotá; el precio es el vigente cuando se reservó. `cancelReason` y `cancelledAt` solo vienen en las canceladas. Sin reservas: lista vacía y `message` *"No tiene reservas registradas"* (con filtro de estado: *"No tiene reservas con el estado indicado"*); una página fuera de rango no lleva mensaje.
+
+### `GET /api/v1/users/{userId}/bookings`
+Mismos parámetros y respuesta. Si `userId` es el del propio cliente devuelve su lista; si es **de otro usuario devuelve 403** (error de autorización, sin revelar nada sobre ese usuario; un id inexistente da el mismo 403; un id que no es UUID, 400). Existe para que el escenario *"un cliente intenta ver las reservas de otro cliente"* tenga una ruta real que probar; no hay forma de listar reservas ajenas.
