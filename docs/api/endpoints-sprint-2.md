@@ -119,3 +119,33 @@ Los recursos vienen ordenados por nombre. Dos `PUT` simultáneos sobre el mismo 
 Mismo formato de respuesta; lista vacía si no tiene recursos. Mismas reglas de acceso.
 
 > Se pueden asignar recursos **inactivos** (podrían reactivarse con HU-17); la disponibilidad (HU-20) solo debe contar los activos.
+
+## HU-19 — Definir horarios de atención de un recurso (implementado)
+
+Solo el **PROVEEDOR dueño del negocio del recurso** (cliente: 403; recurso de otro proveedor: 403; sin sesión: 401; recurso inexistente: 404; `resourceId` que no es UUID: 400). Días ISO-8601: **1 = lunes … 7 = domingo**. Horas `HH:mm` (00:00–23:59) en hora local del negocio, zona **America/Bogota**. Un día sin rangos es **no disponible**; un recurso sin horario no se puede reservar (lo exigen HU-20/HU-22).
+
+Los rangos son semiabiertos `[inicio, fin)`: `09:00-12:00` y `12:00-14:00` **no** se superponen. *Límite conocido:* el último minuto expresable es `23:59` (no hay `24:00`).
+
+### `GET /api/v1/resources/{resourceId}/availability`
+Siempre devuelve los 7 días (los no disponibles con `ranges: []`):
+```json
+{ "resourceId": "…", "timezone": "America/Bogota",
+  "days": [ { "dayOfWeek": 1, "ranges": [ { "start": "09:00", "end": "12:00" }, { "start": "14:00", "end": "18:00" } ] },
+            { "dayOfWeek": 2, "ranges": [] }, "…", { "dayOfWeek": 7, "ranges": [] } ] }
+```
+
+### `PUT /api/v1/resources/{resourceId}/availability`
+Reemplaza **toda la semana**; los días omitidos quedan no disponibles.
+```json
+{ "days": [ { "dayOfWeek": 1, "ranges": [ { "start": "09:00", "end": "17:00" } ] } ] }
+```
+### `PUT /api/v1/resources/{resourceId}/availability/{dayOfWeek}`
+Reemplaza **solo ese día**; los demás días y los demás recursos no cambian. `{ "ranges": [] }` deja el día no disponible.
+```json
+{ "ranges": [ { "start": "08:00", "end": "13:00" } ] }
+```
+Ambos responden `200` con el horario completo vigente (mismo formato del `GET`).
+
+**Errores `400` (el recurso conserva su horario anterior; la operación es atómica):** formato de hora inválido (`ab:cd`, `25:00`, `9:00`, `24:00`, vacío) → *"El rango horario no es válido: use el formato HH:mm…"*; inicio ≥ fin (`14:00-10:00`, `09:00-09:00`) → *"…la hora de inicio debe ser anterior a la de fin"*; rangos del mismo día superpuestos (incluido uno contenido en otro) → *"Los rangos horarios de un mismo día no pueden superponerse"*; día fuera de 1..7 o repetido en la semana; más de 10 rangos en un día (*supuesto*); lista ausente o nula. Dos ediciones simultáneas del mismo recurso se serializan (bloqueo de la fila del recurso). Cada cambio se audita (`DISPONIBILIDAD_RECURSO`).
+
+> **Pendiente de HU-19:** los escenarios "reserva dentro/fuera del horario" (CP del motor de reservas) se prueban cuando exista HU-22; esta HU solo guarda el horario.

@@ -12,8 +12,10 @@
 | Nombres | Tablas en plural y `snake_case`; PK `id`; FK `<tabla_singular>_id`; booleanos `active`; `created_at`/`updated_at` | Coherencia con `users`, `providers`, `businesses` |
 | Restricciones | `uk_<tabla>_<campos>` (únicas), `ck_<tabla>_<regla>` (CHECK), `idx_<tabla>_<campo>` (índices) | El manejador de errores traduce `uk_*` a 409 con mensaje propio |
 | Unicidad sin mayúsculas | Índice único sobre `lower(campo)` | Ej.: `uk_services_business_name` |
+| Enteros | `INT` (no `SMALLINT`) y `BIGINT` para dinero | `ddl-auto: validate` falla al arrancar si una columna `SMALLINT` se mapea a `int`/`Integer` en Java (pasó con `day_of_week`) |
+| Horas del día | `TIME` + `CHECK (start_time < end_time)`; rangos semiabiertos `[inicio, fin)` | Dos rangos que solo comparten el borde no se traslapan; hora local del negocio (America/Bogota) |
 | Estado | Borrado lógico con `active BOOLEAN` para servicios y recursos | HU-11/12/16/17 desactivan y reactivan; las reservas históricas conservan su referencia |
-| Concurrencia | La unicidad y los solapes se garantizan **en la base** (índice único / restricción de exclusión), no solo en Java | Dos peticiones simultáneas deben dar 201 y 409, no dos filas |
+| Concurrencia | La unicidad se garantiza **en la base** (índice único); lo que la base no expresa fácil (p. ej. rangos de un mismo día sin traslape en `resource_availability`) se valida en Java **con bloqueo de fila** (`PESSIMISTIC_WRITE`) del padre | Dos peticiones simultáneas deben dar 201 y 409, no dos filas |
 | Módulos | Columna UUID simple + `REFERENCES` en SQL; sin `@ManyToOne` entre módulos | ADR-003: un módulo no importa las entidades de otro |
 
 **Decisiones abiertas para BD:** (1) tope de longitudes comunes (`name` 150, `description` 500); (2) si `bookings` usa una restricción de exclusión (`EXCLUDE USING gist` sobre rango de tiempo) para el anti-overbooking de HU-22; (3) si el modelo formal pasa a UUID o se mantiene `BIGSERIAL` solo como documentación.
