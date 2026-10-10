@@ -1,0 +1,34 @@
+# Revisión semanal de dependencias (OWASP A06, tarea CI-06). Dependabot abre un pull request por cada
+# actualización o corrección de seguridad; el pipeline (pruebas + Sonar) lo valida antes de revisarlo.
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directory: "/reservas-backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      spring-boot:
+        patterns:
+          - "org.springframework.boot:*"
+          - "org.springframework.*"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "docker"
+    directory: "/reservas-backend"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+    # El proyecto exige JDK 17 (con 24+ Lombok no genera código): no subir la versión mayor de Java.
+    ignore:
+      - dependency-name: "eclipse-temurin"
+        update-types: ["version-update:semver-major"]

@@ -71,11 +71,11 @@ Quién confirma: **Calidad** (casos `CP-*` e issues), **PO/docente** (alcance y 
 | ID | Tema | Supuesto | Origen | Impacto si cambia | Confirma |
 |---|---|---|---|---|---|
 | S-23 | Zona horaria | Todo el negocio opera en **America/Bogota** (sin horario de verano); en la base se guardan instantes UTC | Supuesto | Zona por negocio: columna + conversión | PO |
-| S-24 | Límites de intentos | Registro: **5 por IP en 10 min** (el 6.º bloquea 15 min); login/MFA/operaciones sensibles: **5 fallos en 15 min** → `429` 15 min; en memoria. **Por verificar:** la IP detrás del proxy de Render (`OWASP-03`) | Supuesto (valores) | Variables `RATE_LIMIT_*` | Arquisoft/Calidad |
+| S-24 | Límites de intentos | Registro: **5 por IP en 10 min** (el 6.º bloquea 15 min); login/MFA/operaciones sensibles: **5 fallos en 15 min** → `429` 15 min; en memoria. La IP del cliente sale de `X-Forwarded-For` (`server.forward-headers-strategy: native`, 2026-10-10; **por verificar en Render**) | Supuesto (valores) | Variables `RATE_LIMIT_*` | Arquisoft/Calidad |
 | S-25 | Sesión | JWT HS256 de **1 h**, sin *refresh token*; revocable por la tabla `sessions` | Decidida (ADR-002) | Refresh token: HU nueva | Arquisoft |
 | S-26 | MFA | Obligatorio para ADMINISTRADOR, voluntario para los demás; **anti-replay, cifrado del secreto y reinicio por otro admin pendientes**; ADR-004 **sin aprobar** | Decidida (Simon) / ADR pendiente | Ver ADR-004 | **Juan Esteban y Santiago** |
 | S-27 | **Retención de datos personales** | Tras eliminar una cuenta, su **nombre y correo permanecen en las reservas históricas** (visibles al proveedor) para conservar el historial exigido por HU-28 (ADR-006) | Supuesto | Anonimizar a «Cliente eliminado» al borrar: 1 `UPDATE` más en el oyente | **PO/docente** (conviene preguntarlo: es un dato personal) |
-| S-28 | Formato de error | Se mantiene `ApiError` (`timestamp`, `status`, `error`, `message`, `path`, `fields`); **no** se añadió `traceId` ni `errorCode/details` como piden los Lineamientos §3.3 | Supuesto (plan dec. 13) | `traceId`: filtro + logs JSON (`API-03`, ~3 h) | Docente/Calidad |
+| S-28 | Formato de error | Se mantiene `ApiError` y **desde el 2026-10-10 lleva `traceId`** (igual al header `X-Request-Id`; logs JSON en `prod`). **No** se añadió `errorCode/details` como piden los Lineamientos §3.3: `error` y `fields` cumplen ese papel | Supuesto (plan dec. 13); `traceId` por OWASP A09 | Renombrar a `errorCode`/`details`: rompe a quien ya consume el formato | Docente/Calidad |
 | S-29 | Paginación | Numeración desde 0; por defecto 20; **tope 50 que se recorta** (no es error); `page < 0` o `size < 1` → 400 | Supuesto | — | Calidad |
 | S-30 | Swagger | **Aplicado el 2026-10-10 (ARQ-01)** con springdoc 3.1.1: **apagado por defecto** y encendido con `SWAGGER_ENABLED=true` (perfiles `dev`/`test` lo encienden; en Render solo mientras dure una demostración). La ruta de la documentación es pública cuando está encendida; ver [guía](../api/guia-swagger-openapi.md) | Decidida (Simon: «aplica Swagger primero»); lo de apagado por defecto es supuesto | Dejarlo siempre abierto en Render: quitar el interruptor (OWASP A05: más superficie visible) | Arquisoft |
 | S-31 | Identificadores y esquema | UUID como clave primaria, `TIMESTAMPTZ`, dinero en pesos enteros, `ON DELETE SET NULL` hacia `users` (nunca `RESTRICT`), nombres `uk_/ck_/idx_` ([convenciones](../bd/convenciones-bd.md)). El modelo formal de BD sigue en `BIGSERIAL`; **manda Flyway** | Supuesto (`BD-01`) | Alinear el modelo formal | **BD (Andraus)** |
@@ -102,7 +102,7 @@ Las que más cambian lo ya construido, en orden:
 4. **S-19** — HU-26 dice «horario liberado o deshabilitado según preferencia»: ¿se espera la opción de **deshabilitar**?
 5. **S-18** — ¿La regla de **1 hora** para cancelar es de HU-25 o es solo del plan? ¿Se aplica también al proveedor?
 6. **S-22** — ¿Entra la **autoeliminación** de cuenta en el sprint?
-7. **S-28** — ¿Se exige `traceId` y el formato de error de los Lineamientos §3.3?
+7. **S-28** — Ya hay `traceId`; ¿se exige además renombrar `error`/`fields` a `errorCode`/`details` (Lineamientos §3.3)?
 8. **S-01** — ¿Se evalúa solo lo comprometido (Tier 1 + 2) o también las HU de Tier 3?
 
 ## 5. Cómo verificar lo que se afirma aquí

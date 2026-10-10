@@ -21,15 +21,15 @@
 | A01 Control de acceso | **Cubierto** (con una decisión consciente) | Pertenencia validada en servicio para cada recurso; HU-20 es pública a propósito |
 | A02 Fallas criptográficas | **Parcial** | Secreto TOTP en claro en la BD; contraseña del admin demo publicada (SEC-01) |
 | A03 Inyección | **Cubierto** | Consultas parametrizadas y validación con límites; falta prueba con cargas de ataque |
-| A04 Diseño inseguro | **Parcial** | Buen diseño transaccional; **límites por IP posiblemente compartidos detrás del proxy (OWASP-03)** y sin límite de tamaño de cuerpo |
-| A05 Configuración insegura | **Parcial** | Perfil `dev` por defecto, contenedor como `root`, faltan cabeceras (Referrer/Permissions) |
-| A06 Componentes vulnerables | **Brecha** | Sin escaneo automático de dependencias; `jjwt` 0.12.5 (hay 0.13.0) |
+| A04 Diseño inseguro | **Parcial** | Buen diseño transaccional. **Corregido el 2026-10-10 (por verificar en Render):** IP real detrás del proxy (OWASP-03) y límite de tamaño de cuerpo (413). Falta límite de tasa en rutas públicas distintas del registro |
+| A05 Configuración insegura | **Cubierto en el código** (falta verificar en Render) | **Corregido el 2026-10-10:** sin perfil `dev` por defecto y arranque que falla con valores de relleno (SEC-05), contenedor sin `root` y con `HEALTHCHECK`, cabeceras `Referrer-Policy`/`Permissions-Policy`/CSP, CORS explícito, sin la contraseña generada en el log |
+| A06 Componentes vulnerables | **Parcial** | `jjwt` subido a 0.13.0 y `dependabot.yml` añadido el 2026-10-10 (Dependabot actúa cuando el archivo llega a `main`); sin escaneo de vulnerabilidades en el pipeline |
 | A07 Autenticación | **Parcial** | Fuerte (BCrypt, MFA admin, límites); sin cambio de contraseña, sin anti-replay, contraseña demo pública |
 | A08 Integridad | **Parcial** | CI y migraciones inmutables; `main` sin protección verificada, commits subidos por la web |
-| A09 Registro y monitoreo | **Parcial** | Auditoría sin secretos; sin `traceId`, sin logs JSON ni alertas |
+| A09 Registro y monitoreo | **Parcial** | Auditoría sin secretos; **desde el 2026-10-10** `traceId`/`X-Request-Id` en errores y logs, y logs JSON en `prod`; sin alertas |
 | A10 SSRF | **No aplica** | El backend no hace llamadas salientes |
 
-**Prioridad de corrección antes de la entrega** (de mayor a menor): ① rotar la contraseña del admin demo y quitarla de la guía; ② `server.forward-headers-strategy` (OWASP-03); ③ perfil por defecto y secreto JWT: fallar si falta la configuración; ④ Dependabot / escaneo de dependencias; ⑤ proteger `main`; ⑥ cabeceras y límite de tamaño de cuerpo (OWASP-02).
+**Prioridad de corrección antes de la entrega** (de mayor a menor): ① rotar la contraseña del admin demo y quitarla de la guía (**pendiente**, depende de ti); ② ~~`server.forward-headers-strategy` (OWASP-03)~~ **hecho el 2026-10-10**, verificar en Render; ③ ~~perfil por defecto y secreto JWT~~ **hecho**; ④ ~~Dependabot~~ **archivo añadido**, falta un escaneo de vulnerabilidades; ⑤ proteger `main` (**pendiente**, ajuste de GitHub); ⑥ ~~cabeceras y límite de tamaño de cuerpo~~ **hecho**; límite de tasa en rutas públicas **pendiente**.
 
 ## 3. Matriz detallada
 
@@ -65,24 +65,25 @@
 | | |
 |---|---|
 | **Qué hay** | Reglas de negocio aplicadas **en el servidor**, no en el cliente: el precio de la reserva sale del servicio (no del cuerpo), la duración debe coincidir con la del servicio, el cliente sale de la sesión, el negocio sale de la ruta. **Anti-overbooking en la base de datos** (restricción `EXCLUDE`), bloqueo de fila en las operaciones que compiten (cancelar, desactivar, asignar recursos, editar horarios) y transacciones atómicas; una carrera real entre reservar y desactivar se detectó y corrigió con prueba repetida. Límites de intentos: registro (5 por IP en 10 min) y login/MFA (5 fallos en 15 min) → `429`. Operaciones sensibles con confirmación MFA. Paginación con tope (50). |
-| **Brechas** | ① **`OWASP-03` (por verificar, riesgo alto):** el límite por IP usa `request.getRemoteAddr()` y la aplicación **no configura `server.forward-headers-strategy`**; detrás del proxy de Render es probable que todas las peticiones lleguen con la IP del proxy, de modo que el «límite por IP» sería **global** (5 registros cada 10 minutos para *todos* los usuarios) y la auditoría registraría la IP equivocada. No se forzó la prueba en Render para no bloquear el registro. ② Sin límite en otros endpoints (crear reservas, la consulta pública de HU-20) ni de tamaño de cuerpo. ③ Los límites viven en memoria: se pierden al reiniciar y no se comparten entre instancias (una sola instancia hoy). |
-| **Acción** | `server.forward-headers-strategy: native` (ya en el plan como OWASP-03) y comprobar con la tabla `audit_logs`; límite de tamaño de cuerpo y de tasa en rutas públicas (OWASP-02). |
+| **Brechas** | ① ~~**`OWASP-03`:** el límite por IP usaba `request.getRemoteAddr()` sin `server.forward-headers-strategy`; detrás del proxy de Render todas las peticiones podían llegar con la IP del proxy (límite «por IP» global y auditoría con la IP equivocada).~~ **Corregido el 2026-10-10** con `server.forward-headers-strategy: native`; `ForwardedHeadersIntegrationTest` prueba con un servidor real que la auditoría guarda la IP de `X-Forwarded-For` (y falla si se desactiva). **Falta confirmarlo en Render** (la IP guardada en `audit_logs` tras un login fallido debe ser la propia, no la del proxy). ② ~~Sin límite de tamaño de cuerpo~~ **corregido:** `RequestSizeLimitFilter` (64 KB; `413 PAYLOAD_TOO_LARGE`). Sigue sin límite de tasa en la consulta pública de HU-20 y en crear reservas. ③ Los límites viven en memoria: se pierden al reiniciar y no se comparten entre instancias (una sola instancia hoy). |
+| **Acción** | Comprobar la IP en `audit_logs` tras desplegar; límite de tasa en rutas públicas (resto de OWASP-02). |
 
 ### A05 — Configuración de seguridad incorrecta · **Parcial**
 
 | | |
 |---|---|
 | **Qué hay** | **Actuator:** solo `health` e `info` expuestos; en Render solo `health` responde sin sesión y `/actuator`, `/env`, `/beans`, `/mappings`, `/info` dan `401` (sondeo). **Errores** sin traza: el `500` devuelve un mensaje genérico y el detalle va solo al log (`GlobalExceptionHandler`); una ruta inexistente o un UUID mal formado dan JSON uniforme (sondeo). **Cabeceras** en las respuestas de Render: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Cache-Control: no-store`, `Strict-Transport-Security`. **CORS** restringido: sin configuración, una petición `OPTIONS` con `Origin` ajeno no recibe `Access-Control-Allow-*` (sondeo). CSRF desactivado a propósito (API sin estado con JWT en cabecera, sin cookies; ADR-002 §9; Sonar `S4502` marcado como seguro). **Swagger** (aplicado el 2026-10-10, ARQ-01) está **apagado por defecto**: solo se publica con `SWAGGER_ENABLED=true` (perfiles `dev` y `test` lo encienden); con el interruptor apagado `/v3/api-docs` y `/swagger-ui` responden `404` (prueba `OpenApiDisabledIntegrationTest`). En Render (`prod`) queda apagado hasta que se active la variable para una demostración. Ver [la guía](../api/guia-swagger-openapi.md). |
-| **Brechas** | ① **Perfil por defecto = `dev`** (`SPRING_PROFILES_ACTIVE:dev`): si un despliegue olvida la variable, arranca con `show-sql`, logs `DEBUG`, contraseña de base de datos y **clave JWT de desarrollo públicas** en el repositorio, **y desde ARQ-01 también con Swagger encendido** (el perfil `dev` lo habilita). En Render está en `prod` (guía de despliegue) y, aun con la clave conocida, un token falso no pasaría porque se cruza con la tabla `sessions`; pero conviene que **falle al arrancar** en vez de caer a `dev`. ② El contenedor corre como **`root`** (`Dockerfile` sin `USER`). ③ Faltan `Referrer-Policy` y `Permissions-Policy`; no hay `Content-Security-Policy` (irrelevante en una API JSON, relevante si se sirve Swagger). ④ Sin límite explícito de tamaño de cuerpo. ⑤ Imágenes base sin versión fija de parche. |
-| **Acción** | Quitar el valor por defecto del perfil y de las claves de desarrollo fuera del perfil `dev`; `USER` no root y `HEALTHCHECK` en el `Dockerfile`; cabeceras y límites (OWASP-02); silenciar el aviso «Using generated security password» (SEC-03). |
+| **Corregido el 2026-10-10** | ① **Perfil por defecto = `dev`**: ya no existe perfil por defecto. Sin `SPRING_PROFILES_ACTIVE` la aplicación arranca con la configuración base, sin `show-sql` ni logs `DEBUG`, y `ProductionSafetyGuard` **impide el arranque** si falta `JWT_SECRET` o `DB_PASSWORD`, si la clave es de relleno (`dev-only-…`/`test-only-…`) o tiene menos de 32 caracteres (9 casos de prueba). `./mvnw spring-boot:run` sigue en `dev` (propiedad `spring-boot.run.profiles`); en IntelliJ hay que definir `SPRING_PROFILES_ACTIVE=dev`. ② **Contenedor:** `USER app` (sin `root`) y `HEALTHCHECK` sobre `/actuator/health` en el `Dockerfile`. ③ **Cabeceras:** se añadieron `Referrer-Policy: no-referrer`, `Permissions-Policy` y `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` (excepto en `/swagger-ui`, que necesita sus propios scripts). ④ **CORS explícito:** solo los orígenes de `CORS_ALLOWED_ORIGINS` (vacío = ninguno). ⑤ Se eliminó el aviso «Using generated security password» (SEC-03). ⑥ Cuerpo máximo de 64 KB. |
+| **Brechas restantes** | Imágenes base sin versión fija de parche (`eclipse-temurin:17-jdk/jre`; Dependabot las vigila). Verificar todo lo anterior en el despliegue: sobre todo que la imagen sin `root` arranque en Render y que `SPRING_PROFILES_ACTIVE=prod`, `JWT_SECRET` y `DB_PASSWORD` estén definidos, o el servicio no levantará (es lo deseado). |
+| **Acción** | Desplegar y repetir los sondeos de la sección 4. |
 
 ### A06 — Componentes vulnerables y desactualizados · **Brecha**
 
 | | |
 |---|---|
 | **Qué hay** | Spring Boot **4.1.1** (la última 4.1.x en Maven Central a 2026-10-10), Testcontainers 1.21.4, JaCoCo 0.8.12, Java 17 (LTS). SonarCloud analiza el código propio (vulnerabilidades: 0 tras corregir). |
-| **Brecha** | **Ninguna herramienta revisa las dependencias contra bases de vulnerabilidades** (ni Dependabot ni OWASP Dependency-Check en el pipeline). `jjwt` está en **0.12.5** y existe 0.13.0 (si trae correcciones de seguridad no se sabe sin revisar sus notas). Las acciones de GitHub están fijadas por etiqueta (`@v5`), no por SHA. |
-| **Acción** | Añadir `.github/dependabot.yml` (Maven + GitHub Actions + Docker, semanal) y, opcionalmente, un job con `dependency-check` o el escaneo de dependencias de GitHub (`CI-06`). Revisar la subida de `jjwt`. |
+| **Brecha** | ~~Ninguna herramienta revisaba las dependencias.~~ **2026-10-10:** se añadió `.github/dependabot.yml` (Maven, GitHub Actions y Docker, semanal; no sube la versión mayor de Java) y `jjwt` pasó de 0.12.5 a **0.13.0** con toda la suite en verde. Dependabot empieza a trabajar cuando el archivo está en `main`; las alertas de seguridad se activan en *Settings → Code security* del repositorio (ajuste de GitHub, no del código). **Sigue sin haber un escaneo de vulnerabilidades en el pipeline** (OWASP Dependency-Check o similar). Las acciones de GitHub siguen fijadas por etiqueta (`@v5`), no por SHA. |
+| **Acción** | Activar las alertas de Dependabot en GitHub y, opcionalmente, un job con `dependency-check` (`CI-06`). |
 
 ### A07 — Fallas de identificación y autenticación · **Parcial**
 
@@ -104,7 +105,8 @@
 | | |
 |---|---|
 | **Qué hay** | Tabla `audit_logs` con **19 tipos de evento** (registro, login y rechazos, MFA, cambio de rol, eliminación, y en el Sprint 2 creación/cancelación de reservas, configuración de negocio, recursos, disponibilidad) con resultado, IP de origen y **sin contraseñas, tokens ni secretos** (probado). Los rechazos se persisten aunque la operación falle (`noRollbackFor`). Los errores internos se registran con traza en el servidor. |
-| **Brechas** | Sin `traceId` de correlación en errores y logs (`API-03`); logs en texto, no JSON; sin alertas ante `429`, `403` repetidos o fallos de MFA; no hay endpoint ni vista para que un administrador consulte la auditoría; la retención depende de Render. |
+| **Corregido el 2026-10-10** | `traceId` de correlación (`API-03`): cada petición recibe un `X-Request-Id` (se respeta el del cliente si es seguro: letras, dígitos y guiones, 8 a 64; si no, se genera un UUID), que sale en el header de la respuesta, en el campo `traceId` de **todo** `ApiError` (también los 401/403/413 de los filtros) y en cada línea del log (`[%X{traceId}]`). En el perfil `prod` los logs son **JSON** (`logstash`), con el `traceId` como campo. |
+| **Brechas restantes** | Sin alertas ante `429`, `403` repetidos o fallos de MFA; no hay endpoint ni vista para que un administrador consulte la auditoría; la retención depende de Render; el `traceId` no se guarda aún en `audit_logs`. |
 
 ### A10 — Falsificación de peticiones del lado del servidor (SSRF) · **No aplica**
 
@@ -127,13 +129,13 @@ El backend **no hace ninguna llamada HTTP saliente** (ningún `RestTemplate`, `W
 | # | Acción | Riesgo | Tarea | Esfuerzo | Responsable sugerido |
 |---|---|---|---|---:|---|
 | 1 | Rotar la contraseña del admin demo y quitarla de `docs/`; confirmar la rotación de la contraseña de Supabase del historial | A02/A07 | SEC-01, SEC-02 | 1 h | Simon |
-| 2 | `server.forward-headers-strategy: native` y verificar la IP en `audit_logs` | A04/A09 | OWASP-03 | 1 h | Simon |
-| 3 | Sin perfil `dev` por defecto; fallar si falta `JWT_SECRET` fuera de `dev`; `USER` no root | A05 | **SEC-05 (nueva)** | 2 h | Juan Esteban |
-| 4 | `dependabot.yml` + revisar `jjwt` 0.13.0 | A06 | CI-06 | 2 h | Santiago |
+| 2 | ~~`server.forward-headers-strategy: native`~~ **hecho (2026-10-10)**; falta verificar la IP en `audit_logs` en Render | A04/A09 | OWASP-03 | 15 min | Simon |
+| 3 | ~~Sin perfil `dev` por defecto; fallar si falta `JWT_SECRET` fuera de `dev`; `USER` no root~~ **hecho (2026-10-10)** | A05 | SEC-05 | — | — |
+| 4 | ~~`dependabot.yml` + `jjwt` 0.13.0~~ **hecho (2026-10-10)**; falta activar alertas en GitHub y, opcional, un escaneo en el pipeline | A06 | CI-06 | 1 h | Santiago |
 | 5 | Protección de `main`, `CODEOWNERS` | A08 | CI-05 | 1 h | Santiago |
-| 6 | Cabeceras (Referrer/Permissions), límite de tamaño de cuerpo y de tasa en rutas públicas | A04/A05 | OWASP-02 | 3 h | Juan Esteban |
+| 6 | ~~Cabeceras (Referrer/Permissions/CSP), límite de tamaño de cuerpo, CORS explícito~~ **hecho (2026-10-10)**; **pendiente:** límite de tasa en rutas públicas (HU-20, crear reservas) | A04/A05 | OWASP-02 | 2 h | Juan Esteban |
 | 7 | Prueba de cargas de ataque (A03) y prueba de la matriz de acceso completa (A01) | A01/A03 | OWASP-01 | 3 h | Simon |
 | 8 | Cifrar el secreto TOTP; anti-replay; cambio de contraseña; pedir la contraseña en `/mfa/setup` | A02/A07 | MFA-06/07, SP1-01, SEC-04 | 9 h | Simon |
-| 9 | `traceId` y logs JSON | A09 | API-03 | 3 h | Juan Esteban |
+| 9 | ~~`traceId` y logs JSON~~ **hecho (2026-10-10)** | A09 | API-03 | — | — |
 
 Aprobación de [ADR-004](../arquitectura/adr/ADR-004-politica-mfa.md) pendiente de los tres integrantes de Arquisoft.

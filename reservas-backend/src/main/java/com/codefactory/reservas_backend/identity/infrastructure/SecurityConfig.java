@@ -5,6 +5,7 @@ import com.codefactory.reservas_backend.common.security.RestAuthenticationEntryP
 import com.codefactory.reservas_backend.identity.infrastructure.security.JwtAuthenticationFilter;
 import com.codefactory.reservas_backend.identity.infrastructure.security.MfaEnrollmentFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -13,8 +14,17 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+
+import java.util.List;
 
 /**
  * Configuración de seguridad — HU02/HU04/HU05/HU06.
@@ -52,10 +62,23 @@ public class SecurityConfig {
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
     private final RestAccessDeniedHandler restAccessDeniedHandler;
 
+    @Value("${security.cors.allowed-origins:}")
+    private List<String> corsAllowedOrigins;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            // OWASP-02 (A05): además de las cabeceras por defecto de Spring Security (nosniff, X-Frame-Options,
+            // Cache-Control, HSTS en HTTPS) se añaden estas. La CSP «default-src 'none'» es adecuada para una API
+            // JSON, pero Swagger UI necesita scripts y estilos propios: se omite en sus rutas.
+            .headers(headers -> headers
+                .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER))
+                .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy", "geolocation=(), camera=(), microphone=()"))
+                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(
+                    request -> !request.getRequestURI().startsWith("/swagger-ui"),
+                    new StaticHeadersWriter("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"))))
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(handling -> handling
                 .authenticationEntryPoint(restAuthenticationEntryPoint)
@@ -83,5 +106,39 @@ public class SecurityConfig {
             // ADR-004 (P4): un administrador sin MFA activa solo puede enrolarla o cerrar sesión.
             .addFilterAfter(mfaEnrollmentFilter, JwtAuthenticationFilter.class);
         return http.build();
+    }
+
+    /**
+     * CORS explícito (OWASP-02): solo los orígenes de {@code security.cors.allowed-origins} (variable
+     * CORS_ALLOWED_ORIGINS). Vacío = ninguno, y entonces la petición sigue su curso sin cabeceras
+     * {@code Access-Control-*}: el navegador no deja leer la respuesta a otro origen.
+     */
+    private CorsConfigurationSource corsConfigurationSource() {
+        List<String> origins = corsAllowedOrigins.stream().map(String::trim).filter(o -> !o.isEmpty()).toList();
+        return request -> {
+            if (origins.isEmpty()) {
+                return null;
+            }
+            CorsConfiguration config = new CorsConfiguration();
+            config.setAllowedOrigins(origins);
+            config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+            config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-MFA-Code", "X-Request-Id"));
+            config.setExposedHeaders(List.of("X-Request-Id"));
+            config.setAllowCredentials(false);   // el JWT viaja en la cabecera Authorization, no en cookies
+            config.setMaxAge(3600L);
+            return config;
+        };
+    }
+
+    /**
+     * La autenticación es propia (JWT + tabla de sesiones), no por usuario/contraseña de Spring. Declarar este
+     * servicio vacío evita que Spring Boot cree su usuario en memoria con una contraseña generada, que se
+     * imprimía en el log en cada arranque (SEC-03).
+     */
+    @Bean
+    public UserDetailsService noUserDetailsService() {
+        return username -> {
+            throw new UsernameNotFoundException("La autenticación se hace con JWT");
+        };
     }
 }

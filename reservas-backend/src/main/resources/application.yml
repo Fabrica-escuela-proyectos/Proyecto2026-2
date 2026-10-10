@@ -1,8 +1,9 @@
 spring:
   application:
     name: reservas-backend
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
+  # Sin perfil por defecto (SEC-05): una configuración «de producción» es lo que arranca si nadie elige otra
+  # cosa, y exige DB_PASSWORD y JWT_SECRET reales (ver ProductionSafetyGuard). Para trabajar en local:
+  # SPRING_PROFILES_ACTIVE=dev (./mvnw spring-boot:run ya lo activa; las pruebas usan el perfil test).
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/reservas}
     username: ${DB_USERNAME:reservas_app}
@@ -17,8 +18,20 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  # Render (y cualquier proxy inverso) termina TLS y reenvía X-Forwarded-For/-Proto. Con «native» Tomcat
+  # resuelve la IP y el esquema reales del cliente (OWASP-03): los límites de intentos y la auditoría dejan
+  # de ver la IP del proxy. Tomcat solo confía en esas cabeceras si vienen de un proxy interno (rangos privados).
+  forward-headers-strategy: native
 
 security:
+  # Tamaño máximo del cuerpo de una petición (OWASP-02, A04): el mayor cuerpo legítimo (horario semanal o
+  # 100 ids de recursos) ocupa unos pocos KB. Mayor -> 413.
+  request:
+    max-body-bytes: ${MAX_REQUEST_BODY_BYTES:65536}
+  # Orígenes del navegador autorizados (CORS), separados por comas. Vacío (por defecto) = ninguno: la API
+  # no responde a navegadores de otros orígenes hasta que el frontend tenga dominio (p. ej. https://app.example.com).
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   jwt:
     # ADR-002-autenticacion-y-sesiones.md: token JWT de 1 hora. Sin valor
     # por defecto en produccion (dev/test usan un valor de relleno abajo
@@ -62,4 +75,4 @@ logging:
   # o Hibernate en produccion sin revisar que no expongan parametros de
   # consulta con datos sensibles.
   pattern:
-    console: "%d{ISO8601} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{ISO8601} [%thread] [%X{traceId:-}] %-5level %logger{36} - %msg%n"

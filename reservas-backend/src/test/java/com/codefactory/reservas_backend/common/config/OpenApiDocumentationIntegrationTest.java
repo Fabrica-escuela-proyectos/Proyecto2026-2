@@ -50,7 +50,7 @@ class OpenApiDocumentationIntegrationTest extends AbstractIntegrationTest {
         assertThat(spec.at("/components/securitySchemes/bearerAuth/scheme").asText()).isEqualTo("bearer");
         assertThat(spec.at("/components/securitySchemes/bearerAuth/bearerFormat").asText()).isEqualTo("JWT");
         assertThat(spec.at("/components/schemas/ApiError/properties").propertyNames())
-                .contains("timestamp", "status", "error", "message", "path", "fields");
+                .contains("timestamp", "status", "error", "message", "path", "fields", "traceId");
         // Ejemplos de los DTO de entrada (se ven en "Try it out") y validaciones de Bean Validation.
         assertThat(spec.at("/components/schemas/CreateBookingRequest/properties/startTime/example").asText()).isEqualTo("10:00");
         assertThat(spec.at("/components/schemas/CreateBookingRequest/properties/startTime/pattern").asText()).isNotBlank();

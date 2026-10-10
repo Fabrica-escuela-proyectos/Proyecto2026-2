@@ -37,7 +37,11 @@ Ambos archivos están sin commitear todavía — revísalos y commitéalos antes
    | `JWT_SECRET` | Genera uno propio (ver abajo) |
    | `SPRING_PROFILES_ACTIVE` | `prod` |
 
-   `SPRING_PROFILES_ACTIVE=prod` es importante: sin esta variable, `application.yml` cae por defecto al perfil `dev` (`show-sql`, logging debug, y una contraseña de base de datos de relleno que aquí no aplica porque ya pones la real). `prod` no tiene archivo propio, así que simplemente usa la configuración base, que es la correcta para esto.
+   `SPRING_PROFILES_ACTIVE=prod` activa los logs en JSON con `traceId` (`application-prod.yml`). **La aplicación ya no tiene perfil por defecto**: si olvidas la variable arranca igual con la configuración base, pero **se niega a iniciar** si falta `JWT_SECRET` o `DB_PASSWORD`, si `JWT_SECRET` es la clave de relleno de desarrollo (`dev-only-…`) o tiene menos de 32 caracteres (`ProductionSafetyGuard`). Si el servicio no levanta tras un despliegue, revisa primero el log: el mensaje dice qué variable falta.
+
+   **Variables opcionales:** `CORS_ALLOWED_ORIGINS` (orígenes del frontend permitidos, separados por comas; vacío = ninguno), `MAX_REQUEST_BODY_BYTES` (por defecto 65536), `RATE_LIMIT_REGISTRATION_MAX_ATTEMPTS` y `RATE_LIMIT_AUTH_MAX_ATTEMPTS`.
+
+   La imagen corre con un usuario sin privilegios (`app`) y trae un `HEALTHCHECK` sobre `/actuator/health`. Tras un despliegue, comprueba además que la IP guardada en `audit_logs` para un login fallido es la tuya y no la del proxy (`server.forward-headers-strategy: native`, OWASP-03).
 
    **Opcional, solo para una demostración:** `SWAGGER_ENABLED=true` publica la documentación interactiva en `/swagger-ui.html` y `/v3/api-docs`. Sin la variable (lo normal) esas rutas responden `404`. Elimínala al terminar; ver [guía de Swagger](api/guia-swagger-openapi.md).
 

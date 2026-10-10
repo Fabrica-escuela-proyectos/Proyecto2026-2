@@ -3,6 +3,7 @@ package com.codefactory.reservas_backend.common.error;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
 import lombok.Getter;
+import org.slf4j.MDC;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -17,6 +18,12 @@ import java.util.Map;
  * omite del JSON en el resto de los casos gracias a
  * {@code @JsonInclude(NON_NULL)}, tal como muestran los ejemplos del
  * documento fuente.
+ *
+ * {@code traceId} (API-03) identifica la petición: es el mismo valor del
+ * header X-Request-Id de la respuesta y del campo traceId de los registros
+ * JSON, así un error reportado por Calidad se encuentra en el log. Se toma
+ * del MDC al construir el error (lo fija RequestCorrelationFilter) y se omite
+ * si no hay.
  */
 @Getter
 @Builder
@@ -28,4 +35,6 @@ public class ApiError {
     private final String message;
     private final String path;
     private final Map<String, String> fields;
+    @Builder.Default
+    private final String traceId = MDC.get("traceId");
 }

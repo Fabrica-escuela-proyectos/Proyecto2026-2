@@ -5,6 +5,7 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -31,6 +32,9 @@ import java.util.UUID;
  * pequeño; ADR-002 sección 9 no descarta explícitamente una clave
  * asimétrica, así que si el equipo la prefiere, solo cambia esta clase.
  */
+// La guarda de arranque (SEC-05) debe evaluarse antes: si falta o es de relleno el secreto, su mensaje es el
+// que ve quien despliega, no la excepción de jjwt por clave débil.
+@DependsOn("productionSafetyGuard")
 @Component
 public class JwtTokenProvider {
 

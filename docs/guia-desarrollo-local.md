@@ -34,9 +34,9 @@ La app solo necesita un Postgres alcanzable con un rol y una base específicos �
      ```powershell
      $env:DB_PASSWORD = "elige-una-contraseña"
      $env:JAVA_HOME = "<ruta a tu JDK 17>"
-     ./mvnw spring-boot:run
+     ./mvnw spring-boot:run     # arranca en el perfil dev (propiedad spring-boot.run.profiles del pom.xml)
      ```
-   - **IntelliJ:** Run → Edit Configurations... → `ReservasBackendApplication` → *Environment variables* → agregar `DB_PASSWORD=elige-una-contraseña`. Y asegúrate de que el **Project SDK** del módulo sea JDK 17.
+   - **IntelliJ:** Run → Edit Configurations... → `ReservasBackendApplication` → *Environment variables* → agregar `DB_PASSWORD=elige-una-contraseña` **y `SPRING_PROFILES_ACTIVE=dev`** (la aplicación ya no tiene perfil por defecto: sin él arranca con la configuración de producción y exige `JWT_SECRET`). Y asegúrate de que el **Project SDK** del módulo sea JDK 17.
    - Si tu Postgres usa un puerto, usuario o nombre de base distintos a los default (`localhost:5432`, `reservas_app`, `reservas`), también define `DB_URL` y `DB_USERNAME` (ver `.env.example` en la raíz de `reservas-backend/` para el formato).
 3. Corre la app. Deberías ver en el log a Flyway migrando el esquema y Tomcat arrancando en el puerto 8080:
    ```

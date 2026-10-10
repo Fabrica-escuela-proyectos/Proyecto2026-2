@@ -514,5 +514,6 @@ Tipos: `UUID` se serializa como texto; `Instant` como fecha-hora ISO-8601 en UTC
 | `message` | `String` | — | — |
 | `path` | `String` | — | — |
 | `fields` | `Map<String, String>` | — | — |
+| `traceId` | `String` | — | — |
 
 _Total: 50 DTO._

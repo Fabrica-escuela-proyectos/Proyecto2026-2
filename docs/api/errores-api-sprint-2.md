@@ -1,6 +1,6 @@
 # Errores y cambios de contrato de la API — Sprint 2
 
-Complementa `errores-api-sprint-1.md`: el formato de la respuesta de error no cambia (`timestamp`, `status`, `error`, `message`, `path` y, solo en validación, `fields`). Aquí se documentan los códigos `error` nuevos y los endpoints existentes cuyo comportamiento cambió con la política de MFA (ADR-004) y la corrección de los issues de Calidad #8–#11.
+Complementa `errores-api-sprint-1.md`: el formato de la respuesta de error crece en un campo opcional: `traceId` (`timestamp`, `status`, `error`, `message`, `path`, `traceId` y, solo en validación, `fields`). Aquí se documentan los códigos `error` nuevos y los endpoints existentes cuyo comportamiento cambió con la política de MFA (ADR-004) y la corrección de los issues de Calidad #8–#11.
 
 ## 1. Códigos de error nuevos
 
@@ -11,6 +11,7 @@ Complementa `errores-api-sprint-1.md`: el formato de la respuesta de error no ca
 | `METHOD_NOT_ALLOWED` | 405 | Método HTTP no soportado por la ruta (incluye cabecera `Allow`) | Corregir el método |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | `Content-Type` distinto de `application/json` en un endpoint que lo exige | Enviar `application/json` |
 | `NOT_ACCEPTABLE` | 406 | El cliente no acepta `application/json` | Aceptar `application/json` |
+| `PAYLOAD_TOO_LARGE` | 413 | El cuerpo de la petición supera 64 KB (`MAX_REQUEST_BODY_BYTES`); se responde sin leerlo. Un cuerpo `chunked` que supera el tope falla al leerse y termina en el `400` de «cuerpo inválido» | Enviar un cuerpo menor |
 
 Ejemplo (`401 MFA_REQUIRED`):
 
@@ -21,6 +22,21 @@ Ejemplo (`401 MFA_REQUIRED`):
   "error": "MFA_REQUIRED",
   "message": "Se requiere el código de verificación (MFA) para iniciar sesión",
   "path": "/api/v1/auth/login"
+}
+```
+
+### Correlación de peticiones: `traceId` y `X-Request-Id` (API-03)
+
+Toda respuesta lleva el header `X-Request-Id` y todo error repite el mismo valor en `traceId`; el mismo identificador aparece en cada línea del log del servidor (en JSON en el perfil `prod`). **Al reportar un fallo, cita el `traceId`**: permite encontrar la traza exacta. Si el cliente envía su propio `X-Request-Id` (letras, dígitos y guiones, de 8 a 64 caracteres) se respeta; cualquier otro valor se descarta y el servidor genera un UUID.
+
+```json
+{
+  "timestamp": "2026-10-10T16:02:41.220",
+  "status": 401,
+  "error": "UNAUTHORIZED",
+  "message": "Se requiere autenticación para acceder a este recurso",
+  "path": "/api/v1/businesses",
+  "traceId": "0b6f1a52-4c7e-4d0a-9c3b-5d9e1f7a2c10"
 }
 ```
 

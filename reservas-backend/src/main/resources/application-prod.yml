@@ -1,0 +1,7 @@
+# Perfil de despliegue (Render usa SPRING_PROFILES_ACTIVE=prod). Registros en JSON, una línea por evento, con
+# el traceId de la petición (API-03): se pueden buscar y correlacionar con el X-Request-Id y el traceId de
+# los errores. Regla de seguridad (Lineamientos 6.2): no registrar contraseñas, tokens ni secretos.
+logging:
+  structured:
+    format:
+      console: logstash
