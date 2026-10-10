@@ -91,7 +91,7 @@ jobs:
         run: mvn -B package -DskipTests
 
       - name: Upload JAR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: reservas-backend
           # upload-artifact no usa working-directory: la ruta es desde la raíz del repo
