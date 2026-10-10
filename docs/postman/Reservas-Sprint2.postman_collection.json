@@ -1,0 +1,4131 @@
+{
+  "info": {
+    "name": "Plataforma de Reservas · Sprint 2 (flujo completo)",
+    "description": "Prueba de extremo a extremo de la API del Sprint 2: registro, configuración del negocio, catálogo, disponibilidad pública, reservas, cancelaciones, desactivación de recursos y eliminación de cuentas. Cada petición trae sus pruebas (pestaña Tests) y se ejecuta de principio a fin con el Collection Runner. Lee docs/postman/README.md antes de correrla contra Render (límite de registros, tiempo de arranque).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 · Preparación",
+      "item": [
+        {
+          "name": "00 Salud del servicio (inicializa la corrida)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Genera usuarios, contraseña y fechas nuevos para esta corrida. En Render gratis la primera petición puede tardar ~2 minutos (el servicio se duerme a los 15 min): sube el timeout de Postman a 150000 ms."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Datos nuevos en cada corrida: nada de esto es una credencial real.",
+                  "const rnd = () => Math.random().toString(36).slice(2, 10);",
+                  "const run = rnd();",
+                  "const phone = () => '3' + String(Math.floor(Math.random() * 1e9)).padStart(9, '0');",
+                  "const set = (k, v) => pm.collectionVariables.set(k, v);",
+                  "",
+                  "set('runId', run);",
+                  "set('password', 'Qa#' + run + 'Xz');           // cumple la política: mayúscula, minúscula y carácter especial",
+                  "set('providerEmail', 'qa.prov.' + run + '@example.com');",
+                  "set('providerBEmail', 'qa.provb.' + run + '@example.com');",
+                  "set('clientEmail', 'qa.cli.' + run + '@example.com');",
+                  "set('providerPhone', phone());",
+                  "set('providerBPhone', phone());",
+                  "set('clientPhone', phone());",
+                  "",
+                  "// Primer lunes que cae al menos 7 días adelante, en hora de Bogotá (UTC-5, sin horario de verano):",
+                  "// el horario de prueba es lunes-viernes 08:00-20:00, así que siempre hay cupo y se cumple cualquier antelación.",
+                  "const bogota = new Date(Date.now() - 5 * 3600 * 1000);",
+                  "const d = new Date(Date.UTC(bogota.getUTCFullYear(), bogota.getUTCMonth(), bogota.getUTCDate() + 7));",
+                  "while (d.getUTCDay() !== 1) { d.setUTCDate(d.getUTCDate() + 1); }",
+                  "set('bookingDate', d.toISOString().slice(0, 10));",
+                  "const y = new Date(Date.UTC(bogota.getUTCFullYear(), bogota.getUTCMonth(), bogota.getUTCDate() - 1));",
+                  "set('pastDate', y.toISOString().slice(0, 10));",
+                  "",
+                  "// Limpia lo que dejó la corrida anterior.",
+                  "['providerToken', 'providerBToken', 'clientToken', 'adminToken', 'providerUserId', 'providerBUserId', 'clientUserId',",
+                  " 'businessId', 'businessBId', 'serviceId', 'resourceId', 'bookingId', 'bookingId2', 'bookingId3', 'bookingId4']",
+                  "    .forEach(k => pm.collectionVariables.unset(k));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('El servicio está UP', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('UP'); });",
+                  "console.log('Corrida ' + pm.collectionVariables.get('runId') + ' · fecha de reservas ' + pm.collectionVariables.get('bookingDate'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 · Registro y acceso (HU-01, 02, 03, 06)",
+      "item": [
+        {
+          "name": "01 Registrar proveedor (HU-03)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/providers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "providers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Proveedor QA\",\n  \"email\": \"{{providerEmail}}\",\n  \"cellphone\": \"{{providerPhone}}\",\n  \"password\": \"{{password}}\",\n  \"businessName\": \"Negocio QA {{runId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Rol PROVEEDOR y negocio creado', () => { const j = pm.response.json(); pm.expect(j.role).to.eql('PROVEEDOR'); pm.expect(j.businessId).to.be.a('string'); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('providerUserId', j.userId);",
+                  "pm.collectionVariables.set('businessId', j.businessId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 Registrar proveedor B (para probar accesos ajenos)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/providers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "providers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Proveedor B QA\",\n  \"email\": \"{{providerBEmail}}\",\n  \"cellphone\": \"{{providerBPhone}}\",\n  \"password\": \"{{password}}\",\n  \"businessName\": \"Negocio B QA {{runId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('providerBUserId', j.userId);",
+                  "pm.collectionVariables.set('businessBId', j.businessId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 Registrar cliente (HU-01)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente QA\",\n  \"email\": \"{{clientEmail}}\",\n  \"cellphone\": \"{{clientPhone}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Rol CLIENTE', () => pm.expect(pm.response.json().role).to.eql('CLIENTE'));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('clientUserId', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 Registro con correo repetido → 409 (HU-01)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cliente QA\",\n  \"email\": \"{{clientEmail}}\",\n  \"cellphone\": \"3009999999\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Cada intento de registro cuenta para el límite de 5 por IP cada 10 minutos (ver README)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 Login proveedor (HU-02)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{providerEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Devuelve token y rol', () => { const j = pm.response.json(); pm.expect(j.token).to.be.a('string'); pm.expect(j.role).to.eql('PROVEEDOR'); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('providerToken', j.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 Login proveedor B",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{providerBEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('providerBToken', j.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 Login cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{clientEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('clientToken', j.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 Login con contraseña incorrecta → 401 genérico (HU-02)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{clientEmail}}\",\n  \"password\": \"Incorrecta#1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Mensaje genérico, sin revelar si el correo existe', () => pm.expect(pm.response.json().message).to.eql('Las credenciales no son válidas'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 Mi proveedor y mi negocio (HU-03/06)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/providers/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "providers",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Incluye mi negocio', () => pm.expect(pm.response.json().businesses.map(b => b.id)).to.include(pm.collectionVariables.get('businessId')));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 · Configuración del negocio (HU-08, 09, 14, 18, 19)",
+      "item": [
+        {
+          "name": "10 Definir antelación mínima de 1 hora (HU-08)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/booking-lead-time",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "booking-lead-time"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hours\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('hours = 1', () => pm.expect(pm.response.json().hours).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 Antelación inválida (0) → 400 (HU-08)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/booking-lead-time",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "booking-lead-time"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hours\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 Crear servicio de 60 min (HU-09)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/services",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "services"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Corte de cabello\",\n  \"description\": \"Incluye lavado\",\n  \"durationMinutes\": 60,\n  \"priceCop\": 25000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Nace activo', () => pm.expect(pm.response.json().active).to.eql(true));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('serviceId', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13 Servicio con nombre repetido (otras mayúsculas) → 409 (HU-09)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/services",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "services"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CORTE DE CABELLO\",\n  \"durationMinutes\": 30,\n  \"priceCop\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14 Servicio sin campos → 400 por campo (HU-09)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/services",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "services"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Errores por campo', () => { const f = pm.response.json().fields; pm.expect(f).to.have.property('name'); pm.expect(f).to.have.property('durationMinutes'); pm.expect(f).to.have.property('priceCop'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15 Registrar recurso 'Sala 1' (HU-14)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/resources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "resources"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sala 1\",\n  \"type\": \"SALA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('resourceId', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16 Recurso con nombre repetido → 409 (HU-14)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/resources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "resources"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"sala 1\",\n  \"type\": \"EQUIPO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17 Recurso con tipo inválido → 400 (HU-14)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/resources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "resources"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mesa\",\n  \"type\": \"MESA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18 Asignar el recurso al servicio (HU-18)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/services/{{serviceId}}/resources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "services",
+                "{{serviceId}}",
+                "resources"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"resourceIds\":[\"{{resourceId}}\"]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Queda asignado', () => pm.expect(pm.response.json().resources.map(r => r.name)).to.eql(['Sala 1']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "19 Asignar un recurso inexistente → 400 y no cambia nada (HU-18)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/services/{{serviceId}}/resources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "services",
+                "{{serviceId}}",
+                "resources"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"resourceIds\":[\"{{resourceId}}\",\"00000000-0000-0000-0000-000000000000\"]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "20 Horario lunes a viernes 08:00-20:00 (HU-19)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resources/{{resourceId}}/availability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "resources",
+                "{{resourceId}}",
+                "availability"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"days\": [\n    {\n      \"dayOfWeek\": 1,\n      \"ranges\": [\n        {\n          \"start\": \"08:00\",\n          \"end\": \"20:00\"\n        }\n      ]\n    },\n    {\n      \"dayOfWeek\": 2,\n      \"ranges\": [\n        {\n          \"start\": \"08:00\",\n          \"end\": \"20:00\"\n        }\n      ]\n    },\n    {\n      \"dayOfWeek\": 3,\n      \"ranges\": [\n        {\n          \"start\": \"08:00\",\n          \"end\": \"20:00\"\n        }\n      ]\n    },\n    {\n      \"dayOfWeek\": 4,\n      \"ranges\": [\n        {\n          \"start\": \"08:00\",\n          \"end\": \"20:00\"\n        }\n      ]\n    },\n    {\n      \"dayOfWeek\": 5,\n      \"ranges\": [\n        {\n          \"start\": \"08:00\",\n          \"end\": \"20:00\"\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "21 Consultar el horario: siempre 7 días (HU-19)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resources/{{resourceId}}/availability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "resources",
+                "{{resourceId}}",
+                "availability"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('7 días; sábado y domingo no disponibles', () => { const d = pm.response.json().days; pm.expect(d).to.have.length(7); pm.expect(d[5].ranges).to.have.length(0); pm.expect(d[6].ranges).to.have.length(0); pm.expect(d[0].ranges).to.have.length(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22 Rango con fin anterior al inicio → 400 (HU-19)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resources/{{resourceId}}/availability/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "resources",
+                "{{resourceId}}",
+                "availability",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"ranges\":[{\"start\":\"14:00\",\"end\":\"10:00\"}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "23 Rangos superpuestos → 400 (HU-19)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resources/{{resourceId}}/availability/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "resources",
+                "{{resourceId}}",
+                "availability",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"ranges\":[{\"start\":\"09:00\",\"end\":\"12:00\"},{\"start\":\"11:00\",\"end\":\"13:00\"}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "24 El horario no cambió tras los rechazos (HU-19)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resources/{{resourceId}}/availability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "resources",
+                "{{resourceId}}",
+                "availability"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('El lunes conserva 08:00-20:00', () => { const r = pm.response.json().days[0].ranges; pm.expect(r).to.eql([{start:'08:00', end:'20:00'}]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Todo lo que hace el proveedor para dejar un servicio reservable."
+    },
+    {
+      "name": "03 · Control de acceso entre proveedores (HU-06)",
+      "item": [
+        {
+          "name": "25 Proveedor B crea servicio en mi negocio → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerBToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/services",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "services"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Intruso\",\n  \"durationMinutes\": 30,\n  \"priceCop\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "26 Proveedor B registra recurso en mi negocio → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerBToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/resources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "resources"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Intruso\",\n  \"type\": \"SALA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "27 Proveedor B cambia mi antelación → 403",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerBToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/booking-lead-time",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "booking-lead-time"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hours\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28 Proveedor B asigna recursos a mi servicio → 403",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerBToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/services/{{serviceId}}/resources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "services",
+                "{{serviceId}}",
+                "resources"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"resourceIds\":[]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29 Proveedor B cambia el horario de mi recurso → 403",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerBToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resources/{{resourceId}}/availability/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "resources",
+                "{{resourceId}}",
+                "availability",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"ranges\":[]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "30 Proveedor B lista las reservas de mi negocio → 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerBToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "bookings"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31 Cliente intenta configurar un negocio → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/services",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "services"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Intruso\",\n  \"durationMinutes\": 30,\n  \"priceCop\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32 Sin sesión → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/services",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "services"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Anónimo\",\n  \"durationMinutes\": 30,\n  \"priceCop\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 · Catálogo y disponibilidad (HU-13, 20)",
+      "item": [
+        {
+          "name": "33 Catálogo de negocios con sesión (HU-13)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses?size=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses"
+              ],
+              "query": [
+                {
+                  "key": "size",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Trae página con items', () => { const j = pm.response.json(); pm.expect(j.items).to.be.an('array'); pm.expect(j.size).to.be.at.most(50); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34 Catálogo sin sesión → 401 (HU-13)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "35 Detalle del negocio con sus servicios activos (HU-13)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Muestra el servicio con duración y precio', () => { const s = pm.response.json().services[0]; pm.expect(s.name).to.eql('Corte de cabello'); pm.expect(s.durationMinutes).to.eql(60); pm.expect(s.priceCop).to.eql(25000); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "36 Negocio inexistente → 404 (HU-13)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37 Horarios libres SIN sesión: la consulta es pública (HU-20)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/services/{{serviceId}}/availability?date={{bookingDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "services",
+                "{{serviceId}}",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{bookingDate}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Hay horarios cada 60 min desde las 08:00 y el de las 10:00 está libre', () => { const s = pm.response.json().slots.map(x => x.start); pm.expect(s).to.include.members(['08:00', '10:00', '11:00', '14:00']); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "38 Fecha con formato inválido → 400 (HU-20)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/services/{{serviceId}}/availability?date=2026-99-99",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "services",
+                "{{serviceId}}",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-99-99"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "39 Fecha pasada → 400 (HU-20)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/services/{{serviceId}}/availability?date={{pastDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "services",
+                "{{serviceId}}",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{pastDate}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40 Servicio inexistente → 404 (HU-20)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/services/00000000-0000-0000-0000-000000000000/availability?date={{bookingDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "services",
+                "00000000-0000-0000-0000-000000000000",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{bookingDate}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41 Sábado: sin horario definido (HU-20)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/services/{{serviceId}}/availability?date={{bookingDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "services",
+                "{{serviceId}}",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{bookingDate}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(pm.collectionVariables.get('bookingDate') + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 5);",
+                  "pm.request.url.query.remove('date'); pm.request.url.query.add({key: 'date', value: d.toISOString().slice(0, 10)});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Sin horarios y con mensaje', () => { const j = pm.response.json(); pm.expect(j.slots).to.have.length(0); pm.expect(j.message).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 · Reservas (HU-22, 23, 24)",
+      "item": [
+        {
+          "name": "42 Crear reserva 10:00-11:00 (HU-22)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"date\": \"{{bookingDate}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"11:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Reserva CONFIRMADA con id y precio vigente', () => { const j = pm.response.json(); pm.expect(j.status).to.eql('CONFIRMADA'); pm.expect(j.id).to.be.a('string'); pm.expect(j.priceCop).to.eql(25000); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('bookingId', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "43 Mismo horario otra vez → 409 (HU-22)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"date\": \"{{bookingDate}}\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"11:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Informa que el horario no está disponible', () => pm.expect(pm.response.json().message).to.include('no está disponible'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "44 Traslape parcial 10:30-11:30 → 409 (HU-22)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"date\": \"{{bookingDate}}\",\n  \"startTime\": \"10:30\",\n  \"endTime\": \"11:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "45 Fuera del horario del recurso (06:00-07:00) → 409 (HU-22/19)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"date\": \"{{bookingDate}}\",\n  \"startTime\": \"06:00\",\n  \"endTime\": \"07:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "46 Sin fecha → 400 por campo (HU-22)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"startTime\": \"12:00\",\n  \"endTime\": \"13:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Pide la fecha', () => pm.expect(pm.response.json().fields).to.have.property('date'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "47 Hora de fin anterior al inicio → 400 (HU-22)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"date\": \"{{bookingDate}}\",\n  \"startTime\": \"13:00\",\n  \"endTime\": \"12:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "48 Duración distinta a la del servicio → 400 (HU-22)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"date\": \"{{bookingDate}}\",\n  \"startTime\": \"12:00\",\n  \"endTime\": \"13:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "49 Un proveedor no puede reservar → 403 (HU-22)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"date\": \"{{bookingDate}}\",\n  \"startTime\": \"12:00\",\n  \"endTime\": \"13:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "50 Reservar sin sesión → 401 (HU-22)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"date\": \"{{bookingDate}}\",\n  \"startTime\": \"12:00\",\n  \"endTime\": \"13:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "51 El horario reservado ya no aparece libre (HU-20 + 22)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/services/{{serviceId}}/availability?date={{bookingDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "services",
+                "{{serviceId}}",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{bookingDate}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('10:00 ocupado y 11:00 libre', () => { const s = pm.response.json().slots.map(x => x.start); pm.expect(s).to.not.include('10:00'); pm.expect(s).to.include('11:00'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "52 Mis reservas (HU-23)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Contiene mi reserva con fecha, horas, servicio y estado', () => { const it = pm.response.json().items.find(i => i.id === pm.collectionVariables.get('bookingId')); pm.expect(it).to.exist; pm.expect(it.date).to.eql(pm.collectionVariables.get('bookingDate')); pm.expect(it.startTime).to.eql('10:00'); pm.expect(it.endTime).to.eql('11:00'); pm.expect(it.serviceName).to.eql('Corte de cabello'); pm.expect(it.status).to.eql('CONFIRMADA'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "53 Ver las reservas de otro usuario → 403 (HU-23)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{providerUserId}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{providerUserId}}",
+                "bookings"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "54 Mis reservas sin sesión → 401 (HU-23)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "55 El proveedor ve las reservas de su negocio con los datos del cliente (HU-24)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "bookings"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Incluye la reserva con nombre, correo e id del cliente', () => { const it = pm.response.json().items.find(i => i.id === pm.collectionVariables.get('bookingId')); pm.expect(it).to.exist; pm.expect(it.clientName).to.eql('Cliente QA'); pm.expect(it.clientEmail).to.eql(pm.collectionVariables.get('clientEmail')); pm.expect(it.clientId).to.eql(pm.collectionVariables.get('clientUserId')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "56 Un cliente no puede ver las reservas del negocio → 403 (HU-24)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "bookings"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 · Cancelaciones (HU-25, 26)",
+      "item": [
+        {
+          "name": "57 El cliente cancela su reserva (HU-25)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/cancellation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "cancellation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"No puedo asistir\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('CANCELADA, origen CLIENTE y motivo', () => { const j = pm.response.json(); pm.expect(j.status).to.eql('CANCELADA'); pm.expect(j.cancelOrigin).to.eql('CLIENTE'); pm.expect(j.cancelReason).to.eql('No puedo asistir'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "58 Cancelar de nuevo → 409 (HU-25)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId}}/cancellation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId}}",
+                "cancellation"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "59 El horario vuelve a estar libre (HU-25 + 20)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/services/{{serviceId}}/availability?date={{bookingDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "services",
+                "{{serviceId}}",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{bookingDate}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('10:00 libre otra vez', () => pm.expect(pm.response.json().slots.map(x => x.start)).to.include('10:00'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "60 Nueva reserva 11:00-12:00 (para cancelar como proveedor)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"date\": \"{{bookingDate}}\",\n  \"startTime\": \"11:00\",\n  \"endTime\": \"12:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Reserva CONFIRMADA con id y precio vigente', () => { const j = pm.response.json(); pm.expect(j.status).to.eql('CONFIRMADA'); pm.expect(j.id).to.be.a('string'); pm.expect(j.priceCop).to.eql(25000); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('bookingId2', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "61 Proveedor cancela SIN motivo → 400 (HU-26)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId2}}/provider-cancellation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId2}}",
+                "provider-cancellation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "62 Proveedor B cancela una reserva ajena → 403 (HU-26)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerBToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId2}}/provider-cancellation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId2}}",
+                "provider-cancellation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Intruso\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "63 El cliente no puede usar la cancelación del proveedor → 403 (HU-26)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId2}}/provider-cancellation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId2}}",
+                "provider-cancellation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Yo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "64 El proveedor cancela con motivo (HU-26)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/{{bookingId2}}/provider-cancellation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "{{bookingId2}}",
+                "provider-cancellation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"El recurso está en mantenimiento\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('CANCELADA con origen PROVEEDOR', () => { const j = pm.response.json(); pm.expect(j.status).to.eql('CANCELADA'); pm.expect(j.cancelOrigin).to.eql('PROVEEDOR'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "65 El cliente ve el motivo en sus reservas (HU-26 + 23)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/me?status=CANCELADA",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "me"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "CANCELADA"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Ve el motivo del proveedor', () => { const it = pm.response.json().items.find(i => i.id === pm.collectionVariables.get('bookingId2')); pm.expect(it.cancelReason).to.eql('El recurso está en mantenimiento'); pm.expect(it.cancelOrigin).to.eql('PROVEEDOR'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 · Desactivar y reactivar recurso (HU-16, 17)",
+      "item": [
+        {
+          "name": "66 Reserva futura 14:00-15:00 en el recurso",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"date\": \"{{bookingDate}}\",\n  \"startTime\": \"14:00\",\n  \"endTime\": \"15:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Reserva CONFIRMADA con id y precio vigente', () => { const j = pm.response.json(); pm.expect(j.status).to.eql('CONFIRMADA'); pm.expect(j.id).to.be.a('string'); pm.expect(j.priceCop).to.eql(25000); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('bookingId3', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "67 Desactivar sin confirmar → 409 CONFIRMATION_REQUIRED con la cantidad (HU-16)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resources/{{resourceId}}/deactivation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "resources",
+                "{{resourceId}}",
+                "deactivation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirm\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Pide confirmación e informa 1 reserva afectada', () => { const j = pm.response.json(); pm.expect(j.error).to.eql('CONFIRMATION_REQUIRED'); pm.expect(j.fields.affectedBookings).to.eql('1'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "68 El recurso sigue activo y ofreciendo horarios (HU-16)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/services/{{serviceId}}/availability?date={{bookingDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "services",
+                "{{serviceId}}",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{bookingDate}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sigue habiendo horarios', () => pm.expect(pm.response.json().slots.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "69 Proveedor B intenta desactivar mi recurso → 403 (HU-16)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerBToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resources/{{resourceId}}/deactivation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "resources",
+                "{{resourceId}}",
+                "deactivation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirm\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "70 Desactivar confirmando: cancela las reservas futuras (HU-16)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resources/{{resourceId}}/deactivation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "resources",
+                "{{resourceId}}",
+                "deactivation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirm\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Inactivo y 1 reserva cancelada', () => { const j = pm.response.json(); pm.expect(j.active).to.eql(false); pm.expect(j.cancelledBookings).to.eql(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "71 La reserva quedó cancelada por RECURSO_NO_DISPONIBLE (HU-16)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings/me?status=CANCELADA",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings",
+                "me"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "CANCELADA"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Origen RECURSO_NO_DISPONIBLE', () => { const it = pm.response.json().items.find(i => i.id === pm.collectionVariables.get('bookingId3')); pm.expect(it.cancelOrigin).to.eql('RECURSO_NO_DISPONIBLE'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "72 Sin el recurso ya no hay horarios (HU-16 + 20)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/services/{{serviceId}}/availability?date={{bookingDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "services",
+                "{{serviceId}}",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{bookingDate}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sin horarios', () => pm.expect(pm.response.json().slots).to.have.length(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "73 No se puede reservar en un recurso inactivo → 409 (HU-16 + 22)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"date\": \"{{bookingDate}}\",\n  \"startTime\": \"16:00\",\n  \"endTime\": \"17:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "74 Reactivar el mismo recurso (HU-17)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resources/{{resourceId}}/reactivation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "resources",
+                "{{resourceId}}",
+                "reactivation"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Activo y es el mismo recurso', () => { const j = pm.response.json(); pm.expect(j.active).to.eql(true); pm.expect(j.resourceId).to.eql(pm.collectionVariables.get('resourceId')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "75 Reactivar otra vez es idempotente (HU-17)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resources/{{resourceId}}/reactivation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "resources",
+                "{{resourceId}}",
+                "reactivation"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "76 Vuelve a ofrecer horarios y las reservas canceladas siguen canceladas (HU-17)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/services/{{serviceId}}/availability?date={{bookingDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "services",
+                "{{serviceId}}",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{bookingDate}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Hay horarios otra vez', () => pm.expect(pm.response.json().slots.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "77 Proveedor B no puede reactivar mi recurso → 403 (HU-17)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerBToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resources/{{resourceId}}/reactivation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "resources",
+                "{{resourceId}}",
+                "reactivation"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08 · Administrador y eliminación de cuentas (HU-05, 28) — OPCIONAL",
+      "item": [
+        {
+          "name": "78 Reserva futura 16:00-17:00 que se cancelará al eliminar la cuenta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bookings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"date\": \"{{bookingDate}}\",\n  \"startTime\": \"16:00\",\n  \"endTime\": \"17:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Reserva CONFIRMADA con id y precio vigente', () => { const j = pm.response.json(); pm.expect(j.status).to.eql('CONFIRMADA'); pm.expect(j.id).to.be.a('string'); pm.expect(j.priceCop).to.eql(25000); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('bookingId4', j.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "79 Login de administrador SIN código → 401 MFA_REQUIRED (HU-02/ADR-004)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Requiere un administrador con MFA ya activada y las variables adminEmail, adminPassword y adminTotpSecret en el entorno."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
+                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Pide el segundo factor', () => pm.expect(pm.response.json().error).to.eql('MFA_REQUIRED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "80 Login de administrador con código TOTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\",\n  \"mfaCode\": \"{{adminCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
+                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "    pm.execution.skipRequest();",
+                  "}",
+                  "",
+                  "const cjs = require(\"crypto-js\");",
+                  "function base32ToHex(b32) {",
+                  "    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';",
+                  "    let bits = '';",
+                  "    for (const c of b32.replace(/[=\\s]+/g, '').toUpperCase()) { bits += alphabet.indexOf(c).toString(2).padStart(5, '0'); }",
+                  "    let hex = '';",
+                  "    for (let i = 0; i + 4 <= bits.length; i += 4) { hex += parseInt(bits.substr(i, 4), 2).toString(16); }",
+                  "    return hex;",
+                  "}",
+                  "function totp(secret) {",
+                  "    const key = cjs.enc.Hex.parse(base32ToHex(secret));",
+                  "    const counter = Math.floor(Date.now() / 30000);",
+                  "    const msg = cjs.enc.Hex.parse(counter.toString(16).padStart(16, '0'));",
+                  "    const h = cjs.HmacSHA1(msg, key).toString();",
+                  "    const off = parseInt(h.slice(-1), 16);",
+                  "    const code = (parseInt(h.substr(off * 2, 8), 16) & 0x7fffffff) % 1000000;",
+                  "    return String(code).padStart(6, '0');",
+                  "}",
+                  "",
+                  "pm.collectionVariables.set('adminCode', totp(pm.environment.get('adminTotpSecret')));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('adminToken', j.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "81 Eliminar al cliente SIN código MFA → 401 (HU-05)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{clientUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{clientUserId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
+                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "82 Eliminar al cliente con código MFA (HU-05/28)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "X-MFA-Code",
+                "value": "{{adminCode}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{clientUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{clientUserId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
+                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "    pm.execution.skipRequest();",
+                  "}",
+                  "",
+                  "const cjs = require(\"crypto-js\");",
+                  "function base32ToHex(b32) {",
+                  "    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';",
+                  "    let bits = '';",
+                  "    for (const c of b32.replace(/[=\\s]+/g, '').toUpperCase()) { bits += alphabet.indexOf(c).toString(2).padStart(5, '0'); }",
+                  "    let hex = '';",
+                  "    for (let i = 0; i + 4 <= bits.length; i += 4) { hex += parseInt(bits.substr(i, 4), 2).toString(16); }",
+                  "    return hex;",
+                  "}",
+                  "function totp(secret) {",
+                  "    const key = cjs.enc.Hex.parse(base32ToHex(secret));",
+                  "    const counter = Math.floor(Date.now() / 30000);",
+                  "    const msg = cjs.enc.Hex.parse(counter.toString(16).padStart(16, '0'));",
+                  "    const h = cjs.HmacSHA1(msg, key).toString();",
+                  "    const off = parseInt(h.slice(-1), 16);",
+                  "    const code = (parseInt(h.substr(off * 2, 8), 16) & 0x7fffffff) % 1000000;",
+                  "    return String(code).padStart(6, '0');",
+                  "}",
+                  "",
+                  "pm.collectionVariables.set('adminCode', totp(pm.environment.get('adminTotpSecret')));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "83 Su reserva futura quedó CANCELADA por ELIMINACION_CUENTA y se conserva como historial (HU-28)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{providerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/businesses/{{businessId}}/bookings?status=CANCELADA",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{businessId}}",
+                "bookings"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "CANCELADA"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
+                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cancelada por eliminación de cuenta, con los datos del cliente conservados', () => { const it = pm.response.json().items.find(i => i.id === pm.collectionVariables.get('bookingId4')); pm.expect(it).to.exist; pm.expect(it.cancelOrigin).to.eql('ELIMINACION_CUENTA'); pm.expect(it.clientId).to.eql(null); pm.expect(it.clientName).to.eql('Cliente QA'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "84 El cliente eliminado ya no puede iniciar sesión",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{clientEmail}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
+                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "85 Limpieza: eliminar al proveedor B",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "X-MFA-Code",
+                "value": "{{adminCode}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{providerBUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{providerBUserId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
+                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "    pm.execution.skipRequest();",
+                  "}",
+                  "",
+                  "const cjs = require(\"crypto-js\");",
+                  "function base32ToHex(b32) {",
+                  "    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';",
+                  "    let bits = '';",
+                  "    for (const c of b32.replace(/[=\\s]+/g, '').toUpperCase()) { bits += alphabet.indexOf(c).toString(2).padStart(5, '0'); }",
+                  "    let hex = '';",
+                  "    for (let i = 0; i + 4 <= bits.length; i += 4) { hex += parseInt(bits.substr(i, 4), 2).toString(16); }",
+                  "    return hex;",
+                  "}",
+                  "function totp(secret) {",
+                  "    const key = cjs.enc.Hex.parse(base32ToHex(secret));",
+                  "    const counter = Math.floor(Date.now() / 30000);",
+                  "    const msg = cjs.enc.Hex.parse(counter.toString(16).padStart(16, '0'));",
+                  "    const h = cjs.HmacSHA1(msg, key).toString();",
+                  "    const off = parseInt(h.slice(-1), 16);",
+                  "    const code = (parseInt(h.substr(off * 2, 8), 16) & 0x7fffffff) % 1000000;",
+                  "    return String(code).padStart(6, '0');",
+                  "}",
+                  "",
+                  "pm.collectionVariables.set('adminCode', totp(pm.environment.get('adminTotpSecret')));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "86 Limpieza: eliminar al proveedor (cancela sus reservas y borra sus servicios, HU-28)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "X-MFA-Code",
+                "value": "{{adminCode}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{providerUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{providerUserId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
+                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "    pm.execution.skipRequest();",
+                  "}",
+                  "",
+                  "const cjs = require(\"crypto-js\");",
+                  "function base32ToHex(b32) {",
+                  "    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';",
+                  "    let bits = '';",
+                  "    for (const c of b32.replace(/[=\\s]+/g, '').toUpperCase()) { bits += alphabet.indexOf(c).toString(2).padStart(5, '0'); }",
+                  "    let hex = '';",
+                  "    for (let i = 0; i + 4 <= bits.length; i += 4) { hex += parseInt(bits.substr(i, 4), 2).toString(16); }",
+                  "    return hex;",
+                  "}",
+                  "function totp(secret) {",
+                  "    const key = cjs.enc.Hex.parse(base32ToHex(secret));",
+                  "    const counter = Math.floor(Date.now() / 30000);",
+                  "    const msg = cjs.enc.Hex.parse(counter.toString(16).padStart(16, '0'));",
+                  "    const h = cjs.HmacSHA1(msg, key).toString();",
+                  "    const off = parseInt(h.slice(-1), 16);",
+                  "    const code = (parseInt(h.substr(off * 2, 8), 16) & 0x7fffffff) % 1000000;",
+                  "    return String(code).padStart(6, '0');",
+                  "}",
+                  "",
+                  "pm.collectionVariables.set('adminCode', totp(pm.environment.get('adminTotpSecret')));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "87 Sus servicios dejaron de existir (HU-28)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/services/{{serviceId}}/availability?date={{bookingDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "services",
+                "{{serviceId}}",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{bookingDate}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
+                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Se omite sola si el entorno no tiene adminEmail y adminTotpSecret. Sin ella, los usuarios de prueba (con correos qa.*@example.com) quedan en la base del servicio probado."
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://proyecto2026-2-5zoo.onrender.com"
+    }
+  ]
+}

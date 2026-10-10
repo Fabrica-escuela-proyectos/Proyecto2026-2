@@ -49,6 +49,7 @@ Primer admin: variables `BOOTSTRAP_ADMIN_EMAIL/PASSWORD/CELLPHONE` (solo actúa 
 | Criterios de aceptación Sprint 1 verificados (39 criterios) | `docs/verificacion-criterios-aceptacion-sprint-1.md` |
 | Estado y resultados de pruebas | `docs/estado-proyecto-sprint-1.md`, `docs/resultados-pruebas-sprint-1.md` |
 | Correr local / desplegar / probar lo desplegado | `docs/guia-desarrollo-local.md`, `docs/guia-despliegue-render.md`, `docs/guia-prueba-aplicacion-desplegada.md` |
+| **Colección de Postman del Sprint 2** (88 peticiones, 119 aserciones; se genera con `docs/postman/generar_coleccion.py`) | `docs/postman/` (`README.md`) |
 | Plantilla de bugs de Calidad | `.github/ISSUE_TEMPLATE/bug_report.yml` |
 
 ## Estado en una línea

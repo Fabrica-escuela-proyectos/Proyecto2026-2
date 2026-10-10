@@ -6,7 +6,7 @@ Backend desplegado, con base de datos PostgreSQL real. Cubre las 6 historias de 
 
 > **Nota sobre el primer request:** el servicio está en un plan gratuito que se duerme tras 15 minutos sin tráfico. Si la primera petición tarda hasta 1-2 minutos en responder (o da timeout), es normal — el servicio está despertando. Probar primero con el endpoint de salud (paso 0) resuelve esto antes de continuar.
 
-Todos los ejemplos usan `curl` desde una terminal; también se puede usar Postman u otro cliente HTTP pegando la misma URL, método y cuerpo JSON.
+Todos los ejemplos usan `curl` desde una terminal; también se puede usar Postman u otro cliente HTTP pegando la misma URL, método y cuerpo JSON. **Para el Sprint 2 hay una colección de Postman lista para correr de punta a punta contra el servicio desplegado: [`docs/postman/`](postman/README.md).**
 
 ## 0. Verificar que el servicio está activo
 
