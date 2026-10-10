@@ -251,7 +251,7 @@ HUS = [
          tablas="(usa bookings: cancel_reason, cancel_note)",
          endpoints=["POST /api/v1/bookings/{bookingId}/provider-cancellation  {reason}"],
          reglas=["Solo el Proveedor dueño del negocio de la reserva; motivo (texto) obligatorio",
-                 "Estado CANCELADA con motivo PROVEEDOR + texto; sin regla de 1 h (a confirmar)",
+                 "Estado CANCELADA con origen PROVEEDOR + motivo en texto (cancel_origin, V12); sin regla de 1 h, pero la reserva no debe haber empezado",
                  "El horario queda libre; el Cliente verá el motivo en HU-23; reserva ajena 403",
                  "El aviso al cliente queda como evento de auditoría (notificaciones fuera de alcance)"],
          pruebas=["CP-HU26-01 cancelación con motivo", "CP-HU26-02 sin motivo 400", "CP-HU26-03 reserva de otro negocio 403",

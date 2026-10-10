@@ -3,6 +3,7 @@ package com.codefactory.reservas_backend.reservation.application;
 import com.codefactory.reservas_backend.audit.application.AuditService;
 import com.codefactory.reservas_backend.audit.domain.AuditEventType;
 import com.codefactory.reservas_backend.identity.application.UserIdentity;
+import com.codefactory.reservas_backend.provider.application.BusinessAccessService;
 import com.codefactory.reservas_backend.reservation.controller.dto.BookingDtos.BookingItem;
 import com.codefactory.reservas_backend.reservation.domain.Booking;
 import com.codefactory.reservas_backend.reservation.domain.BookingNotCancellableException;
@@ -43,13 +44,15 @@ class BookingCancellationServiceImplTest {
     @Mock
     private BookingRepository bookingRepository;
     @Mock
+    private BusinessAccessService businessAccessService;
+    @Mock
     private AuditService auditService;
 
     private BookingCancellationServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new BookingCancellationServiceImpl(bookingRepository, auditService,
+        service = new BookingCancellationServiceImpl(bookingRepository, businessAccessService, auditService,
                 Clock.fixed(NOW, ZoneId.of("America/Bogota")));
     }
 
@@ -148,6 +151,78 @@ class BookingCancellationServiceImplTest {
         when(bookingRepository.findByIdForUpdate(BOOKING_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.cancelAsClient(BOOKING_ID, null, CLIENT, "ip"))
+                .isInstanceOf(BookingNotFoundException.class);
+    }
+
+    // ---------- HU-26: cancelación por el proveedor ----------
+
+    private static final UserIdentity PROVIDER = new UserIdentity(UUID.randomUUID(), "proveedor@example.com", "PROVEEDOR");
+
+    @Test
+    void elProveedorCancelaUnaReservaFuturaConOrigenProveedorYElMotivoDelCliente() {
+        Booking b = booking(UUID.randomUUID(), BookingStatus.CONFIRMADA, NOW.plus(Duration.ofMinutes(10)));
+        stub(b);
+
+        BookingItem item = service.cancelAsProvider(BOOKING_ID, "  El recurso se dañó  ", PROVIDER, "10.0.0.2");
+
+        // Sin regla de 1 hora: 10 minutos antes del inicio sí se puede.
+        verify(businessAccessService).requireOwner(b.getBusinessId(), PROVIDER);
+        assertThat(b.getStatus()).isEqualTo(BookingStatus.CANCELADA);
+        assertThat(b.getCancelOrigin()).isEqualTo(CancelOrigin.PROVEEDOR);
+        assertThat(b.getCancelReason()).isEqualTo("El recurso se dañó");
+        assertThat(b.getCancelledAt()).isEqualTo(NOW);
+        assertThat(item.cancelOrigin()).isEqualTo("PROVEEDOR");
+        verify(auditService).registerEvent(eq(AuditEventType.CANCELACION_RESERVA), eq("proveedor@example.com"),
+                eq("SUCCESS"), org.mockito.ArgumentMatchers.contains("cliente@example.com"), eq("10.0.0.2"));
+    }
+
+    @Test
+    void elProveedorNoPuedeCancelarUnaReservaDeUnNegocioAjeno() {
+        Booking b = booking(UUID.randomUUID(), BookingStatus.CONFIRMADA, NOW.plus(Duration.ofHours(5)));
+        stub(b);
+        org.mockito.Mockito.doThrow(new AccessDeniedException("ajeno")).when(businessAccessService)
+                .requireOwner(b.getBusinessId(), PROVIDER);
+
+        assertThatThrownBy(() -> service.cancelAsProvider(BOOKING_ID, "motivo", PROVIDER, "ip"))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThat(b.getStatus()).isEqualTo(BookingStatus.CONFIRMADA);
+        verify(bookingRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void unaReservaSinNegocioNoEsDeNingunProveedor() {
+        Booking b = booking(UUID.randomUUID(), BookingStatus.CONFIRMADA, NOW.plus(Duration.ofHours(5)));
+        b.setBusinessId(null);
+        stub(b);
+
+        assertThatThrownBy(() -> service.cancelAsProvider(BOOKING_ID, "motivo", PROVIDER, "ip"))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(businessAccessService, never()).requireOwner(any(), any());
+    }
+
+    @Test
+    void elProveedorNoPuedeCancelarUnaReservaYaCanceladaCompletadaOIniciada() {
+        stub(booking(UUID.randomUUID(), BookingStatus.CANCELADA, NOW.plus(Duration.ofHours(5))));
+        assertThatThrownBy(() -> service.cancelAsProvider(BOOKING_ID, "motivo", PROVIDER, "ip"))
+                .isInstanceOf(BookingNotCancellableException.class).hasMessage(BookingCancellationServiceImpl.ALREADY_CANCELLED_MESSAGE);
+
+        stub(booking(UUID.randomUUID(), BookingStatus.COMPLETADA, NOW.plus(Duration.ofHours(5))));
+        assertThatThrownBy(() -> service.cancelAsProvider(BOOKING_ID, "motivo", PROVIDER, "ip"))
+                .isInstanceOf(BookingNotCancellableException.class).hasMessage(BookingCancellationServiceImpl.COMPLETED_MESSAGE);
+
+        for (Duration offset : new Duration[]{Duration.ZERO, Duration.ofMinutes(-30)}) {
+            stub(booking(UUID.randomUUID(), BookingStatus.CONFIRMADA, NOW.plus(offset)));
+            assertThatThrownBy(() -> service.cancelAsProvider(BOOKING_ID, "motivo", PROVIDER, "ip"))
+                    .isInstanceOf(BookingNotCancellableException.class).hasMessage(BookingCancellationServiceImpl.ALREADY_STARTED_MESSAGE);
+        }
+        verify(bookingRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void elProveedorRecibe404SiLaReservaNoExiste() {
+        when(bookingRepository.findByIdForUpdate(BOOKING_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.cancelAsProvider(BOOKING_ID, "motivo", PROVIDER, "ip"))
                 .isInstanceOf(BookingNotFoundException.class);
     }
 }

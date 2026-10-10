@@ -23,4 +23,16 @@ public interface BookingCancellationService {
      *         completada o con menos de {@link #MIN_NOTICE_HOURS} hora de antelación (409)
      */
     BookingItem cancelAsClient(UUID bookingId, String reason, UserIdentity client, String originIp);
+
+    /**
+     * HU-26 - El proveedor dueño del negocio cancela una reserva futura. El motivo es obligatorio y lo ve
+     * el cliente (HU-23). No aplica la regla de antelación de 1 hora, pero sí exige que la reserva no haya
+     * empezado. Origen {@code PROVEEDOR}.
+     *
+     * @throws com.codefactory.reservas_backend.reservation.domain.BookingNotFoundException la reserva no existe (404)
+     * @throws org.springframework.security.access.AccessDeniedException la reserva es de un negocio de otro proveedor (403)
+     * @throws com.codefactory.reservas_backend.reservation.domain.BookingNotCancellableException ya cancelada,
+     *         completada o ya iniciada (409)
+     */
+    BookingItem cancelAsProvider(UUID bookingId, String reason, UserIdentity provider, String originIp);
 }

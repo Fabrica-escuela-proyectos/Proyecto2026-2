@@ -81,6 +81,23 @@ class BusinessDirectoryServiceImplTest {
     }
 
     @Test
+    void businessIdsOfUserDebeDevolverLosNegociosDelProveedorOVacioSiNoLoEs() {
+        UUID userId = UUID.randomUUID();
+        UUID providerId = UUID.randomUUID();
+        UUID b1 = UUID.randomUUID();
+        UUID b2 = UUID.randomUUID();
+        when(providerRepository.findByUserId(userId)).thenReturn(Optional.of(Provider.builder().id(providerId).userId(userId).build()));
+        when(businessRepository.findByProviderId(providerId)).thenReturn(List.of(
+                Business.builder().id(b1).providerId(providerId).name("A").build(),
+                Business.builder().id(b2).providerId(providerId).name("B").build()));
+        UUID notProvider = UUID.randomUUID();
+        when(providerRepository.findByUserId(notProvider)).thenReturn(Optional.empty());
+
+        assertThat(directory.businessIdsOfUser(userId)).containsExactly(b1, b2);
+        assertThat(directory.businessIdsOfUser(notProvider)).isEmpty();
+    }
+
+    @Test
     void isOwnerEnabledDebeConsultarElEstadoDeLaCuentaDelProveedor() {
         UUID businessId = UUID.randomUUID();
         UUID providerId = UUID.randomUUID();

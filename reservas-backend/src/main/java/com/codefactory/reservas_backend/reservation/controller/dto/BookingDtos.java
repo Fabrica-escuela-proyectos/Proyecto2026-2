@@ -86,6 +86,16 @@ public final class BookingDtos {
         private String reason;
     }
 
+    /** Cuerpo de POST /api/v1/bookings/{bookingId}/provider-cancellation (HU-26): el motivo es obligatorio. */
+    @Getter
+    @Setter
+    public static class ProviderCancelRequest {
+
+        @NotBlank(message = "El motivo de la cancelación es obligatorio")
+        @Size(max = 500, message = "El motivo no puede superar los 500 caracteres")
+        private String reason;
+    }
+
     /** Reserva creada; {@code id} es el que devuelve HU-22 y usan HU-23..28. */
     public record BookingResponse(UUID id, String status, UUID serviceId, String serviceName, UUID businessId,
                                   String businessName, UUID resourceId, String resourceName, String date,

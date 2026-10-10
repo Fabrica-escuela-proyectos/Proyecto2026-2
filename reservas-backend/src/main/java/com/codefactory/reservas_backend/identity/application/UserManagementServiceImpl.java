@@ -15,6 +15,7 @@ import com.codefactory.reservas_backend.identity.domain.UserNotFoundException;
 import com.codefactory.reservas_backend.identity.infrastructure.RoleRepository;
 import com.codefactory.reservas_backend.identity.infrastructure.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,7 @@ public class UserManagementServiceImpl implements UserManagementService {
     private final RoleRepository roleRepository;
     private final AuditService auditService;
     private final MfaService mfaService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public UserResponse getUser(UUID targetUserId, UserIdentity requester) {
@@ -137,6 +139,10 @@ public class UserManagementServiceImpl implements UserManagementService {
         // users (guarda subject_email como texto), así que el historial de
         // auditoría sobrevive intacto: así se cumple "guardando historial
         // de las funcionalidades de usuario" del escenario Gherkin.
+        // HU-28: antes de borrar, avisa (síncrono y en esta misma transacción) para que Reservation cancele
+        // las reservas futuras del usuario o de su negocio y conserve el resto como historial. Si algún
+        // oyente falla, se deshace todo, incluida la eliminación.
+        eventPublisher.publishEvent(new UserDeletionRequested(target.getId(), email, deletedRole));
         userRepository.delete(target);
 
         auditService.registerEvent(AuditEventType.ELIMINACION_USUARIO, email, "SUCCESS",

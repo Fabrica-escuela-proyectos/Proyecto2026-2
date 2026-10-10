@@ -2,12 +2,14 @@ package com.codefactory.reservas_backend.reservation.infrastructure;
 
 import com.codefactory.reservas_backend.reservation.domain.Booking;
 import com.codefactory.reservas_backend.reservation.domain.BookingStatus;
+import com.codefactory.reservas_backend.reservation.domain.CancelOrigin;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -27,6 +29,47 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
     Page<Booking> findByClientId(UUID clientId, Pageable pageable);
 
     Page<Booking> findByClientIdAndStatus(UUID clientId, BookingStatus status, Pageable pageable);
+
+    @Query("""
+            select count(b) from Booking b
+            where b.resourceId = :resourceId and b.status = com.codefactory.reservas_backend.reservation.domain.BookingStatus.CONFIRMADA
+              and b.startAt > :now
+            """)
+    long countFutureConfirmedOfResource(@Param("resourceId") UUID resourceId, @Param("now") Instant now);
+
+    /** Cancela de una vez las reservas CONFIRMADAS futuras de un recurso; devuelve cuántas. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            update Booking b set b.status = com.codefactory.reservas_backend.reservation.domain.BookingStatus.CANCELADA,
+                   b.cancelOrigin = :origin, b.cancelReason = :reason, b.cancelledAt = :now
+            where b.resourceId = :resourceId and b.status = com.codefactory.reservas_backend.reservation.domain.BookingStatus.CONFIRMADA
+              and b.startAt > :now
+            """)
+    int cancelFutureConfirmedOfResource(@Param("resourceId") UUID resourceId, @Param("origin") CancelOrigin origin,
+                                        @Param("reason") String reason, @Param("now") Instant now);
+
+    /** Cancela de una vez las reservas CONFIRMADAS futuras de un cliente (HU-28); devuelve cuántas. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            update Booking b set b.status = com.codefactory.reservas_backend.reservation.domain.BookingStatus.CANCELADA,
+                   b.cancelOrigin = :origin, b.cancelReason = :reason, b.cancelledAt = :now
+            where b.clientId = :clientId and b.status = com.codefactory.reservas_backend.reservation.domain.BookingStatus.CONFIRMADA
+              and b.startAt > :now
+            """)
+    int cancelFutureConfirmedOfClient(@Param("clientId") UUID clientId, @Param("origin") CancelOrigin origin,
+                                      @Param("reason") String reason, @Param("now") Instant now);
+
+    /** Cancela de una vez las reservas CONFIRMADAS futuras de unos negocios (HU-28); devuelve cuántas. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            update Booking b set b.status = com.codefactory.reservas_backend.reservation.domain.BookingStatus.CANCELADA,
+                   b.cancelOrigin = :origin, b.cancelReason = :reason, b.cancelledAt = :now
+            where b.businessId in :businessIds and b.status = com.codefactory.reservas_backend.reservation.domain.BookingStatus.CONFIRMADA
+              and b.startAt > :now
+            """)
+    int cancelFutureConfirmedOfBusinesses(@Param("businessIds") Collection<UUID> businessIds,
+                                          @Param("origin") CancelOrigin origin, @Param("reason") String reason,
+                                          @Param("now") Instant now);
 
     /** ¿Hay una reserva CONFIRMADA del recurso que se traslape con [start, end)? */
     @Query("""

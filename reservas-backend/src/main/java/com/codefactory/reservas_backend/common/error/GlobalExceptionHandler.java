@@ -17,6 +17,7 @@ import com.codefactory.reservas_backend.provider.domain.BusinessNotFoundExceptio
 import com.codefactory.reservas_backend.provider.domain.ProviderNotFoundException;
 import com.codefactory.reservas_backend.reservation.domain.BookingNotCancellableException;
 import com.codefactory.reservas_backend.reservation.domain.BookingNotFoundException;
+import com.codefactory.reservas_backend.reservation.domain.ConfirmationRequiredException;
 import com.codefactory.reservas_backend.reservation.domain.InvalidBookingException;
 import com.codefactory.reservas_backend.reservation.domain.SlotNotAvailableException;
 import com.codefactory.reservas_backend.resource.domain.DuplicateResourceNameException;
@@ -109,6 +110,14 @@ public class GlobalExceptionHandler {
     }
 
     // HU-09: nombre de servicio repetido dentro del mismo negocio.
+    // HU-16: la operación cancelaría reservas futuras y falta la confirmación del proveedor. Se devuelve la
+    // cantidad afectada en "fields.affectedBookings" y no se cambió nada.
+    @ExceptionHandler(ConfirmationRequiredException.class)
+    public ResponseEntity<ApiError> handleConfirmationRequired(ConfirmationRequiredException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, "CONFIRMATION_REQUIRED", ex.getMessage(),
+                Map.of("affectedBookings", String.valueOf(ex.getAffectedBookings())), req);
+    }
+
     // HU-14: lo mismo para el nombre de un recurso dentro del mismo negocio.
     @ExceptionHandler({DuplicateServiceNameException.class, DuplicateResourceNameException.class,
             SlotNotAvailableException.class, BookingNotCancellableException.class})

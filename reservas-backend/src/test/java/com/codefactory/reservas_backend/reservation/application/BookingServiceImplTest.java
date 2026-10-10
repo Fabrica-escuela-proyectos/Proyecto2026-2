@@ -93,6 +93,7 @@ class BookingServiceImplTest {
         lenient().when(businessDirectoryService.isOwnerEnabled(BUSINESS_ID)).thenReturn(true);
         lenient().when(businessDirectoryService.get(BUSINESS_ID)).thenReturn(new BusinessInfo(BUSINESS_ID, "Barbería"));
         lenient().when(businessSettingsService.minAdvanceHoursOf(BUSINESS_ID)).thenReturn(1);
+        lenient().when(resourceLookupService.lockActive(any(UUID.class))).thenReturn(true);
         lenient().when(userDirectoryService.findFullName(CLIENT.id())).thenReturn(Optional.of("Ana Cliente"));
         lenient().when(serviceLookupService.assignedResourceIds(SERVICE_ID)).thenReturn(List.of(R1));
         lenient().when(resourceLookupService.findByIds(any(Collection.class))).thenReturn(List.of(resource(R1, "Sala 1", true)));
@@ -147,6 +148,15 @@ class BookingServiceImplTest {
         assertThat(response.date()).isEqualTo(MONDAY);
         verify(auditService).registerEvent(eq(AuditEventType.CREACION_RESERVA), eq("cliente@example.com"),
                 eq("SUCCESS"), anyString(), eq("10.0.0.1"));
+    }
+
+    @Test
+    void siElRecursoSeDesactivoMientrasSeReservabaNoSeUsaYSeInformaQueNoEstaDisponible() {
+        when(resourceLookupService.lockActive(R1)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.create(request(MONDAY, "10:00", "11:00", null), CLIENT, "ip"))
+                .isInstanceOf(SlotNotAvailableException.class);
+        verify(bookingRepository, never()).saveAndFlush(any());
     }
 
     @Test

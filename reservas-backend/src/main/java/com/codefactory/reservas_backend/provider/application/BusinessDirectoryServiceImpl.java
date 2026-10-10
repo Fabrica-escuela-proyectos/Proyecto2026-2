@@ -12,6 +12,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -48,6 +49,14 @@ public class BusinessDirectoryServiceImpl implements BusinessDirectoryService {
                 .flatMap(business -> providerRepository.findById(business.getProviderId()))
                 .map(provider -> accountStatusService.isEnabled(provider.getUserId()))
                 .orElse(false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> businessIdsOfUser(UUID userId) {
+        return providerRepository.findByUserId(userId)
+                .map(provider -> businessRepository.findByProviderId(provider.getId()).stream().map(Business::getId).toList())
+                .orElse(List.of());
     }
 
     private static BusinessInfo toInfo(Business business) {

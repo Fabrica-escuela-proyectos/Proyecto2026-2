@@ -104,6 +104,10 @@ public class BookingServiceImpl implements BookingService {
                 continue;
             }
             withinSchedule = true;
+            // Bloqueo del recurso: serializa esta reserva con una desactivación simultánea (HU-16) y con otras reservas.
+            if (!resourceLookupService.lockActive(candidate.id())) {
+                continue;
+            }
             if (!bookingRepository.existsConfirmedOverlapping(candidate.id(), startAt, endAt)) {
                 chosen = candidate;
                 break;

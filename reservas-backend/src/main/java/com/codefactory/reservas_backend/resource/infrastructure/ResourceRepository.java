@@ -23,5 +23,13 @@ public interface ResourceRepository extends JpaRepository<Resource, UUID> {
     @Query("select r from Resource r where r.id = :id")
     Optional<Resource> findByIdForUpdate(@Param("id") UUID id);
 
+    /**
+     * Bloquea la fila (FOR UPDATE) y lee {@code active} DIRECTO de la base. Es una consulta nativa a propósito:
+     * si el recurso ya se había cargado antes en la misma transacción, Hibernate devolvería esa copia en memoria
+     * (con un {@code active} desactualizado) en vez de lo que otra transacción acaba de confirmar. Vacío si no existe.
+     */
+    @Query(value = "select active from resources where id = :id for update", nativeQuery = true)
+    Optional<Boolean> lockAndReadActive(@Param("id") UUID id);
+
     boolean existsByBusinessIdAndNameIgnoreCase(UUID businessId, String name);
 }

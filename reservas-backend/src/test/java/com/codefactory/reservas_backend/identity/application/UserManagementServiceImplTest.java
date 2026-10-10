@@ -49,12 +49,14 @@ class UserManagementServiceImplTest {
     private AuditService auditService;
     @Mock
     private MfaService mfaService;
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     private UserManagementServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new UserManagementServiceImpl(userRepository, roleRepository, auditService, mfaService);
+        service = new UserManagementServiceImpl(userRepository, roleRepository, auditService, mfaService, eventPublisher);
     }
 
     private User buildUser(UUID id, RoleName roleName) {
@@ -232,5 +234,49 @@ class UserManagementServiceImplTest {
 
         verify(userRepository).delete(cliente);
         verify(auditService).registerEvent(eq(AuditEventType.ELIMINACION_USUARIO), eq(cliente.getEmail()), eq("SUCCESS"), any(), any());
+    }
+
+    // --- HU-28: el evento de eliminación ---
+
+    @Test
+    void deleteUserDebePublicarElEventoAntesDeBorrarParaQueSeCancelenLasReservasFuturas() {
+        UUID targetId = UUID.randomUUID();
+        User cliente = buildUser(targetId, RoleName.CLIENTE);
+        UserIdentity admin = new UserIdentity(UUID.randomUUID(), "admin@example.com", "ADMINISTRADOR");
+        when(userRepository.findById(targetId)).thenReturn(Optional.of(cliente));
+
+        service.deleteUser(targetId, admin, "127.0.0.1");
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(eventPublisher, userRepository);
+        order.verify(eventPublisher).publishEvent(new UserDeletionRequested(cliente.getId(), cliente.getEmail(), "CLIENTE"));
+        order.verify(userRepository).delete(cliente);
+    }
+
+    @Test
+    void siUnOyenteDelEventoFallaNoSeEliminaNiSeAudita() {
+        UUID targetId = UUID.randomUUID();
+        User cliente = buildUser(targetId, RoleName.CLIENTE);
+        UserIdentity admin = new UserIdentity(UUID.randomUUID(), "admin@example.com", "ADMINISTRADOR");
+        when(userRepository.findById(targetId)).thenReturn(Optional.of(cliente));
+        org.mockito.Mockito.doThrow(new IllegalStateException("falló la cancelación")).when(eventPublisher)
+                .publishEvent(any(UserDeletionRequested.class));
+
+        assertThatThrownBy(() -> service.deleteUser(targetId, admin, "127.0.0.1")).isInstanceOf(IllegalStateException.class);
+
+        verify(userRepository, never()).delete(any());
+        verify(auditService, never()).registerEvent(eq(AuditEventType.ELIMINACION_USUARIO), any(), any(), any(), any());
+    }
+
+    @Test
+    void noSePublicaElEventoSiLaEliminacionSeRechaza() {
+        UUID targetId = UUID.randomUUID();
+        User otroAdmin = buildUser(targetId, RoleName.ADMINISTRADOR);
+        UserIdentity admin = new UserIdentity(UUID.randomUUID(), "admin@example.com", "ADMINISTRADOR");
+        when(userRepository.findById(targetId)).thenReturn(Optional.of(otroAdmin));
+
+        assertThatThrownBy(() -> service.deleteUser(targetId, admin, "127.0.0.1"))
+                .isInstanceOf(AdminDeletionNotAllowedException.class);
+
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 }

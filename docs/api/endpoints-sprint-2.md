@@ -278,3 +278,47 @@ Solo el rol **CLIENTE** y solo sobre **sus** reservas (proveedor o administrador
 | 409 | Ya está cancelada (*"La reserva ya está cancelada"*), ya fue completada, o faltan menos de 1 hora (*"…al menos 1 hora de antelación…"*). Dos cancelaciones simultáneas: una da 200 y la otra 409 (se bloquea la fila de la reserva) |
 
 > **Cambio de BD:** migración `V12__add_cancel_origin_to_bookings.sql` (`cancel_origin` con CHECK). Las reservas canceladas antes de la migración quedan con origen nulo.
+
+## HU-26 — Cancelar reserva como proveedor (implementado)
+
+### `POST /api/v1/bookings/{bookingId}/provider-cancellation`
+```json
+{ "reason": "El recurso está en mantenimiento" }
+```
+Solo el **PROVEEDOR dueño del negocio de la reserva** (otro proveedor: 403; cliente o administrador: 403; sin sesión: 401; reserva inexistente: 404; id que no es UUID: 400). El **motivo es obligatorio** (400 si falta, está en blanco, es nulo, supera 500 caracteres o el cuerpo no es JSON) y el cliente lo ve en HU-23. Respuesta `200` con la reserva en el formato de HU-23: `status = CANCELADA`, `cancelOrigin = PROVEEDOR`, `cancelReason`, `cancelledAt`.
+
+- **Sin regla de 1 hora** (plan, decisión 12): se puede cancelar aunque falten minutos para el inicio. Pero la reserva **no puede haber empezado**: una reserva ya iniciada o finalizada da 409 *"La reserva ya inició o finalizó…"* (*supuesto*: igual que HU-16/28, que solo cancelan reservas futuras). Ya cancelada o completada: 409.
+- El horario queda **libre** (HU-20 vuelve a ofrecerlo). *Supuesto:* el AC dice "liberado o deshabilitado según la preferencia del proveedor"; solo se implementó "liberado".
+- El aviso al cliente (notificaciones fuera de alcance) queda como evento de auditoría `CANCELACION_RESERVA` que incluye el correo del cliente.
+
+## HU-16 — Desactivar recurso (implementado)
+
+### `POST /api/v1/resources/{resourceId}/deactivation`
+Cuerpo opcional: `{ "confirm": true }` (por defecto `false`). Solo el **PROVEEDOR dueño del negocio del recurso** (ajeno: 403; cliente: 403; sin sesión: 401; inexistente: 404; id inválido: 400).
+
+| Situación | Respuesta |
+|---|---|
+| Sin reservas futuras | `200`: el recurso queda inactivo (no hace falta confirmar) |
+| Con reservas futuras y **sin** `confirm` | `409` `CONFIRMATION_REQUIRED` con la cantidad afectada en `fields.affectedBookings` y el mensaje *"El recurso tiene N reserva(s) futura(s) … Confirme la desactivación para proceder"*. **No cambia nada**: el recurso sigue activo y las reservas confirmadas |
+| Con reservas futuras y `confirm = true` | `200`: el recurso queda inactivo y las reservas futuras CONFIRMADAS pasan a `CANCELADA` con `cancelOrigin = RECURSO_NO_DISPONIBLE` y el motivo *"El recurso fue desactivado por el proveedor"* (sin regla de 1 hora) |
+| Ya inactivo | `200` idempotente, `cancelledBookings: 0` |
+
+```json
+{ "resourceId": "…", "name": "Sala 1", "active": false, "cancelledBookings": 2 }
+```
+Se cancelan **solo las futuras confirmadas de ese recurso**: las pasadas, completadas, ya canceladas y las de otros recursos no se tocan (el historial se conserva). Todo ocurre en **una sola transacción**. La desactivación bloquea la fila del recurso y **crear una reserva también la bloquea**, así que una reserva simultánea nunca queda confirmada en un recurso inactivo (o entra antes y se cancela, o llega tarde y recibe 409; probado). Un recurso inactivo deja de ofrecer horarios en HU-20 y de aceptar reservas en HU-22. Se audita (`DESACTIVACION_RECURSO`).
+
+## HU-17 — Reactivar recurso (implementado)
+
+### `POST /api/v1/resources/{resourceId}/reactivation`
+Solo el **PROVEEDOR dueño del negocio del recurso** (mismos errores que HU-16). Reactiva **el mismo recurso** (no se crea otro, conserva id, horario y asignaciones a servicios) y vuelve a recibir reservas y a aparecer en HU-20. Respuesta `200`: `{ "resourceId": "…", "name": "Sala 1", "active": true }`. **Idempotente**: si ya estaba activo no cambia nada ni audita. Las reservas canceladas por la desactivación **siguen canceladas**. Se audita (`REACTIVACION_RECURSO`).
+
+## HU-28 — Cancelar reservas futuras al eliminar un usuario (implementado)
+
+Extiende `DELETE /api/v1/users/{userId}` (HU-05: solo ADMINISTRADOR con `X-MFA-Code`; no puede eliminar a otro administrador ni a sí mismo). Antes de borrar al usuario, Identity publica el evento `UserDeletionRequested` **dentro de la misma transacción** y Reservation lo atiende:
+
+- **Cliente eliminado:** sus reservas futuras CONFIRMADAS pasan a `CANCELADA` con `cancelOrigin = ELIMINACION_CUENTA` y motivo *"La cuenta del cliente fue eliminada"*.
+- **Proveedor eliminado:** las reservas futuras CONFIRMADAS de **todos sus negocios** (las de sus clientes) pasan a `CANCELADA` con `ELIMINACION_CUENTA` y motivo *"La cuenta del proveedor fue eliminada"*. Sus servicios y recursos se eliminan por cascada, así que dejan de ser consultables y reservables (404).
+- **Sin regla de 1 hora.** Las reservas pasadas, completadas y ya canceladas **se conservan como historial**: `bookings` guarda copias del nombre y correo del cliente, servicio, recurso, negocio y precio, y sus referencias pasan a `null` (`clientId`, `businessId`, `serviceId`…) al borrarse. El proveedor sigue viendo a la reserva cancelada en HU-24 (con `clientId: null`) y el cliente en HU-23.
+- **Atómico:** si la cancelación falla, la excepción deshace también la eliminación del usuario (probado en unitaria). Se audita un evento `CANCELACION_RESERVA` con el resumen y el habitual `ELIMINACION_USUARIO`. Las notificaciones a las partes (fuera de alcance) quedan como esa auditoría.
+- *Decisión abierta (plan, decisión 4):* la **autoeliminación** de cuenta (que un cliente o proveedor se elimine solo) sigue sin existir; hoy solo el administrador elimina usuarios.

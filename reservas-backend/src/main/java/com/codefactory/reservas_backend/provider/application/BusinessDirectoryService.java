@@ -1,5 +1,6 @@
 package com.codefactory.reservas_backend.provider.application;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -20,4 +21,7 @@ public interface BusinessDirectoryService {
      * (HU-20: el servicio de un proveedor inactivo no está disponible).
      */
     boolean isOwnerEnabled(UUID businessId);
+
+    /** Ids de los negocios del proveedor cuyo usuario es {@code userId}; vacío si no es proveedor (HU-28). */
+    List<UUID> businessIdsOfUser(UUID userId);
 }

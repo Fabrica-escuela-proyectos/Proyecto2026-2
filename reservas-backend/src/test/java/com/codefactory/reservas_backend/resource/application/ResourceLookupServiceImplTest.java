@@ -66,6 +66,20 @@ class ResourceLookupServiceImplTest {
     }
 
     @Test
+    void lockActiveDebeBloquearLaFilaYDecirSiEstaActivo() {
+        UUID active = UUID.randomUUID();
+        UUID inactive = UUID.randomUUID();
+        UUID missing = UUID.randomUUID();
+        when(repository.lockAndReadActive(active)).thenReturn(java.util.Optional.of(true));
+        when(repository.lockAndReadActive(inactive)).thenReturn(java.util.Optional.of(false));
+        when(repository.lockAndReadActive(missing)).thenReturn(java.util.Optional.empty());
+
+        assertThat(lookup.lockActive(active)).isTrue();
+        assertThat(lookup.lockActive(inactive)).isFalse();
+        assertThat(lookup.lockActive(missing)).isFalse();
+    }
+
+    @Test
     void findByIdsConListaVaciaNoConsultaLaBase() {
         assertThat(lookup.findByIds(List.of())).isEmpty();
         verify(repository, never()).findAllById(org.mockito.ArgumentMatchers.any());

@@ -29,6 +29,13 @@ public class ResourceLookupServiceImpl implements ResourceLookupService {
     }
 
     @Override
+    @Transactional
+    public boolean lockActive(UUID resourceId) {
+        // Lectura directa de la base (no del contexto de persistencia): ver ResourceRepository#lockAndReadActive.
+        return resourceRepository.lockAndReadActive(resourceId).orElse(false);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<ResourceInfo> findByIds(Collection<UUID> resourceIds) {
         if (resourceIds.isEmpty()) {
