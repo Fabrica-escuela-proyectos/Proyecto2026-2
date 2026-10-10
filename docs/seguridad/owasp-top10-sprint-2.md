@@ -81,7 +81,7 @@
 
 | | |
 |---|---|
-| **Qué hay** | Spring Boot **4.1.1** (la última 4.1.x en Maven Central a 2026-10-10), Testcontainers 1.21.4, JaCoCo 0.8.12, Java 17 (LTS). SonarCloud analiza el código propio (vulnerabilidades: 0 tras corregir). |
+| **Qué hay** | Spring Boot **4.1.1** (la última 4.1.x en Maven Central a 2026-10-10), Testcontainers 2.0.5, JaCoCo 0.8.12, Java 17 (LTS). SonarCloud analiza el código propio (vulnerabilidades: 0 tras corregir). |
 | **Brecha** | ~~Ninguna herramienta revisaba las dependencias.~~ **2026-10-10:** se añadió `.github/dependabot.yml` (Maven, GitHub Actions y Docker, semanal; no sube la versión mayor de Java) y `jjwt` pasó de 0.12.5 a **0.13.0** con toda la suite en verde. Dependabot empieza a trabajar cuando el archivo está en `main`; las alertas de seguridad se activan en *Settings → Code security* del repositorio (ajuste de GitHub, no del código). **Sigue sin haber un escaneo de vulnerabilidades en el pipeline** (OWASP Dependency-Check o similar). Las acciones de GitHub siguen fijadas por etiqueta (`@v5`), no por SHA. |
 | **Acción** | Activar las alertas de Dependabot en GitHub y, opcionalmente, un job con `dependency-check` (`CI-06`). |
 

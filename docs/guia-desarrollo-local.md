@@ -55,7 +55,7 @@ cd reservas-backend
 ```
 
 - Las **pruebas de integración** (`*IntegrationTest` y `ReservasBackendApplicationTests`) levantan su propio PostgreSQL 16 con **Testcontainers**, así que necesitan **Docker encendido** y ya **no dependen de un Postgres en `localhost:5432`**. Todas extienden `AbstractIntegrationTest` (un solo contenedor para toda la corrida).
-- Con **Docker Desktop 29 o superior** hace falta **Testcontainers 1.21.4 o más** (el `pom.xml` ya lo trae). Con la 1.21.3 aparecía "Could not find a valid Docker environment" aunque Docker estuviera corriendo.
+- Con **Docker Desktop 29 o superior** hace falta **Testcontainers 1.21.4 o más** (el `pom.xml` ya trae la **2.0.5**). Con la 1.21.3 aparecía "Could not find a valid Docker environment" aunque Docker estuviera corriendo.
 - Cobertura: `./mvnw test jacoco:report` → `target/site/jacoco/index.html`.
 - Si una prueba nueva registra cuentas, usa correos y celulares propios (`uniqueEmail(...)`, `uniquePhone()` de `AbstractIntegrationTest`): la base se comparte entre clases.
 
