@@ -74,3 +74,26 @@ cd reservas-backend
 export JAVA_HOME="C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot"   # JDK 17
 ./mvnw -B clean test jacoco:report     # Docker encendido; reporte en target/site/jacoco/index.html
 ```
+
+---
+
+## Prueba del servicio desplegado en Render — 2026-10-10
+
+Se ejecutó la colección de Postman ([`docs/postman/`](postman/README.md)) con Newman contra `https://proyecto2026-2-5zoo.onrender.com`, ya desplegados los commits hasta `Pruebas postman` (pipeline #21 en verde; incluye HU-08 a HU-28 menos las de Tier 3).
+
+| Pasada | Carpetas | Peticiones | Aserciones | Fallos |
+|---|---|---:|---:|---:|
+| 1 | 00 a 07 (registro, negocio, accesos ajenos, catálogo, disponibilidad pública, reservas, cancelaciones, recursos) | 78 | 106 | **0** |
+| 2 | 08 (administrador con MFA: login sin y con TOTP, HU-05/28, eliminación de cuentas y limpieza) | 10 | 13 | **0** |
+| **Total** | | **88** | **119** | **0** |
+
+Qué confirma frente a lo desplegado: las **12 migraciones** (incluida la extensión `btree_gist` y la restricción anti-overbooking de `bookings`) se aplicaron en la base de Render; el anti-overbooking, la cancelación por proveedor, `CONFIRMATION_REQUIRED` al desactivar recursos y la cancelación por eliminación de cuenta funcionan allí igual que en local; el administrador de la demo **ya tiene MFA activo** (login sin código → `401 MFA_REQUIRED`) y las operaciones sensibles exigen el código.
+
+Detalles de la ejecución:
+- La pasada 1 corrió en ~55 s (respuesta media 627 ms; la más lenta, 4,8 s). El servicio ya estaba despierto.
+- Como Newman no conserva las variables de colección entre ejecuciones, el estado de la pasada 1 se reconstruyó desde el servicio (login con los usuarios de esa corrida) y sobre él se corrió la carpeta 08 con un código TOTP manual (`adminMfaCode`). En una corrida completa de una sola vez (Postman o Newman con el administrador configurado) no hace falta.
+- **Datos de prueba:** los usuarios `qa.*.ha8ac77x@example.com` (cliente y dos proveedores), con su negocio, servicio, recurso y reservas, fueron **eliminados** por la propia carpeta 08. La base de Render quedó sin restos de la prueba (las reservas pasan a historial solo si hay un cliente o proveedor reales).
+- **No se verificó:** carga y rendimiento, lo que depende de enviar correos o notificaciones (fuera de alcance), el comportamiento tras 15 minutos de inactividad (arranque en frío) y el límite de intentos de login/MFA en Render (no se forzó para no bloquear al administrador).
+
+### Hallazgo de seguridad
+**La contraseña del administrador de la demo en Render sigue siendo la que está publicada en el repositorio público** (`docs/guia-prueba-aplicacion-desplegada.md`). Es el pendiente `SEC-01`/`SEC-02`: debe rotarse y quitarse de la guía. Mitiga el MFA obligatorio (quien conozca la contraseña aún necesita el código), pero no debería quedar así para la entrega.

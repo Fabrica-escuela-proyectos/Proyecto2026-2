@@ -12,7 +12,7 @@
 | HU-19 | 3 | 1 | resource | `PUT /api/v1/resources/{resourceId}/availability`<br>`PUT /api/v1/resources/{resourceId}/availability/{dayOfWeek}`<br>`GET /api/v1/resources/{resourceId}/availability` | resource_availability | 5 | 9 |
 | HU-20 | 5 | 1 | reservation (disponibilidad) | `GET /api/v1/services/{serviceId}/availability?date=yyyy-MM-dd` | — | 5 | 10 |
 | HU-22 | 8 | 1 | reservation | `POST /api/v1/bookings` | bookings | 6 | 11 |
-| HU-23 | 5 | 1 | reservation | `GET /api/v1/bookings/me?status=&page=&size=` | — | 4 | 6 |
+| HU-23 | 5 | 1 | reservation | `GET /api/v1/bookings/me?status=&page=&size=`<br>`GET /api/v1/users/{userId}/bookings (403 si no es el propio)` | — | 4 | 6 |
 | HU-24 | 5 | 1 | reservation | `GET /api/v1/businesses/{businessId}/bookings?from=&to=&status=&page=&size=` | — | 3 | 6 |
 | HU-25 | 5 | 1 | reservation | `POST /api/v1/bookings/{bookingId}/cancellation` | — | 4 | 6 |
 | HU-16 | 5 | 2 | resource | `POST /api/v1/resources/{resourceId}/deactivation` | — | 4 | 7 |
@@ -150,7 +150,7 @@
   - Fecha ISO yyyy-MM-dd; inválida (32/13/2026, ab/cd/efgh, 2026-99-99) -> 400; pasada -> 400; sin fecha = hoy
   - Horarios = disponibilidad de recursos activos asignados - reservas CONFIRMADAS - (ahora + antelación mínima)
   - Sin disponibilidad o todo reservado -> mensaje 'no hay horarios'; servicio inexistente/inactivo -> 404 'no disponible'
-  - Requiere cliente con sesión (AC de HU-20: "un cliente consulta"); los cambios de horario del recurso se ven en la consulta siguiente
+  - Pública, sin sesión (escenario "usuario sin sesión" del AC); los cambios de horario del recurso se ven en la consulta siguiente
   - Rendimiento: índices por (resource_id, start_at) y paginación/tope de rango de fechas
 - **Casos de prueba:**
   - CP-HU20-01 horarios libres
@@ -168,10 +168,10 @@
 
 - **Módulo:** reservation · **Responsable:** Dev B (Juan Esteban González) · Catálogo, disponibilidad y reservas del cliente · **Depende de:** HU-08, HU-09, HU-14, HU-18, HU-19, HU-20
 - **Tablas/datos:** bookings (id, client_id, client_email, service_id, service_name, business_name, resource_id, start_at, end_at, status, cancel_reason, price_cop, created_at, cancelled_at) + EXCLUDE USING gist (anti-traslape por recurso) [requiere btree_gist]
-- **API propuesta:** `POST /api/v1/bookings  {serviceId, startAt[, resourceId]}`
+- **API propuesta:** `POST /api/v1/bookings  {serviceId, date, startTime, endTime[, resourceId]}`
 - **Reglas de negocio:**
   - Solo rol Cliente; estado inicial CONFIRMADA (automática); la respuesta incluye el id
-  - Fin = inicio + duración del servicio (el cliente no envía hora fin); validar rango y fecha obligatoria
+  - El cliente envía fecha, hora de inicio y hora de fin (AC); fin > inicio y duración = la del servicio; fecha obligatoria
   - Servicio activo, con recurso activo asignado y dentro del horario del recurso
   - Inicio >= ahora + antelación mínima del negocio (1 h por defecto, HU-08)
   - Anti-overbooking por RECURSO: restricción EXCLUDE en BD + 409 'horario no disponible' ante concurrencia
@@ -193,7 +193,7 @@
 
 - **Módulo:** reservation · **Responsable:** Dev B (Juan Esteban González) · Catálogo, disponibilidad y reservas del cliente · **Depende de:** HU-22
 - **Tablas/datos:** (sin tablas nuevas)
-- **API propuesta:** `GET /api/v1/bookings/me?status=&page=&size=`
+- **API propuesta:** `GET /api/v1/bookings/me?status=&page=&size=`; `GET /api/v1/users/{userId}/bookings (403 si no es el propio)`
 - **Reglas de negocio:**
   - Solo las reservas del Cliente autenticado; orden por fecha de más reciente a más antigua
   - Cada reserva: fecha, hora inicio/fin, servicio, estado y motivo de cancelación si aplica
@@ -230,7 +230,7 @@
 - **Tablas/datos:** (usa bookings: status, cancel_reason, cancelled_at)
 - **API propuesta:** `POST /api/v1/bookings/{bookingId}/cancellation`
 - **Reglas de negocio:**
-  - Solo el Cliente dueño de la reserva CONFIRMADA; con al menos 1 hora de antelación (regla fija de plataforma)
+  - Solo el Cliente dueño de la reserva CONFIRMADA; con al menos 1 hora de antelación (regla fija de plataforma); motivo opcional
   - Estado -> CANCELADA con motivo CLIENTE; el horario queda libre (el EXCLUDE solo cuenta CONFIRMADA)
   - Fuera de plazo o ya cancelada -> 409 con mensaje claro; ajena -> 403
   - El aviso al proveedor del AC queda como evento de auditoría (notificaciones están fuera de alcance)
@@ -284,7 +284,7 @@
 - **API propuesta:** `POST /api/v1/bookings/{bookingId}/provider-cancellation  {reason}`
 - **Reglas de negocio:**
   - Solo el Proveedor dueño del negocio de la reserva; motivo (texto) obligatorio
-  - Estado CANCELADA con motivo PROVEEDOR + texto; sin regla de 1 h (a confirmar)
+  - Estado CANCELADA con origen PROVEEDOR + motivo en texto (cancel_origin, V12); sin regla de 1 h, pero la reserva no debe haber empezado
   - El horario queda libre; el Cliente verá el motivo en HU-23; reserva ajena 403
   - El aviso al cliente queda como evento de auditoría (notificaciones fuera de alcance)
 - **Casos de prueba:**

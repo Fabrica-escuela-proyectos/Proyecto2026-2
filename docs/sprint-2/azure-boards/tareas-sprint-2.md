@@ -11,10 +11,10 @@
 | Azure · tareas de las HU del sprint | 20 | 270 |
 | Azure · tareas técnicas (3 historias técnicas) | 8 | 78 |
 | **Total que se sube a Azure** | **28** | **348** |
-| Checklist interno (NO se sube; 22 de sus 64 ítems quedan agrupados en las tareas técnicas) | 64 | 218 |
-| **Trabajo nominal total** (HU + checklist interno; base de la capacidad del plan) | | **488** |
-| &nbsp;&nbsp;↳ ya hecho del checklist (14 ítems, 3 parciales sin contar) | | 58 |
-| &nbsp;&nbsp;↳ **por hacer** (HU + checklist pendiente) | | **430** |
+| Checklist interno (NO se sube; 22 de sus 65 ítems quedan agrupados en las tareas técnicas) | 65 | 220 |
+| **Trabajo nominal total** (HU + checklist interno; base de la capacidad del plan) | | **490** |
+| &nbsp;&nbsp;↳ ya hecho del checklist (14 ítems, 6 parciales sin contar) | | 58 |
+| &nbsp;&nbsp;↳ **por hacer** (HU + checklist pendiente) | | **432** |
 
 ## Lotes (un CSV por lote; un lote ya subido NO se vuelve a importar)
 
@@ -27,7 +27,7 @@
 | Responsable | Planificado (h) | Por hacer (h) |
 |---|---:|---:|
 | Dev A (Simon Betancur) · Identidad, seguridad y calidad | 159 | 101 |
-| Dev B (Juan Esteban González) · Catálogo, disponibilidad y reservas del cliente | 180 | 180 |
+| Dev B (Juan Esteban González) · Catálogo, disponibilidad y reservas del cliente | 182 | 182 |
 | Dev C (Santiago Rendón) · Recursos, horarios, cancelaciones, CI/CD y despliegue | 141 | 141 |
 | Bases de Datos (Juan Sebastián Andraus, con apoyo de los 3 de Arquisoft) | 8 | 8 |
 
@@ -184,10 +184,10 @@ Documentación interactiva de la API (Swagger), modelo de datos coordinado con B
 
 | Código | Tarea | Actividad | Estado | h | Prio | Resp. | Avance / estado sugerido en Azure |
 |---|---|---|---|---:|---:|---|---|
-| ARQ-01 | Documentación interactiva de la API (Swagger/OpenAPI) | Development | New | 7 | 1 | B | New |
+| ARQ-01 | Documentación interactiva de la API (Swagger/OpenAPI) | Development | New | 7 | 1 | B | Active (0/2 ítems hechos, 1 parcial) |
 | ARQ-02 | Modelo de datos del Sprint 2: convenciones y migraciones Flyway coordinadas con BD | Design | New | 7 | 1 | A | Active (0/2 ítems hechos, 1 parcial) |
-| ARQ-03 | Arquitectura del Sprint 2: diagrama de despliegue, diagrama de componentes y ADRs | Design | New | 12 | 1 | C | New |
-| ARQ-04 | Seguridad OWASP Top 10: revisión del código y endurecimiento (cabeceras, CORS, límites de entrada) | Development | New | 9 | 1 | A | New |
+| ARQ-03 | Arquitectura del Sprint 2: diagrama de despliegue, diagrama de componentes y ADRs | Design | New | 12 | 1 | C | Active (0/3 ítems hechos, 1 parcial) |
+| ARQ-04 | Seguridad OWASP Top 10: revisión del código y endurecimiento (cabeceras, CORS, límites de entrada) | Development | New | 9 | 1 | A | Active (0/2 ítems hechos, 1 parcial) |
 
 ## Checklist interno — pendientes de detalle (NO se suben a Azure)
 
@@ -228,11 +228,11 @@ Códigos que citan los demás documentos del sprint. La columna *Azure* indica l
 | CI-06 | Plataforma (CI/CD y calidad) | Dependabot / OWASP Dependency-Check en CI (job semanal o por PR) | Development | 2 | 3 | C | — |  |
 | CI-07 | Plataforma (CI/CD y calidad) | Entorno de pruebas para Calidad (Render) con datos semilla y credenciales fuera del repo | Deployment | 2 | 1 | C | PLT-01 |  |
 | API-01 | API, seguridad y documentación | Swagger/OpenAPI con springdoc 3.1.x: spike de compatibilidad con Spring Boot 4.1/Jackson 3, esquema Bearer, ejemplos y errores | Development | 5 | 1 | B | ARQ-01 |  |
-| API-02 | API, seguridad y documentación | Documentar contratos y códigos de error del Sprint 2 (errores-api-sprint-2.md + ejemplos en Swagger) | Documentation | 2 | 2 | B | ARQ-01 |  |
-| OWASP-01 | API, seguridad y documentación | Revisión OWASP Top 10 (A01–A10): matriz contra el código, hallazgos y correcciones | Development | 6 | 1 | A | ARQ-04 |  |
+| API-02 | API, seguridad y documentación | Documentar contratos y códigos de error del Sprint 2 (errores-api-sprint-2.md + ejemplos en Swagger) | Documentation | 2 | 2 | B | ARQ-01 | ◐ 2026-10-10 · contratos y DTO generados del código (docs/api/referencia-api-sprint-2.md), catálogo de errores ampliado (errores-api-sprint-2.md §5-7) y guía de Swagger; faltan los ejemplos dentro de Swagger (depende de API-01) |
+| OWASP-01 | API, seguridad y documentación | Revisión OWASP Top 10 (A01–A10): matriz contra el código, hallazgos y correcciones | Development | 6 | 1 | A | ARQ-04 | ◐ 2026-10-10 · revisión A01–A10 hecha (docs/seguridad/owasp-top10-sprint-2.md, con sondeo a Render); es una revisión, no una prueba de penetración; faltan las correcciones (SEC-01, SEC-05, OWASP-02/03, CI-05/06) |
 | OWASP-02 | API, seguridad y documentación | Cabeceras de seguridad, CORS explícito, límites de tamaño de payload y de paginación | Development | 3 | 2 | A | ARQ-04 |  |
 | DOC-01 | API, seguridad y documentación | Diagrama de despliegue (cliente, backend Spring Boot, PostgreSQL, Render, GitHub Actions, Sonar) | Design | 3 | 1 | C | ARQ-03 |  |
-| DOC-02 | API, seguridad y documentación | Actualizar arquitectura: módulos service/resource/reservation y ADR-004 (MFA), ADR-005 (anti-overbooking), ADR-006 (retención de historial) | Documentation | 5 | 1 | B | ARQ-03 |  |
+| DOC-02 | API, seguridad y documentación | Actualizar arquitectura: módulos service/resource/reservation y ADR-004 (MFA), ADR-005 (anti-overbooking), ADR-006 (retención de historial) | Documentation | 5 | 1 | B | ARQ-03 | ◐ 2026-10-10 · ADR-005, 006 y 007 redactados (estado Propuesto) y registro de decisiones/supuestos S-01..S-32 (decisiones-y-supuestos-sprint-2.md) con verificador de dependencias; falta actualizar arquitectura-sprint-1.md y aprobar los ADR |
 | DOC-03 | API, seguridad y documentación | Diagramas de componentes y paquetes del Sprint 2 con tabla de conexiones | Design | 4 | 2 | C | ARQ-03 |  |
 | DOC-04 | API, seguridad y documentación | Evidencias del sprint: reportes Sonar/JaCoCo, pipeline verde, Postman, capturas | Documentation | 3 | 2 | B | — |  |
 | DOC-05 | API, seguridad y documentación | Actualizar resultados de pruebas y estado del proyecto (Sprint 2) | Documentation | 2 | 2 | B | — |  |
@@ -259,4 +259,5 @@ Códigos que citan los demás documentos del sprint. La columna *Azure* indica l
 | SP1-08 | Brechas de Sprint 1 | Las pruebas de integración de Sprint 1 no corrían (Jackson 3, Testcontainers vs Docker 29) y el límite de registro las rompía | Development | 3 | 1 | A | — | ✔ 2026-10-07 · 258 pruebas en verde con Docker |
 | OWASP-03 | API, seguridad y documentación | IP real del cliente detrás del proxy de Render (server.forward-headers-strategy=native) para los límites de intentos y la auditoría; verificar en el despliegue | Development | 1 | 2 | A | — |  |
 | SEC-04 | Higiene de seguridad | Pedir la contraseña también en POST /auth/mfa/setup: con un token robado de un administrador sin MFA se podría enrolar el autenticador del atacante | Development | 3 | 3 | A | — |  |
+| SEC-05 | Higiene de seguridad | Fallar al arrancar fuera del perfil dev si falta la configuración: quitar el perfil dev por defecto y los valores de relleno de JWT_SECRET/DB_PASSWORD; Dockerfile con USER no root y HEALTHCHECK | Development | 2 | 2 | B | — |  |
 

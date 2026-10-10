@@ -54,3 +54,53 @@ Los límites de intentos se ajustan por entorno (valores por defecto entre paré
 | `RATE_LIMIT_AUTH_MAX_ATTEMPTS` (5) | Fallos de login / código MFA / confirmación antes de bloquear |
 
 La ventana y la duración del bloqueo están en `application.yml` (`security.rate-limit.*`). Para una corrida de pruebas del equipo de Calidad que registre muchas cuentas desde una sola IP conviene subir `RATE_LIMIT_REGISTRATION_MAX_ATTEMPTS` en ese entorno; **no** en producción.
+
+## 5. Códigos de error añadidos por las HU de reservas
+
+| `error` | HTTP | Cuándo | Campos extra |
+|---|---|---|---|
+| `CONFIRMATION_REQUIRED` | 409 | HU-16: desactivar un recurso con reservas futuras sin enviar `confirm: true`. **No se cambió nada.** | `fields.affectedBookings`: cantidad de reservas que se cancelarían (texto) |
+
+Ejemplo:
+
+```json
+{
+  "timestamp": "2026-10-10T14:32:10.118",
+  "status": 409,
+  "error": "CONFIRMATION_REQUIRED",
+  "message": "El recurso tiene 2 reserva(s) futura(s) confirmada(s) que se cancelarán si continúa. Confirme la desactivación para proceder",
+  "path": "/api/v1/resources/6b0d…/deactivation",
+  "fields": { "affectedBookings": "2" }
+}
+```
+
+Los demás errores nuevos reutilizan los códigos ya existentes (`VALIDATION_ERROR`, `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`); lo que cambia es el `message`.
+
+## 6. Mapa excepción → respuesta HTTP
+
+Todo el mapeo vive en `GlobalExceptionHandler` (una sola clase): los controladores no construyen respuestas de error. **Regla de diseño:** un mismo mensaje para «no existe» y «no es tuyo» cuando revelar la diferencia filtraría información (p. ej. recursos ajenos en HU-18: `400` con un único texto), y `403` genérico cuando el recurso existe pero es de otro usuario.
+
+| HTTP | `error` | Excepciones (de dominio) y situación |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | `MethodArgumentNotValidException` (Bean Validation, con `fields`); cuerpo vacío o JSON roto; id/parámetro con formato inválido; `InvalidPaginationException`; `InvalidBookingException` (fecha, rango de horas, duración distinta a la del servicio, antelación, recurso no asignado, estado inválido); `InvalidAvailabilityException` (horario del recurso: formato, inicio ≥ fin, rangos superpuestos, día repetido); `InvalidAvailabilityQueryException` (fecha de la consulta de HU-20 inválida, pasada o a más de 365 días); `InvalidResourceAssignmentException` (HU-18); `RoleNotFoundException`, `InvalidMfaCodeException`, `MfaNotConfiguredException` |
+| 401 | `UNAUTHORIZED` · `MFA_REQUIRED` | Sin sesión o token inválido/expirado/revocado; credenciales inválidas (mensaje genérico); falta el código MFA |
+| 403 | `FORBIDDEN` · `MFA_ENROLLMENT_REQUIRED` | `AccessDeniedException` (rol insuficiente o recurso/negocio/reserva de otro usuario, incluida la ruta `/users/{otro}/bookings`); `SelfModificationException`, `ProviderRoleImmutableException`, `AdminDeletionNotAllowedException` (HU-05); administrador sin MFA activa |
+| 404 | `NOT_FOUND` | `UserNotFoundException`, `ProviderNotFoundException`, `BusinessNotFoundException`, `ServiceNotFoundException`, `ResourceNotFoundException`, `BookingNotFoundException`; `ServiceNotAvailableException` (servicio inexistente, inactivo o de un proveedor inactivo: un solo mensaje «El servicio no está disponible»); ruta inexistente con sesión |
+| 405 · 406 · 415 | `METHOD_NOT_ALLOWED` · `NOT_ACCEPTABLE` · `UNSUPPORTED_MEDIA_TYPE` | Método, `Accept` o `Content-Type` no soportado |
+| 409 | `CONFLICT` · `CONFIRMATION_REQUIRED` | Correo o celular duplicado; `DuplicateServiceNameException`, `DuplicateResourceNameException` (nombre repetido en el negocio, sin distinguir mayúsculas); `SlotNotAvailableException` (horario ocupado o fuera del horario del recurso); `BookingNotCancellableException` (ya cancelada, completada, ya iniciada o fuera del plazo de 1 hora); violación de unicidad en la base (`23505`) y de la restricción anti-overbooking (`23P01`); confirmación pendiente (HU-16) |
+| 429 | `TOO_MANY_REQUESTS` | `TooManyRequestsException`: límite de registros (5 por IP en 10 min) o de fallos de login/MFA (5 en 15 min) |
+| 500 | `INTERNAL_SERVER_ERROR` | Cualquier otra excepción: mensaje genérico al cliente, detalle completo solo en el log del servidor |
+
+## 7. Cuál es el mensaje esperado por HU (para escribir casos de prueba)
+
+| HU | Situación | HTTP | Mensaje (o `fields`) |
+|---|---|---|---|
+| HU-09 | Nombre de servicio repetido | 409 | «Ya existe un servicio con ese nombre en el negocio» |
+| HU-14 | Nombre de recurso repetido / tipo fuera de la lista | 409 / 400 | «Ya existe un recurso con ese nombre en el negocio» / `fields.type`: «El tipo debe ser SALA, EQUIPO o PERSONAL» |
+| HU-18 | Recurso inexistente o de otro negocio | 400 | «Uno o más recursos no existen o no pertenecen al negocio del servicio» |
+| HU-19 | Rango inválido / superpuesto | 400 | «El rango horario no es válido: la hora de inicio debe ser anterior a la de fin» / «Los rangos horarios de un mismo día no pueden superponerse» |
+| HU-20 | Fecha inválida / pasada / servicio no disponible | 400 / 400 / 404 | «La fecha no es válida: use el formato yyyy-MM-dd» / «Debe seleccionar una fecha futura o la fecha actual» / «El servicio no está disponible» |
+| HU-22 | Horario ocupado / fuera de horario | 409 | «El horario seleccionado no está disponible: ya tiene una reserva» / «…queda fuera del horario de atención» |
+| HU-22 | Fin ≤ inicio / sin fecha | 400 | «El rango de horas es inválido: la hora de fin debe ser posterior a la de inicio» / `fields.date`: «La fecha es obligatoria» |
+| HU-25 | Ya cancelada / fuera de plazo | 409 | «La reserva ya está cancelada» / «Solo se puede cancelar una reserva con al menos 1 hora de antelación a su inicio» |
+| HU-26 | Sin motivo / reserva ya iniciada | 400 / 409 | `fields.reason`: «El motivo de la cancelación es obligatorio» / «La reserva ya inició o finalizó y no se puede cancelar» |

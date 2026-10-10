@@ -77,9 +77,15 @@ function totp(secret) {
 
 SKIP_WITHOUT_ADMIN = r"""
 // Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.
-if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {
+if (!pm.environment.get('adminEmail') || !(pm.environment.get('adminTotpSecret') || pm.environment.get('adminMfaCode'))) {
     pm.execution.skipRequest();
 }
+"""
+
+
+ADMIN_CODE_SCRIPT = r"""
+// Código manual (adminMfaCode, válido ~30-60 s) o calculado desde el secreto (adminTotpSecret).
+pm.collectionVariables.set('adminCode', pm.environment.get('adminMfaCode') || totp(pm.environment.get('adminTotpSecret')));
 """
 
 
@@ -337,8 +343,8 @@ pm.request.url.query.remove('date'); pm.request.url.query.add({key: 'date', valu
     ]))
 
     # 8 ---------------------------------------------------------------- administrador (opcional)
-    admin_login_pre = SKIP_WITHOUT_ADMIN + TOTP_SCRIPT + "\npm.collectionVariables.set('adminCode', totp(pm.environment.get('adminTotpSecret')));"
-    admin_delete_pre = SKIP_WITHOUT_ADMIN + TOTP_SCRIPT + "\npm.collectionVariables.set('adminCode', totp(pm.environment.get('adminTotpSecret')));"
+    admin_login_pre = SKIP_WITHOUT_ADMIN + TOTP_SCRIPT + ADMIN_CODE_SCRIPT
+    admin_delete_pre = SKIP_WITHOUT_ADMIN + TOTP_SCRIPT + ADMIN_CODE_SCRIPT
     carpetas.append(folder("08 · Administrador y eliminación de cuentas (HU-05, 28) — OPCIONAL", [
         reserva("78 Reserva futura 16:00-17:00 que se cancelará al eliminar la cuenta", "16:00", "17:00", var="bookingId4"),
         item("79 Login de administrador SIN código → 401 MFA_REQUIRED (HU-02/ADR-004)", "POST", "/api/v1/auth/login",
@@ -387,6 +393,7 @@ def entorno(nombre, url):
             {"key": "adminEmail", "value": "", "type": "default", "enabled": True},
             {"key": "adminPassword", "value": "", "type": "secret", "enabled": True},
             {"key": "adminTotpSecret", "value": "", "type": "secret", "enabled": True},
+            {"key": "adminMfaCode", "value": "", "type": "secret", "enabled": True},
         ],
         "_postman_variable_scope": "environment",
     }

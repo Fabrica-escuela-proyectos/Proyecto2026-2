@@ -3598,7 +3598,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
-                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "if (!pm.environment.get('adminEmail') || !(pm.environment.get('adminTotpSecret') || pm.environment.get('adminMfaCode'))) {",
                   "    pm.execution.skipRequest();",
                   "}"
                 ]
@@ -3655,7 +3655,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
-                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "if (!pm.environment.get('adminEmail') || !(pm.environment.get('adminTotpSecret') || pm.environment.get('adminMfaCode'))) {",
                   "    pm.execution.skipRequest();",
                   "}",
                   "",
@@ -3678,7 +3678,8 @@
                   "    return String(code).padStart(6, '0');",
                   "}",
                   "",
-                  "pm.collectionVariables.set('adminCode', totp(pm.environment.get('adminTotpSecret')));"
+                  "// Código manual (adminMfaCode, válido ~30-60 s) o calculado desde el secreto (adminTotpSecret).",
+                  "pm.collectionVariables.set('adminCode', pm.environment.get('adminMfaCode') || totp(pm.environment.get('adminTotpSecret')));"
                 ]
               }
             },
@@ -3725,7 +3726,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
-                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "if (!pm.environment.get('adminEmail') || !(pm.environment.get('adminTotpSecret') || pm.environment.get('adminMfaCode'))) {",
                   "    pm.execution.skipRequest();",
                   "}"
                 ]
@@ -3776,7 +3777,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
-                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "if (!pm.environment.get('adminEmail') || !(pm.environment.get('adminTotpSecret') || pm.environment.get('adminMfaCode'))) {",
                   "    pm.execution.skipRequest();",
                   "}",
                   "",
@@ -3799,7 +3800,8 @@
                   "    return String(code).padStart(6, '0');",
                   "}",
                   "",
-                  "pm.collectionVariables.set('adminCode', totp(pm.environment.get('adminTotpSecret')));"
+                  "// Código manual (adminMfaCode, válido ~30-60 s) o calculado desde el secreto (adminTotpSecret).",
+                  "pm.collectionVariables.set('adminCode', pm.environment.get('adminMfaCode') || totp(pm.environment.get('adminTotpSecret')));"
                 ]
               }
             },
@@ -3851,7 +3853,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
-                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "if (!pm.environment.get('adminEmail') || !(pm.environment.get('adminTotpSecret') || pm.environment.get('adminMfaCode'))) {",
                   "    pm.execution.skipRequest();",
                   "}"
                 ]
@@ -3908,7 +3910,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
-                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "if (!pm.environment.get('adminEmail') || !(pm.environment.get('adminTotpSecret') || pm.environment.get('adminMfaCode'))) {",
                   "    pm.execution.skipRequest();",
                   "}"
                 ]
@@ -3959,7 +3961,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
-                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "if (!pm.environment.get('adminEmail') || !(pm.environment.get('adminTotpSecret') || pm.environment.get('adminMfaCode'))) {",
                   "    pm.execution.skipRequest();",
                   "}",
                   "",
@@ -3982,7 +3984,8 @@
                   "    return String(code).padStart(6, '0');",
                   "}",
                   "",
-                  "pm.collectionVariables.set('adminCode', totp(pm.environment.get('adminTotpSecret')));"
+                  "// Código manual (adminMfaCode, válido ~30-60 s) o calculado desde el secreto (adminTotpSecret).",
+                  "pm.collectionVariables.set('adminCode', pm.environment.get('adminMfaCode') || totp(pm.environment.get('adminTotpSecret')));"
                 ]
               }
             },
@@ -4031,7 +4034,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
-                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "if (!pm.environment.get('adminEmail') || !(pm.environment.get('adminTotpSecret') || pm.environment.get('adminMfaCode'))) {",
                   "    pm.execution.skipRequest();",
                   "}",
                   "",
@@ -4054,7 +4057,8 @@
                   "    return String(code).padStart(6, '0');",
                   "}",
                   "",
-                  "pm.collectionVariables.set('adminCode', totp(pm.environment.get('adminTotpSecret')));"
+                  "// Código manual (adminMfaCode, válido ~30-60 s) o calculado desde el secreto (adminTotpSecret).",
+                  "pm.collectionVariables.set('adminCode', pm.environment.get('adminMfaCode') || totp(pm.environment.get('adminTotpSecret')));"
                 ]
               }
             },
@@ -4101,7 +4105,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
-                  "if (!pm.environment.get('adminEmail') || !pm.environment.get('adminTotpSecret')) {",
+                  "if (!pm.environment.get('adminEmail') || !(pm.environment.get('adminTotpSecret') || pm.environment.get('adminMfaCode'))) {",
                   "    pm.execution.skipRequest();",
                   "}"
                 ]

@@ -42,8 +42,9 @@ Primer admin: variables `BOOTSTRAP_ADMIN_EMAIL/PASSWORD/CELLPHONE` (solo actúa 
 | Qué | Dónde |
 |---|---|
 | Plan del Sprint 2, MFA y bugs, estudio, backlog de Azure, estado vivo | `docs/sprint-2/` (`plan-de-trabajo-sprint-2.md`, `cierre-pendientes-sprint-1.md`, `plan-estudio-y-sustentacion.md`, `azure-boards/`, `handoff-contexto.md`) |
-| Arquitectura y ADR (001 monolito modular, 002 autenticación, 003 módulos/interfaces) | `docs/arquitectura/` |
-| Contratos de API y errores (Sprint 1 y 2: códigos `MFA_REQUIRED`, `X-MFA-Code`, límites) | `docs/api/` (`errores-api-sprint-2.md`) |
+| Arquitectura y ADR (001 monolito modular, 002 autenticación, 003 módulos/interfaces, 005 anti-overbooking, 006 historial/cancelaciones, 007 comunicación entre módulos) y **registro de decisiones y supuestos S-01…S-32** (qué confirma Calidad/PO). Verificar módulos sin ciclos: `python docs/arquitectura/verificar_dependencias.py` | `docs/arquitectura/` (`decisiones-y-supuestos-sprint-2.md`) |
+| Contratos de API y errores (Sprint 1 y 2: códigos `MFA_REQUIRED`, `X-MFA-Code`, límites). `referencia-api-sprint-2.md` (endpoints, roles y DTO) **se genera del código**: `python docs/api/generar_referencia.py`, no editar a mano. Swagger aún NO aplicado: guía en `guia-swagger-openapi.md` | `docs/api/` (`errores-api-sprint-2.md`, `referencia-api-sprint-2.md`, `guia-swagger-openapi.md`) |
+| Revisión OWASP Top 10 (hallazgos y plan de cierre) y colección de Postman/Newman | `docs/seguridad/owasp-top10-sprint-2.md`, `docs/postman/` |
 | Política de MFA (ADR-004) y resultados de pruebas del Sprint 2 | `docs/arquitectura/adr/ADR-004-politica-mfa.md`, `docs/resultados-pruebas-sprint-2.md` |
 | Modelo de BD formal vs esquema real, y por qué UUID/CASCADE | `docs/bd/modelo/`, `docs/conciliacion-modelo-bd-sprint-1.md` |
 | Criterios de aceptación Sprint 1 verificados (39 criterios) | `docs/verificacion-criterios-aceptacion-sprint-1.md` |

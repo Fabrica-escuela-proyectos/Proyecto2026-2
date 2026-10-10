@@ -427,6 +427,8 @@ PENDIENTES = [
      "Hoy getRemoteAddr() puede ser la IP del proxy: los límites por IP se vuelven casi globales y la auditoría guarda la IP del proxy. No se pudo verificar sin el entorno de Render."),
     ("SEC-04", "Higiene de seguridad", "Task", "Pedir la contraseña también en POST /auth/mfa/setup: con un token robado de un administrador sin MFA se podría enrolar el autenticador del atacante", "Development", 3, "A", 3,
      "Riesgo documentado en ADR-004 §4. Mitigación inmediata: enrolar al administrador del bootstrap justo después de desplegar."),
+    ("SEC-05", "Higiene de seguridad", "Task", "Fallar al arrancar fuera del perfil dev si falta la configuración: quitar el perfil dev por defecto y los valores de relleno de JWT_SECRET/DB_PASSWORD; Dockerfile con USER no root y HEALTHCHECK", "Development", 2, "B", 2,
+     "Hallazgo de docs/seguridad/owasp-top10-sprint-2.md (A05). Hoy un despliegue sin SPRING_PROFILES_ACTIVE arranca como dev con valores públicos."),
 ]
 
 # Avance de los pendientes internos (código -> (estado, nota)); estado: "hecho" | "parcial".
@@ -450,6 +452,9 @@ AVANCE = {
     "SP1-07": ("hecho", "2026-10-07 · noRollbackFor; AuditPersistenceIntegrationTest"),
     "SP1-08": ("hecho", "2026-10-07 · 258 pruebas en verde con Docker"),
     "BD-01": ("parcial", "2026-10-08 · docs/bd/convenciones-bd.md redactado como propuesta; falta acordarlo con BD (Andraus) y alinear el modelo formal"),
+    "OWASP-01": ("parcial", "2026-10-10 · revisión A01–A10 hecha (docs/seguridad/owasp-top10-sprint-2.md, con sondeo a Render); es una revisión, no una prueba de penetración; faltan las correcciones (SEC-01, SEC-05, OWASP-02/03, CI-05/06)"),
+    "API-02": ("parcial", "2026-10-10 · contratos y DTO generados del código (docs/api/referencia-api-sprint-2.md), catálogo de errores ampliado (errores-api-sprint-2.md §5-7) y guía de Swagger; faltan los ejemplos dentro de Swagger (depende de API-01)"),
+    "DOC-02": ("parcial", "2026-10-10 · ADR-005, 006 y 007 redactados (estado Propuesto) y registro de decisiones/supuestos S-01..S-32 (decisiones-y-supuestos-sprint-2.md) con verificador de dependencias; falta actualizar arquitectura-sprint-1.md y aprobar los ADR"),
 }
 
 # ---------------------------------------------------------------------------
