@@ -453,7 +453,8 @@ AVANCE = {
     "SP1-08": ("hecho", "2026-10-07 · 258 pruebas en verde con Docker"),
     "BD-01": ("parcial", "2026-10-08 · docs/bd/convenciones-bd.md redactado como propuesta; falta acordarlo con BD (Andraus) y alinear el modelo formal"),
     "OWASP-01": ("parcial", "2026-10-10 · revisión A01–A10 hecha (docs/seguridad/owasp-top10-sprint-2.md, con sondeo a Render); es una revisión, no una prueba de penetración; faltan las correcciones (SEC-01, SEC-05, OWASP-02/03, CI-05/06)"),
-    "API-02": ("parcial", "2026-10-10 · contratos y DTO generados del código (docs/api/referencia-api-sprint-2.md), catálogo de errores ampliado (errores-api-sprint-2.md §5-7) y guía de Swagger; faltan los ejemplos dentro de Swagger (depende de API-01)"),
+    "API-01": ("hecho", "2026-10-10 · springdoc 3.1.1 aplicado (compatible con Boot 4.1/Jackson 3), esquema Bearer, 18 controladores anotados, ejemplos en los DTO de entrada y errores como ApiError. Apagado por defecto (SWAGGER_ENABLED). Pruebas: OpenApiDocumentationIntegrationTest, OpenApiDisabledIntegrationTest. Falta verificarlo en Render"),
+    "API-02": ("hecho", "2026-10-10 · contratos y DTO generados del código (docs/api/referencia-api-sprint-2.md), catálogo de errores ampliado (errores-api-sprint-2.md §5-7) y la misma información dentro de Swagger (códigos, mensajes y ejemplos por operación)"),
     "DOC-02": ("parcial", "2026-10-10 · ADR-005, 006 y 007 redactados (estado Propuesto) y registro de decisiones/supuestos S-01..S-32 (decisiones-y-supuestos-sprint-2.md) con verificador de dependencias; falta actualizar arquitectura-sprint-1.md y aprobar los ADR"),
 }
 

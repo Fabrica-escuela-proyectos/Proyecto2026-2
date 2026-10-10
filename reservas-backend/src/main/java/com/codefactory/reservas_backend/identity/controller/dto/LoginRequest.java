@@ -1,5 +1,6 @@
 package com.codefactory.reservas_backend.identity.controller.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -21,6 +22,7 @@ public class LoginRequest {
 
     // Límites de longitud (issue #9): una contraseña enorme llegaría a BCrypt
     // (costoso) y un correo enorme a la consulta; ninguna cuenta válida los supera.
+    @Schema(description = "Correo con el que se registró", example = "ana.gomez@example.com")
     @NotBlank(message = "El correo electrónico es obligatorio")
     @Size(max = 150, message = "El correo electrónico no puede superar los 150 caracteres")
     private String email;
@@ -29,6 +31,7 @@ public class LoginRequest {
     @Size(max = 72, message = "La contraseña no puede superar los 72 caracteres")
     private String password;
 
+    @Schema(description = "Código TOTP de 6 dígitos. Solo si la cuenta tiene MFA activa (obligatoria para administradores)", example = "123456")
     @Size(max = 10, message = "El código de verificación no es válido")
     private String mfaCode;
 }

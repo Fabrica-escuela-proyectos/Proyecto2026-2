@@ -39,6 +39,8 @@ Ambos archivos están sin commitear todavía — revísalos y commitéalos antes
 
    `SPRING_PROFILES_ACTIVE=prod` es importante: sin esta variable, `application.yml` cae por defecto al perfil `dev` (`show-sql`, logging debug, y una contraseña de base de datos de relleno que aquí no aplica porque ya pones la real). `prod` no tiene archivo propio, así que simplemente usa la configuración base, que es la correcta para esto.
 
+   **Opcional, solo para una demostración:** `SWAGGER_ENABLED=true` publica la documentación interactiva en `/swagger-ui.html` y `/v3/api-docs`. Sin la variable (lo normal) esas rutas responden `404`. Elimínala al terminar; ver [guía de Swagger](api/guia-swagger-openapi.md).
+
    Para generar `JWT_SECRET` (mínimo 32 caracteres, según `ADR-002`):
    ```powershell
    -join ((48..57)+(65..90)+(97..122)|Get-Random -Count 40|%{[char]$_})

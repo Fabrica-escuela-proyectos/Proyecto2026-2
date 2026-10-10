@@ -7,6 +7,11 @@ import com.codefactory.reservas_backend.provider.application.ProviderRegistratio
 import com.codefactory.reservas_backend.provider.controller.dto.ProviderResponse;
 import com.codefactory.reservas_backend.provider.controller.dto.RegisterProviderRequest;
 import com.codefactory.reservas_backend.provider.controller.dto.RegisterProviderResponse;
+import com.codefactory.reservas_backend.common.config.OpenApiTags;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +38,7 @@ import java.util.UUID;
  * ProviderQueryService.
  */
 @RestController
+@Tag(name = OpenApiTags.PROVIDERS)
 @RequestMapping("/api/v1/providers")
 @RequiredArgsConstructor
 public class ProviderController {
@@ -41,6 +47,13 @@ public class ProviderController {
     private final ProviderQueryService providerQueryService;
     private final IdentityService identityService;
 
+    @Operation(summary = "Registrar un proveedor y su negocio (HU-03)",
+            description = "Crea la cuenta con rol PROVEEDOR y su negocio. Comparte con el registro de clientes el límite de 5 registros por IP cada 10 minutos.")
+    @SecurityRequirements
+    @ApiResponse(responseCode = "201", description = "Proveedor y negocio creados")
+    @ApiResponse(responseCode = "400", description = "Campos obligatorios ausentes o con formato inválido")
+    @ApiResponse(responseCode = "409", description = "El correo o el celular ya están registrados")
+    @ApiResponse(responseCode = "429", description = "Límite de registros por IP alcanzado")
     @PostMapping
     public ResponseEntity<RegisterProviderResponse> register(
             @Valid @RequestBody RegisterProviderRequest request,
@@ -50,11 +63,20 @@ public class ProviderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(summary = "Consultar mi perfil de proveedor (HU-06)",
+            description = "El perfil y los negocios del usuario autenticado.")
+    @ApiResponse(responseCode = "200", description = "Perfil del proveedor")
+    @ApiResponse(responseCode = "404", description = "El usuario no tiene un negocio asociado")
     @GetMapping("/me")
     public ResponseEntity<ProviderResponse> getOwn() {
         return ResponseEntity.ok(providerQueryService.getOwnProvider(currentUser().id()));
     }
 
+    @Operation(summary = "Consultar un proveedor por id (HU-06)",
+            description = "Solo el propio proveedor o un administrador.")
+    @ApiResponse(responseCode = "200", description = "Perfil del proveedor")
+    @ApiResponse(responseCode = "403", description = "Es el perfil de otro proveedor")
+    @ApiResponse(responseCode = "404", description = "El proveedor no existe")
     @GetMapping("/{providerId}")
     public ResponseEntity<ProviderResponse> getProvider(@PathVariable UUID providerId) {
         return ResponseEntity.ok(providerQueryService.getProvider(providerId, currentUser()));

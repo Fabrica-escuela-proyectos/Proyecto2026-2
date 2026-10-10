@@ -1,5 +1,6 @@
 package com.codefactory.reservas_backend.resource.controller.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -27,8 +28,8 @@ public final class AvailabilityDtos {
 
     /** Rango [start, end) de un día, en ambos sentidos (petición y respuesta). */
     public record TimeRange(
-            @NotBlank(message = TIME_FORMAT_MESSAGE) @Pattern(regexp = TIME_REGEX, message = TIME_FORMAT_MESSAGE) String start,
-            @NotBlank(message = TIME_FORMAT_MESSAGE) @Pattern(regexp = TIME_REGEX, message = TIME_FORMAT_MESSAGE) String end) {
+            @Schema(description = "Hora de inicio HH:mm (incluida)", example = "09:00") @NotBlank(message = TIME_FORMAT_MESSAGE) @Pattern(regexp = TIME_REGEX, message = TIME_FORMAT_MESSAGE) String start,
+            @Schema(description = "Hora de fin HH:mm (excluida)", example = "12:00") @NotBlank(message = TIME_FORMAT_MESSAGE) @Pattern(regexp = TIME_REGEX, message = TIME_FORMAT_MESSAGE) String end) {
     }
 
     /** Cuerpo de PUT .../availability/{dayOfWeek}: reemplaza solo ese día; lista vacía = no disponible. */

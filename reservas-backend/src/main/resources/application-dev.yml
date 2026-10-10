@@ -22,3 +22,10 @@ security:
     # entorno desplegado. JwtTokenProvider exige HMAC-SHA con clave de al
     # menos 256 bits.
     secret: ${JWT_SECRET:dev-only-secret-not-for-production-use-change-me-32b}
+
+# Swagger UI en http://localhost:8080/swagger-ui.html (ARQ-01); en producción queda apagado salvo SWAGGER_ENABLED=true.
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

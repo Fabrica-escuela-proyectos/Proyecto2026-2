@@ -42,7 +42,7 @@ En cada push a `main` se ejecutan: pruebas → análisis de SonarCloud → build
 ## Documentación clave
 
 - [Arquitectura y decisiones (ADR)](docs/arquitectura)
-- [Contratos y errores de la API](docs/api)
+- [Contratos y errores de la API](docs/api) y [guía de Swagger/OpenAPI](docs/api/guia-swagger-openapi.md) (`/swagger-ui.html` en local; en Render apagado salvo `SWAGGER_ENABLED=true`)
 - [Plan del Sprint 2](docs/sprint-2/plan-de-trabajo-sprint-2.md) y [estado del proyecto](docs/sprint-2/handoff-contexto.md)
 - [Política de MFA (ADR-004)](docs/arquitectura/adr/ADR-004-politica-mfa.md)
 

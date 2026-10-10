@@ -44,6 +44,7 @@ La app solo necesita un Postgres alcanzable con un rol y una base específicos �
    Migrating schema "public" to version "2 - create sessions table"
    Tomcat started on port 8080 (http)
    ```
+4. **Swagger UI** (documentación interactiva de la API) en `http://localhost:8080/swagger-ui.html`; con el perfil `dev` ya viene encendido. Guía en [`api/guia-swagger-openapi.md`](api/guia-swagger-openapi.md).
 
 ## 3.1 Correr las pruebas
 

@@ -73,6 +73,10 @@ public class SecurityConfig {
                 // /api/v1/services/** (asignación de recursos, HU-18) sigue exigiendo sesión y rol.
                 .requestMatchers(HttpMethod.GET, "/api/v1/services/*/availability").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                // ARQ-01: documentación OpenAPI. Las rutas se permiten aquí, pero solo existen si
+                // springdoc está habilitado (SWAGGER_ENABLED; apagado por defecto fuera de dev/test),
+                // si no responden 404.
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

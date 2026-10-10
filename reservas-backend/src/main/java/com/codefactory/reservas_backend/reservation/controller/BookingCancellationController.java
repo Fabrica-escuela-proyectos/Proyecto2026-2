@@ -5,6 +5,10 @@ import com.codefactory.reservas_backend.identity.application.UserIdentity;
 import com.codefactory.reservas_backend.reservation.application.BookingCancellationService;
 import com.codefactory.reservas_backend.reservation.controller.dto.BookingDtos.BookingItem;
 import com.codefactory.reservas_backend.reservation.controller.dto.BookingDtos.CancelBookingRequest;
+import com.codefactory.reservas_backend.common.config.OpenApiTags;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,12 +27,20 @@ import java.util.UUID;
  * Solo el rol CLIENTE y solo sobre sus propias reservas (de otro cliente: 403). El cuerpo es opcional.
  */
 @RestController
+@Tag(name = OpenApiTags.CLIENT_BOOKINGS)
 @RequiredArgsConstructor
 public class BookingCancellationController {
 
     private final BookingCancellationService cancellationService;
     private final IdentityService identityService;
 
+    @Operation(summary = "Cancelar una reserva como cliente (HU-25)",
+            description = "Solo el cliente dueño de la reserva. Debe estar CONFIRMADA y faltar al menos 1 hora para su inicio. Libera el horario. El cuerpo con `reason` (máx. 500) es opcional.")
+    @ApiResponse(responseCode = "200", description = "Reserva cancelada (origen CLIENTE)")
+    @ApiResponse(responseCode = "400", description = "Motivo demasiado largo")
+    @ApiResponse(responseCode = "403", description = "La reserva es de otro cliente")
+    @ApiResponse(responseCode = "404", description = "La reserva no existe")
+    @ApiResponse(responseCode = "409", description = "Ya cancelada o completada, ya iniciada, o faltan menos de 1 hora para su inicio")
     @PostMapping("/api/v1/bookings/{bookingId}/cancellation")
     @PreAuthorize("hasRole('CLIENTE')")
     public ResponseEntity<BookingItem> cancel(@PathVariable UUID bookingId,

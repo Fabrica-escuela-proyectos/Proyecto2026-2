@@ -6,6 +6,10 @@ import com.codefactory.reservas_backend.identity.application.UserIdentity;
 import com.codefactory.reservas_backend.identity.controller.dto.MfaActivateRequest;
 import com.codefactory.reservas_backend.identity.controller.dto.MfaSetupResponse;
 import com.codefactory.reservas_backend.identity.domain.InvalidCredentialsException;
+import com.codefactory.reservas_backend.common.config.OpenApiTags;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +34,7 @@ import java.util.UUID;
  * nada impide que un Cliente/Proveedor active MFA voluntariamente.
  */
 @RestController
+@Tag(name = OpenApiTags.AUTH)
 @RequestMapping("/api/v1/auth/mfa")
 @RequiredArgsConstructor
 public class MfaController {
@@ -37,11 +42,18 @@ public class MfaController {
     private final MfaService mfaService;
     private final IdentityService identityService;
 
+    @Operation(summary = "Iniciar el enrolamiento de MFA (ADR-004)",
+            description = "Genera un secreto TOTP nuevo y la URI otpauth:// para la app autenticadora. La MFA no queda activa hasta confirmarla con /auth/mfa/activate. Un administrador sin MFA activa solo puede usar este endpoint, /activate y el cierre de sesión.")
+    @ApiResponse(responseCode = "200", description = "Secreto y URI para el código QR")
     @PostMapping("/setup")
     public ResponseEntity<MfaSetupResponse> setup() {
         return ResponseEntity.ok(mfaService.setup(currentUserId()));
     }
 
+    @Operation(summary = "Activar la MFA con un primer código (ADR-004)",
+            description = "Confirma que la app autenticadora quedó bien configurada enviando un código vigente.")
+    @ApiResponse(responseCode = "204", description = "MFA activada")
+    @ApiResponse(responseCode = "400", description = "Código inválido, o no se inició el enrolamiento con /setup")
     @PostMapping("/activate")
     public ResponseEntity<Void> activate(@Valid @RequestBody MfaActivateRequest request) {
         mfaService.activate(currentUserId(), request.getCode());

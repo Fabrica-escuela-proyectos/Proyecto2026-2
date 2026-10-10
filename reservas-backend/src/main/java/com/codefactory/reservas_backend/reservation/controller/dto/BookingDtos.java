@@ -1,5 +1,6 @@
 package com.codefactory.reservas_backend.reservation.controller.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -28,20 +29,25 @@ public final class BookingDtos {
     @Setter
     public static class CreateBookingRequest {
 
+        @Schema(description = "Servicio que se reserva")
         @NotNull(message = "El servicio es obligatorio")
         private UUID serviceId;
 
+        @Schema(description = "Fecha de la reserva, yyyy-MM-dd (hora de Bogotá)", example = "2026-10-19")
         @NotBlank(message = "La fecha es obligatoria")
         private String date;
 
+        @Schema(description = "Hora de inicio HH:mm (hora de Bogotá)", example = "10:00")
         @NotBlank(message = "La hora de inicio es obligatoria")
         @Pattern(regexp = TIME_REGEX, message = TIME_MESSAGE)
         private String startTime;
 
+        @Schema(description = "Hora de fin HH:mm; la duración debe ser la del servicio", example = "10:45")
         @NotBlank(message = "La hora de fin es obligatoria")
         @Pattern(regexp = TIME_REGEX, message = TIME_MESSAGE)
         private String endTime;
 
+        @Schema(description = "Recurso a reservar. Opcional: sin él se asigna el primer recurso libre por nombre")
         private UUID resourceId;
     }
 
@@ -82,6 +88,7 @@ public final class BookingDtos {
     @Setter
     public static class CancelBookingRequest {
 
+        @Schema(description = "Motivo de la cancelación (máx. 500 caracteres)", example = "Me surgió un imprevisto")
         @Size(max = 500, message = "El motivo no puede superar los 500 caracteres")
         private String reason;
     }
@@ -91,6 +98,7 @@ public final class BookingDtos {
     @Setter
     public static class ProviderCancelRequest {
 
+        @Schema(description = "Motivo de la cancelación, obligatorio (máx. 500 caracteres)", example = "El recurso quedó fuera de servicio")
         @NotBlank(message = "El motivo de la cancelación es obligatorio")
         @Size(max = 500, message = "El motivo no puede superar los 500 caracteres")
         private String reason;

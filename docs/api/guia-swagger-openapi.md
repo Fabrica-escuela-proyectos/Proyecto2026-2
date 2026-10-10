@@ -1,183 +1,112 @@
-# Guía: documentar la API con Swagger / OpenAPI
+# Swagger / OpenAPI: cómo está aplicado y cómo mantenerlo
 
-**Estado:** esta guía describe **cómo hacerlo**; todavía **no está aplicada en el repositorio** (es la tarea `ARQ-01`, `API-01` y `API-02` de Azure). Todo lo que sigue se **probó** en una copia aparte del proyecto (Spring Boot 4.1.1, Java 17, PostgreSQL 16): compiló, la aplicación arrancó y los resultados que se citan salieron de ese ensayo. Lo que no se probó está marcado como tal.
+**Estado: aplicado el 2026-10-10** (tareas `ARQ-01`, `API-01`, `API-02`). Verificado con la suite completa (`OpenApiDocumentationIntegrationTest`, `OpenApiDisabledIntegrationTest`) y abriendo Swagger UI en una instancia local (carga, grupos, candados, cuerpo de ejemplo y respuestas de una operación). **No se ejercitó el botón *Authorize* ni *Execute* de la interfaz** (la especificación sí declara el esquema Bearer y se comprobó por prueba) y **no está verificado en Render** (el cambio aún no se ha desplegado con `SWAGGER_ENABLED=true`).
 
-## 1. Qué se obtiene y por qué conviene
+## 1. Qué se obtiene
 
-- **OpenAPI 3.1** generado desde el código (`/v3/api-docs`) y una **interfaz Swagger UI** (`/swagger-ui.html`) donde se ve cada endpoint, su cuerpo, sus validaciones y se puede **probar en vivo** con un token.
-- Es un entregable explícito de Arquisoft en el Sprint 2 y sirve para la sustentación: se muestra la API funcionando sin abrir Postman.
-- No reemplaza a [`endpoints-sprint-2.md`](endpoints-sprint-2.md) (reglas de negocio y ejemplos) ni a [`referencia-api-sprint-2.md`](referencia-api-sprint-2.md) (matriz de acceso y DTO, generada del código): los complementa con algo ejecutable.
+- **OpenAPI 3.1** generado del código en `/v3/api-docs` y **Swagger UI** en `/swagger-ui.html`, donde cada endpoint muestra su resumen (con la HU), su rol, sus parámetros con ejemplos, sus cuerpos con ejemplos y **todas** sus respuestas (códigos, descripciones y el formato `ApiError` de los errores). Se puede probar en vivo con un token.
+- 8 grupos: *Autenticación y MFA, Usuarios, Proveedores y negocio, Catálogo y disponibilidad, Servicios, Recursos, Reservas del cliente, Reservas del proveedor* (33 operaciones, 47 esquemas).
+- Complementa, no reemplaza: [`referencia-api-sprint-2.md`](referencia-api-sprint-2.md) (matriz de acceso y DTO, generada del código), [`errores-api-sprint-2.md`](errores-api-sprint-2.md) (catálogo de errores) y [`endpoints-sprint-2.md`](endpoints-sprint-2.md) (reglas de negocio narradas).
 
-## 2. Qué hace springdoc por sí solo (probado)
+## 2. Cómo usarla
 
-Con solo agregar la dependencia, **sin tocar ningún controlador**:
-
-| Resultado del ensayo | |
+| Entorno | Cómo se abre |
 |---|---|
-| Versión | `springdoc-openapi-starter-webmvc-ui` **3.1.1** (última en Maven Central a 2026-10; las 3.0.x también existen). Funciona con **Spring Boot 4.1.1 y Jackson 3**: la aplicación arrancó sin cambios. |
-| Cobertura | Detectó los **33 endpoints** (27 rutas) y **46 esquemas** automáticamente. |
-| Validaciones | Las de Bean Validation salen solas en el esquema: `required`, `minLength`, `pattern`, `maxLength`… (p. ej. `CreateBookingRequest.startTime` con su patrón `HH:mm`). |
+| **Local** (perfil `dev`, el de `./mvnw spring-boot:run`) | `http://localhost:8080/swagger-ui.html`. Ya viene encendido. |
+| **Render** (perfil `prod`) | Está **apagado**. Para una demostración: en el panel de Render agrega la variable `SWAGGER_ENABLED=true`, espera el redeploy y abre `https://proyecto2026-2-5zoo.onrender.com/swagger-ui.html`. **Al terminar, elimina la variable** (la documentación expone la lista completa de rutas; OWASP A05). Antes de la demo despierta el servicio con `/actuator/health` (el plan gratuito lo duerme a los 15 min). |
+| Descargar la especificación | `curl http://localhost:8080/v3/api-docs -o openapi.json`. **Postman** puede importarla (Import → File) y crea una colección con todos los endpoints. |
 
-Y qué **no** hace bien por defecto (por eso hay que anotar):
+Para llamar endpoints protegidos desde la interfaz:
 
-| Falta | Consecuencia |
+1. Abre `POST /api/v1/auth/login` → **Try it out** → envía `email`, `password` (y `mfaCode` si la cuenta tiene MFA) → copia el `token` de la respuesta.
+2. Botón **Authorize** (arriba a la derecha) → pega **solo el token** (sin `Bearer`) → *Authorize*. Desde ahí cada petición lleva `Authorization: Bearer …`.
+3. Abre el endpoint → **Try it out** → edita el cuerpo (ya trae ejemplos) → **Execute**.
+4. Un administrador necesita además el header `X-MFA-Code` (aparece como parámetro obligatorio de `PATCH /users/{id}/role` y `DELETE /users/{id}`).
+5. Los candados indican qué rutas piden token; las públicas (`login`, registro de cliente y de proveedor, disponibilidad de un servicio) **no tienen candado**.
+
+No dejes un token real en el navegador de un equipo compartido.
+
+## 3. Qué se cambió en el repositorio
+
+| Archivo | Cambio |
 |---|---|
-| Solo documenta la respuesta `200` | Un `POST` que devuelve `201`, o los `400/404/409`, no aparecen |
-| Las etiquetas salen como `booking-controller`, `my-bookings-controller`… | Poco legible; hay que agruparlas por tema |
-| Las rutas públicas no se distinguen | Swagger les pide el candado igual |
-| Sin resúmenes ni descripciones | Quedan solo el método y la ruta |
-| El rol que exige `@PreAuthorize` no aparece | Hay que decirlo en la descripción |
+| `pom.xml` | `springdoc-openapi-starter-webmvc-ui` **3.1.1** (funciona con Spring Boot 4.1.1 y Jackson 3) |
+| `common/config/OpenApiConfig.java` (nuevo) | Título, esquema **Bearer JWT** (botón Authorize, requisito global) y un `OpenApiCustomizer` que corrige la especificación ya generada (ver §5) |
+| `common/config/OpenApiTags.java` (nuevo) | Nombres y orden de los 8 grupos; las constantes se usan en `@Tag` |
+| `identity/infrastructure/SecurityConfig.java` | `permitAll` para `/v3/api-docs/**`, `/swagger-ui/**` y `/swagger-ui.html` (si el interruptor está apagado esas rutas no existen y responden `404`) |
+| `application.yml` | `springdoc.api-docs.enabled` y `springdoc.swagger-ui.enabled` = `${SWAGGER_ENABLED:false}` → **apagado por defecto** |
+| `application-dev.yml`, `application-test.yml` | Encendido (dev para trabajar; test para las pruebas) |
+| 18 controladores | `@Tag`, y por operación `@Operation` (resumen con la HU, reglas y rol), un `@ApiResponse` por código, `@SecurityRequirements` en las públicas, `@Parameter` en los parámetros y header `X-MFA-Code` |
+| DTO de entrada (11 archivos) | `@Schema(description, example)` en los campos. **Sin ejemplos de contraseñas** (el repositorio es público) |
+| `OpenApiDocumentationIntegrationTest`, `OpenApiDisabledIntegrationTest` (nuevos) | 8 pruebas; ver §6 |
 
-## 3. Pasos (en este orden)
+El cambio no altera ningún comportamiento de la API: salvo las 8 pruebas nuevas, la suite no cambió (622 pruebas, 0 fallos al 2026-10-10).
 
-### Paso 1 — Dependencia (`reservas-backend/pom.xml`)
+## 4. Cómo documentar un endpoint nuevo
 
-```xml
-<dependency>
-    <groupId>org.springdoc</groupId>
-    <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-    <version>3.1.1</version>
-</dependency>
-```
-
-### Paso 2 — Configuración global (clase nueva `common/config/OpenApiConfig.java`)
-
-Define el título, el **esquema Bearer JWT** (el botón *Authorize*) y las respuestas `401`/`403` comunes a todas las rutas protegidas. Código probado:
-
-```java
-@Configuration
-public class OpenApiConfig {
-
-    /** Respuestas comunes a todas las operaciones protegidas: 401 y 403 con el formato ApiError. */
-    @Bean
-    public OpenApiCustomizer commonErrorResponses() {
-        return openApi -> openApi.getPaths().values().forEach(item -> item.readOperations().forEach(op -> {
-            if (op.getSecurity() == null || !op.getSecurity().isEmpty()) {      // las públicas llevan security = []
-                op.getResponses().addApiResponse("401", new ApiResponse().description("Sin sesión o token inválido (ApiError)"));
-                op.getResponses().addApiResponse("403", new ApiResponse().description("Rol insuficiente o recurso de otro usuario (ApiError)"));
-            }
-        }));
-    }
-
-    @Bean
-    public OpenAPI reservasOpenApi() {
-        return new OpenAPI()
-                .info(new Info().title("Plataforma de Reservas de Servicios").version("v1")
-                        .description("API REST del backend (Sprint 2). Formato de error uniforme: ApiError."))
-                .components(new Components().addSecuritySchemes("bearerAuth",
-                        new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")))
-                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"));   // todas protegidas salvo que se diga lo contrario
-    }
-}
-```
-(Imports: `io.swagger.v3.oas.models.*`, `org.springdoc.core.customizers.OpenApiCustomizer`; `ApiResponse` aquí es `io.swagger.v3.oas.models.responses.ApiResponse`.)
-
-### Paso 3 — Permitir las rutas de la documentación (`SecurityConfig`)
-
-Sin esto responden `401`. Junto a las demás reglas públicas:
-
-```java
-.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-```
-Con esto `GET /swagger-ui.html` redirige (302) a `/swagger-ui/index.html` y responde `200` (probado).
-
-### Paso 4 — Decidir si queda abierto en producción (**decisión de seguridad, OWASP A05**)
-
-Springdoc lo deja **activo por defecto** y avisa en el log: *«SpringDoc /v3/api-docs endpoint is enabled by default. To disable it in production, set the property 'springdoc.api-docs.enabled=false'»* (y `springdoc.swagger-ui.enabled=false` para la interfaz). Recomendación: interruptor por variable de entorno, apagado por defecto y encendido en el entorno donde se vaya a mostrar:
-
-```yaml
-# application.yml
-springdoc:
-  api-docs:
-    enabled: ${SWAGGER_ENABLED:false}
-  swagger-ui:
-    enabled: ${SWAGGER_ENABLED:false}
-```
-En `application-dev.yml` ponerlas en `true`; en Render, la variable `SWAGGER_ENABLED=true` **solo** mientras dure la demostración. *(No se probó apagarlo; las dos propiedades son las que nombra el propio springdoc.)* Argumento para dejarlo abierto: el repositorio es público y la API ya está documentada en `docs/`; el riesgo es solo facilitar el reconocimiento de la superficie. Decisión pendiente del equipo (ver [decisiones](../arquitectura/decisiones-y-supuestos-sprint-2.md)).
-
-### Paso 5 — Anotar los controladores
-
-Lo mínimo útil por controlador y por operación (todo probado salvo lo que se indique):
+Cada endpoint nuevo **debe** llevar esto, o la prueba `todoEndpointDeLaAplicacionEstaDocumentadoConResumenYGrupo` falla y dice cuál falta:
 
 ```java
 @RestController
-@RequestMapping("/api/v1/bookings")
-@Tag(name = "Reservas", description = "Crear, consultar y cancelar reservas (HU-22 a HU-26)")   // agrupa en la interfaz
+@Tag(name = OpenApiTags.CLIENT_BOOKINGS)                  // 1. grupo (constante de OpenApiTags)
 public class BookingController {
 
-    @Operation(summary = "Crear una reserva (HU-22)",
-            description = "Solo el rol CLIENTE. El cliente sale de la sesión. La duración debe ser la del servicio.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Reserva CONFIRMADA creada"),
-            @ApiResponse(responseCode = "400", description = "Validación: fecha, horas, duración, antelación o recurso",
-                    content = @Content(schema = @Schema(implementation = ApiError.class))),
-            @ApiResponse(responseCode = "404", description = "El servicio no está disponible",
-                    content = @Content(schema = @Schema(implementation = ApiError.class))),
-            @ApiResponse(responseCode = "409", description = "Horario ocupado o fuera del horario del recurso",
-                    content = @Content(schema = @Schema(implementation = ApiError.class)))})
+    @Operation(summary = "Crear una reserva (HU-22)",      // 2. resumen con la HU + descripción con reglas y rol
+            description = "Solo CLIENTE. …")
+    @ApiResponse(responseCode = "201", description = "Reserva CONFIRMADA")        // 3. un @ApiResponse por código…
+    @ApiResponse(responseCode = "400", description = "Fecha, horas, duración…")   //    …solo código y texto:
+    @ApiResponse(responseCode = "409", description = "Horario ocupado…")          //    el cuerpo de error lo pone el customizer
     @PostMapping
     @PreAuthorize("hasRole('CLIENTE')")
     public ResponseEntity<BookingResponse> create(...) { ... }
 }
 ```
 
-Para una **ruta pública** (HU-20 y las de registro/login), quita el candado con `@SecurityRequirements` (vacío) y describe los parámetros:
-
-```java
-@Operation(summary = "Horarios libres de un servicio (HU-20)", description = "Pública: no requiere sesión.")
-@SecurityRequirements
-@GetMapping
-public ResponseEntity<ServiceAvailabilityResponse> get(
-        @PathVariable UUID serviceId,
-        @Parameter(description = "Fecha yyyy-MM-dd; sin ella, hoy (hora de Bogotá)", example = "2026-10-19")
-        @RequestParam(required = false) String date) { ... }
-```
-
-Resultado verificado en `/v3/api-docs`: `POST /bookings` queda con etiqueta «Reservas», resumen, respuestas `201, 400, 404, 409` (con el esquema `ApiError`) **más** `401` y `403` añadidas por el paso 2; y `GET /services/{id}/availability` con `security: []` (sin candado).
-
-**Patrones sin probar** (estándar de `swagger-annotations`, revisar al aplicarlos):
-- Header de confirmación MFA en `PATCH /users/{id}/role` y `DELETE /users/{id}`: `@Parameter(in = ParameterIn.HEADER, name = "X-MFA-Code", description = "Código TOTP vigente del administrador", required = true)`.
-- Ejemplos y descripciones por campo en los DTO: `@Schema(description = "Hora de inicio HH:mm", example = "10:00")` sobre cada campo.
-
-### Paso 6 — Plantilla de decisión por endpoint (qué anotar según el caso)
-
-| Caso del endpoint | Anotaciones |
+| Caso | Qué añadir |
 |---|---|
-| Cualquiera | `@Tag` en la clase; `@Operation(summary, description)` con la HU y el rol requerido |
-| Devuelve `201` | `@ApiResponse(responseCode = "201", …)` (por defecto saldría `200`) |
-| Tiene errores de negocio | un `@ApiResponse` por código con `ApiError`; los mensajes exactos están en [errores-api-sprint-2.md](errores-api-sprint-2.md) §7 |
-| Es público | `@SecurityRequirements` |
-| Recibe un header especial | `@Parameter(in = HEADER, …)` |
-| Parámetros de consulta | `@Parameter(description, example)` |
-| Es una confirmación (`CONFIRMATION_REQUIRED`) | `@ApiResponse(responseCode = "409")` explicando el campo `fields.affectedBookings` |
+| Devuelve `201` o `204` | `@ApiResponse` con ese código (si no, Swagger muestra `200`) |
+| Ruta **pública** (sin token) | `@SecurityRequirements` (vacío) y un `permitAll` en `SecurityConfig` |
+| Header o parámetro especial | `@Parameter(name = "X-MFA-Code", in = ParameterIn.HEADER, …)` a nivel de método, o `@Parameter(description, example)` delante del argumento |
+| Campo de un DTO de entrada | `@Schema(description = "…", example = "…")`. Las validaciones (`@Size`, `@Pattern`, `@Min`…) ya salen solas |
+| Grupo nuevo | Constante y entrada en `OpenApiTags` |
+| 401 / 403 | **No hace falta**: el customizer los añade a toda ruta protegida; solo se declaran para dar un texto más específico (p. ej. `MFA_REQUIRED`) |
 
-## 4. Cómo usar Swagger UI (para la demostración)
+Los mensajes de error exactos por HU están en [`errores-api-sprint-2.md`](errores-api-sprint-2.md) §7.
 
-1. Abre `/swagger-ui.html` (local: `http://localhost:8080/swagger-ui.html`).
-2. Ejecuta `POST /api/v1/auth/login` con un usuario de prueba y copia el `token` de la respuesta.
-3. Botón **Authorize** (arriba a la derecha) → pega **solo el token** (sin la palabra `Bearer`) → *Authorize*. Desde ahí cada petición lleva `Authorization: Bearer …`.
-4. Abre un endpoint → **Try it out** → edita el cuerpo → **Execute**: verás el código HTTP, el cuerpo y la cabecera.
-5. Para un administrador, el login lleva `mfaCode` y las operaciones sensibles el header `X-MFA-Code` (parámetro propio de cada operación).
+## 5. Lo que descubrimos al aplicarla (por qué existe el customizer)
 
-**Atajo:** `curl http://localhost:8080/v3/api-docs -o openapi.json` descarga la especificación; **Postman puede importar ese archivo** (Import → File) y crea una colección con todos los endpoints, útil para comparar con la colección propia de [`docs/postman/`](../postman/README.md).
+springdoc por sí solo hace menos de lo que parece. Lo que se vio con la interfaz abierta y con la especificación volcada:
 
-## 5. Dónde tocar (alcance del cambio)
-
-| Archivo | Cambio |
+| Comportamiento de springdoc | Corrección en `OpenApiConfig` |
 |---|---|
-| `pom.xml` | +1 dependencia |
-| `common/config/OpenApiConfig.java` | clase nueva (paso 2) |
-| `identity/infrastructure/SecurityConfig.java` | +1 línea (paso 3) |
-| `application.yml`, `application-dev.yml` | interruptor `springdoc.*` (paso 4) |
-| 18 controladores (33 operaciones) | `@Tag` + `@Operation` + `@ApiResponses` (paso 5) |
-| `src/test/…` | una prueba de integración que pida `/v3/api-docs` y compruebe que contiene los endpoints clave (evita que Swagger se rompa en silencio con una actualización) |
+| **Copia el esquema de la respuesta de éxito a todas las respuestas declaradas**: un `409` de `POST /bookings` salía describiendo `BookingResponse`, lo cual es falso | Toda respuesta `4xx/5xx` se reemplaza por `ApiError` (`application/json`) |
+| Las respuestas de éxito salen como `*/*` | Se cambian a `application/json` |
+| No sabe que 401 y 403 existen en toda ruta protegida (salen de Spring Security, no del controlador) | Se añaden a toda operación que no sea pública (sin pisar el texto que el controlador ya dio) |
+| Solo documenta `200` si no se anota | `@ApiResponse` por código en cada operación |
+| Etiquetas automáticas (`booking-controller`…) | `@Tag` con `OpenApiTags` (nombre legible y orden fijo) |
+| El esquema `ApiError` no aparece si nadie lo referencia | Se registra explícitamente |
 
-Esfuerzo estimado: ~1 día (la tarea `ARQ-01` del plan tiene 7 h). El cambio **no altera ningún comportamiento** de la API; las 614 pruebas existentes no deberían verse afectadas (no se corrieron con la dependencia agregada: el ensayo fue solo de arranque y de la especificación).
+Trampas conocidas:
 
-## 6. Trampas
+- **`ApiResponse` tiene dos clases:** `io.swagger.v3.oas.annotations.responses.ApiResponse` (anotación, en los controladores) y `io.swagger.v3.oas.models.responses.ApiResponse` (modelo, en el customizer). Importa cada una donde corresponde.
+- **El header `X-MFA-Code` figura como obligatorio** en la interfaz aunque el servidor lo trate como opcional (responde `401 MFA_REQUIRED` si falta): así el botón *Execute* no se envía sin él. Para probar el caso «falta el código» usa Postman o `curl`.
+- **Con el perfil por defecto (`dev`) Swagger queda encendido.** En Render el perfil es `prod`; si algún despliegue olvidara `SPRING_PROFILES_ACTIVE` quedaría abierto (parte del hallazgo `SEC-05` de [OWASP](../seguridad/owasp-top10-sprint-2.md)).
+- **Springdoc 3.1.1 con Spring Boot 4.1:** si una actualización de Spring Boot rompe la generación, las pruebas de `OpenApiDocumentationIntegrationTest` fallan en el pipeline en vez de enterarse en la demostración.
 
-- **`ResponseEntity<T>` no se infiere como `201`:** hay que declararlo con `@ApiResponse`.
-- **`ApiError` aparece como esquema** solo si algún `@ApiResponse` lo referencia (es lo que se quiere).
-- **Dos `ApiResponse` con el mismo nombre:** el de `io.swagger.v3.oas.annotations.responses` (anotación) y el de `io.swagger.v3.oas.models.responses` (modelo, en el customizer). Importa cada uno donde corresponda.
-- **El plan gratuito de Render duerme el servicio:** si la demostración usa Swagger en Render, despiértalo antes (`/actuator/health`).
-- **No dejes tokens reales** copiados en el navegador de un equipo compartido.
+## 6. Qué comprueban las pruebas
+
+| Prueba | Garantiza |
+|---|---|
+| `laEspecificacionEsOpenApi31…` | La especificación existe, trae el esquema Bearer y `ApiError`, y los ejemplos y validaciones de los DTO |
+| `todoEndpointDeLaAplicacionEstaDocumentado…` | **Cada** endpoint implementado en la aplicación (leído de `RequestMappingHandlerMapping`) aparece en la especificación con resumen y grupo: un endpoint nuevo sin anotar rompe el build |
+| `soloLasRutasPublicasQuitanElCandado…` | Las 4 rutas públicas van sin candado; las demás exigen token y declaran 401 y 403; ningún error describe el tipo de la respuesta de éxito |
+| `lasRespuestasDeErrorDeclaradas…` | `POST /bookings` declara 201/400/404/409/401/403 con `ApiError` |
+| `elHeaderDeConfirmacionMfa…` | `X-MFA-Code` aparece una sola vez en `PATCH …/role` y `DELETE /users/{id}` |
+| `swaggerUiSeSirveSinToken…` | La interfaz se sirve sin token cuando está encendida |
+| `OpenApiDisabledIntegrationTest` | Con el interruptor apagado, `/v3/api-docs`, `/swagger-ui/index.html` y `/swagger-ui.html` responden `404` y la API normal sigue funcionando |
+
+## 7. Pendiente
+
+- Verificar en Render tras el despliegue: con `SWAGGER_ENABLED` sin definir debe dar `404`; con `true`, la interfaz carga y funciona *Authorize*.
+- Ejemplos de las respuestas (hoy los ejemplos están solo en los cuerpos de entrada y en los parámetros; las respuestas muestran el esquema).
+- Decidir con el equipo si en la sustentación se enciende en Render o se muestra en local ([decisiones](../arquitectura/decisiones-y-supuestos-sprint-2.md), S-30).

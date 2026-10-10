@@ -39,6 +39,15 @@ security:
       window-minutes: 15
       block-minutes: 15
 
+# Documentación OpenAPI/Swagger (ARQ-01). Apagada por defecto: solo se expone si SWAGGER_ENABLED=true
+# (perfil dev y pruebas la encienden; en Render, solo mientras dure una demostración). OWASP A05.
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
+    operations-sorter: method
+
 management:
   endpoints:
     web:

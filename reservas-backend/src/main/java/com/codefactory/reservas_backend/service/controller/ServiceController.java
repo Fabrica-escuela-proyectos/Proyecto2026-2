@@ -5,6 +5,10 @@ import com.codefactory.reservas_backend.identity.application.UserIdentity;
 import com.codefactory.reservas_backend.service.application.ServiceOfferingService;
 import com.codefactory.reservas_backend.service.controller.dto.CreateServiceRequest;
 import com.codefactory.reservas_backend.service.controller.dto.ServiceResponse;
+import com.codefactory.reservas_backend.common.config.OpenApiTags;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +32,7 @@ import java.util.UUID;
  * PROVEEDOR dueño del negocio (docs/api/endpoints-sprint-2.md).
  */
 @RestController
+@Tag(name = OpenApiTags.SERVICES)
 @RequestMapping("/api/v1/businesses/{businessId}/services")
 @RequiredArgsConstructor
 public class ServiceController {
@@ -35,6 +40,13 @@ public class ServiceController {
     private final ServiceOfferingService serviceOfferingService;
     private final IdentityService identityService;
 
+    @Operation(summary = "Crear un servicio (HU-09)",
+            description = "Solo el proveedor dueño del negocio. Duración de 1 a 1440 minutos, precio entero en COP (0 = gratuito) y nombre único por negocio sin distinguir mayúsculas.")
+    @ApiResponse(responseCode = "201", description = "Servicio creado")
+    @ApiResponse(responseCode = "400", description = "Nombre, duración o precio inválidos")
+    @ApiResponse(responseCode = "403", description = "El negocio es de otro proveedor")
+    @ApiResponse(responseCode = "404", description = "El negocio no existe")
+    @ApiResponse(responseCode = "409", description = "Ya existe un servicio con ese nombre en el negocio")
     @PostMapping
     @PreAuthorize("hasRole('PROVEEDOR')")
     public ResponseEntity<ServiceResponse> create(
@@ -46,6 +58,11 @@ public class ServiceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(summary = "Listar los servicios del negocio (HU-09)",
+            description = "Solo el proveedor dueño del negocio. Incluye también los inactivos.")
+    @ApiResponse(responseCode = "200", description = "Servicios del negocio")
+    @ApiResponse(responseCode = "403", description = "El negocio es de otro proveedor")
+    @ApiResponse(responseCode = "404", description = "El negocio no existe")
     @GetMapping
     @PreAuthorize("hasRole('PROVEEDOR')")
     public ResponseEntity<List<ServiceResponse>> list(@PathVariable UUID businessId) {

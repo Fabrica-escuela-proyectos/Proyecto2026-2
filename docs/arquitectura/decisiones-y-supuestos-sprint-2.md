@@ -77,7 +77,7 @@ Quién confirma: **Calidad** (casos `CP-*` e issues), **PO/docente** (alcance y 
 | S-27 | **Retención de datos personales** | Tras eliminar una cuenta, su **nombre y correo permanecen en las reservas históricas** (visibles al proveedor) para conservar el historial exigido por HU-28 (ADR-006) | Supuesto | Anonimizar a «Cliente eliminado» al borrar: 1 `UPDATE` más en el oyente | **PO/docente** (conviene preguntarlo: es un dato personal) |
 | S-28 | Formato de error | Se mantiene `ApiError` (`timestamp`, `status`, `error`, `message`, `path`, `fields`); **no** se añadió `traceId` ni `errorCode/details` como piden los Lineamientos §3.3 | Supuesto (plan dec. 13) | `traceId`: filtro + logs JSON (`API-03`, ~3 h) | Docente/Calidad |
 | S-29 | Paginación | Numeración desde 0; por defecto 20; **tope 50 que se recorta** (no es error); `page < 0` o `size < 1` → 400 | Supuesto | — | Calidad |
-| S-30 | Swagger | **No está aplicado**; propuesto: apagado por defecto y encendido solo en demostración (variable `SWAGGER_ENABLED`); ver [guía](../api/guia-swagger-openapi.md) | Pendiente de decidir | Aplicarlo: ~1 día | Arquisoft |
+| S-30 | Swagger | **Aplicado el 2026-10-10 (ARQ-01)** con springdoc 3.1.1: **apagado por defecto** y encendido con `SWAGGER_ENABLED=true` (perfiles `dev`/`test` lo encienden; en Render solo mientras dure una demostración). La ruta de la documentación es pública cuando está encendida; ver [guía](../api/guia-swagger-openapi.md) | Decidida (Simon: «aplica Swagger primero»); lo de apagado por defecto es supuesto | Dejarlo siempre abierto en Render: quitar el interruptor (OWASP A05: más superficie visible) | Arquisoft |
 | S-31 | Identificadores y esquema | UUID como clave primaria, `TIMESTAMPTZ`, dinero en pesos enteros, `ON DELETE SET NULL` hacia `users` (nunca `RESTRICT`), nombres `uk_/ck_/idx_` ([convenciones](../bd/convenciones-bd.md)). El modelo formal de BD sigue en `BIGSERIAL`; **manda Flyway** | Supuesto (`BD-01`) | Alinear el modelo formal | **BD (Andraus)** |
 | S-32 | Despliegue | Render (gratis) desde el pipeline con *deploy hook* y auto-deploy apagado; la extensión `btree_gist` funciona allí (verificado). Se duerme a los 15 min y la base gratuita expira ≈ 2026-12-21 | Decidida | Plan de pago / otro proveedor | Arquisoft |
 
@@ -87,7 +87,7 @@ Quién confirma: **Calidad** (casos `CP-*` e issues), **PO/docente** (alcance y 
 2. **Credenciales demo públicas:** la contraseña del administrador de Render es la publicada en el repositorio (`SEC-01`); la base anterior de Supabase quedó expuesta en el historial de git (`SEC-02`).
 3. **Límite de intentos por IP posiblemente global detrás del proxy** (`OWASP-03`): por verificar.
 4. **Pequeñas violaciones de ADR-003** heredadas del Sprint 1 (registro de proveedor usa clases internas de `identity`; manejador de errores único que conoce las excepciones de todos): ver ADR-007 §3.
-5. **Sin escaneo de dependencias, sin protección de `main` verificada, sin `traceId`/logs JSON, sin Swagger** (OWASP A06, A08, A09; `ARQ-01`).
+5. **Sin escaneo de dependencias, sin protección de `main` verificada, sin `traceId`/logs JSON** (OWASP A06, A08, A09).
 6. **Diagramas de arquitectura del Sprint 1** sin actualizar con `service`, `resource` y `reservation` (`DOC-03`).
 7. **Solo una instancia:** los límites de intentos viven en memoria; con más instancias harían falta un almacén compartido.
 8. **Notificaciones, autoeliminación de cuenta y las HU de Tier 3** no existen.

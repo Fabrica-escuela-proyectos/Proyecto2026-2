@@ -1,5 +1,6 @@
 package com.codefactory.reservas_backend.service.controller.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -23,6 +24,7 @@ public final class ServiceResourcesDtos {
     @Setter
     public static class AssignResourcesRequest {
 
+        @Schema(description = "Ids de TODOS los recursos que atienden el servicio (reemplaza el conjunto actual; vacío = ninguno)")
         @NotNull(message = "La lista de recursos es obligatoria (puede ir vacía)")
         @Size(max = 100, message = "No se pueden asignar más de 100 recursos a un servicio")
         private List<@NotNull(message = "Los ids de recursos no pueden ser nulos") UUID> resourceIds;

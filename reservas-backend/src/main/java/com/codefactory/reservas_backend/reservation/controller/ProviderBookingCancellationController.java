@@ -5,6 +5,10 @@ import com.codefactory.reservas_backend.identity.application.UserIdentity;
 import com.codefactory.reservas_backend.reservation.application.BookingCancellationService;
 import com.codefactory.reservas_backend.reservation.controller.dto.BookingDtos.BookingItem;
 import com.codefactory.reservas_backend.reservation.controller.dto.BookingDtos.ProviderCancelRequest;
+import com.codefactory.reservas_backend.common.config.OpenApiTags;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,12 +27,20 @@ import java.util.UUID;
  * Solo el PROVEEDOR dueño del negocio de la reserva; el motivo es obligatorio.
  */
 @RestController
+@Tag(name = OpenApiTags.PROVIDER_BOOKINGS)
 @RequiredArgsConstructor
 public class ProviderBookingCancellationController {
 
     private final BookingCancellationService cancellationService;
     private final IdentityService identityService;
 
+    @Operation(summary = "Cancelar una reserva como proveedor (HU-26)",
+            description = "Solo el proveedor dueño del negocio de la reserva. El motivo es obligatorio (máx. 500). No aplica la regla de 1 hora, pero no se puede cancelar una reserva que ya inició.")
+    @ApiResponse(responseCode = "200", description = "Reserva cancelada (origen PROVEEDOR)")
+    @ApiResponse(responseCode = "400", description = "Falta el motivo o es demasiado largo")
+    @ApiResponse(responseCode = "403", description = "La reserva es de un negocio de otro proveedor")
+    @ApiResponse(responseCode = "404", description = "La reserva no existe")
+    @ApiResponse(responseCode = "409", description = "Ya cancelada o completada, o la reserva ya inició")
     @PostMapping("/api/v1/bookings/{bookingId}/provider-cancellation")
     @PreAuthorize("hasRole('PROVEEDOR')")
     public ResponseEntity<BookingItem> cancel(@PathVariable UUID bookingId,

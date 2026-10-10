@@ -21,3 +21,10 @@ security:
       # comportamiento del límite se prueba aparte (AttemptLimiterTest y
       # RegistrationRateLimitIntegrationTest, que fija su propio valor).
       max-attempts: 1000
+
+# La especificación OpenAPI se verifica en las pruebas (OpenApiDocumentationIntegrationTest).
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

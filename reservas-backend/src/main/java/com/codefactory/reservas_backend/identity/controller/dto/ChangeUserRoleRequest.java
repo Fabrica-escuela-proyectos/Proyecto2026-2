@@ -1,5 +1,6 @@
 package com.codefactory.reservas_backend.identity.controller.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -13,6 +14,7 @@ import lombok.Setter;
 @Setter
 public class ChangeUserRoleRequest {
 
+    @Schema(description = "Rol nuevo: CLIENTE, PROVEEDOR o ADMINISTRADOR (el rol de un proveedor no se puede cambiar)", example = "CLIENTE")
     @NotBlank(message = "El rol es obligatorio")
     @Size(max = 30, message = "El rol no es válido")
     private String role;
