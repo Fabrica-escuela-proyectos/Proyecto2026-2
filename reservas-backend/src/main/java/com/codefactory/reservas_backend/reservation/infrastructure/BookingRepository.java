@@ -2,19 +2,27 @@ package com.codefactory.reservas_backend.reservation.infrastructure;
 
 import com.codefactory.reservas_backend.reservation.domain.Booking;
 import com.codefactory.reservas_backend.reservation.domain.BookingStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpecificationExecutor<Booking> {
+
+    /** Bloquea la fila de la reserva hasta el fin de la transacción: serializa cancelaciones simultáneas. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select b from Booking b where b.id = :id")
+    Optional<Booking> findByIdForUpdate(@Param("id") UUID id);
 
     Page<Booking> findByClientId(UUID clientId, Pageable pageable);
 

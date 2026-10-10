@@ -3,6 +3,7 @@ package com.codefactory.reservas_backend.reservation.controller.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -50,8 +51,8 @@ public final class BookingDtos {
      */
     public record BookingItem(UUID id, String status, UUID serviceId, String serviceName, UUID businessId,
                               String businessName, UUID resourceId, String resourceName, String date,
-                              String startTime, String endTime, long priceCop, String cancelReason,
-                              Instant cancelledAt, Instant createdAt) {
+                              String startTime, String endTime, long priceCop, String cancelOrigin,
+                              String cancelReason, Instant cancelledAt, Instant createdAt) {
     }
 
     /** Página de reservas (numeración desde 0); {@code message} solo viene cuando no hay ninguna. */
@@ -67,13 +68,22 @@ public final class BookingDtos {
     public record BusinessBookingItem(UUID id, String status, UUID clientId, String clientName, String clientEmail,
                                       UUID serviceId, String serviceName,
                                       UUID resourceId, String resourceName, String date, String startTime,
-                                      String endTime, long priceCop, String cancelReason, Instant cancelledAt,
-                                      Instant createdAt) {
+                                      String endTime, long priceCop, String cancelOrigin, String cancelReason,
+                                      Instant cancelledAt, Instant createdAt) {
     }
 
     /** Página de reservas de un negocio; {@code message} solo viene cuando no hay ninguna. */
     public record BusinessBookingPageResponse(List<BusinessBookingItem> items, int page, int size, long totalElements,
                                               int totalPages, String message) {
+    }
+
+    /** Cuerpo opcional de POST /api/v1/bookings/{bookingId}/cancellation (HU-25). */
+    @Getter
+    @Setter
+    public static class CancelBookingRequest {
+
+        @Size(max = 500, message = "El motivo no puede superar los 500 caracteres")
+        private String reason;
     }
 
     /** Reserva creada; {@code id} es el que devuelve HU-22 y usan HU-23..28. */

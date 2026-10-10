@@ -404,7 +404,7 @@ class BookingCreationIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(statuses).containsExactlyInAnyOrder(201, 409);
         assertThat(bookingRepository.findAll().stream()
-                .filter(x -> x.getServiceId().equals(f.serviceId())).count()).isEqualTo(1);
+                .filter(x -> f.serviceId().equals(x.getServiceId())).count()).isEqualTo(1);
     }
 
     @Test

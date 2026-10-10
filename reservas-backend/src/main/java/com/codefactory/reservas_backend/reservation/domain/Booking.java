@@ -74,6 +74,10 @@ public class Booking {
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cancel_origin", length = 30)
+    private CancelOrigin cancelOrigin;
+
     @PrePersist
     void onCreate() {
         this.createdAt = Instant.now();

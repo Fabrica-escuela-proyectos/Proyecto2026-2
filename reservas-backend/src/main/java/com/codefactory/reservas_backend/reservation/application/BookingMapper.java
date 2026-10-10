@@ -21,7 +21,7 @@ public final class BookingMapper {
         ZonedDateTime end = b.getEndAt().atZone(TimeConfig.BUSINESS_ZONE);
         return new BusinessBookingItem(b.getId(), b.getStatus().name(), b.getClientId(), b.getClientName(), b.getClientEmail(), b.getServiceId(),
                 b.getServiceName(), b.getResourceId(), b.getResourceName(), start.toLocalDate().toString(),
-                start.format(HOUR_MINUTE), end.format(HOUR_MINUTE), b.getPriceCop(), b.getCancelReason(),
+                start.format(HOUR_MINUTE), end.format(HOUR_MINUTE), b.getPriceCop(), originOf(b), b.getCancelReason(),
                 b.getCancelledAt(), b.getCreatedAt());
     }
 
@@ -30,7 +30,11 @@ public final class BookingMapper {
         ZonedDateTime end = b.getEndAt().atZone(TimeConfig.BUSINESS_ZONE);
         return new BookingItem(b.getId(), b.getStatus().name(), b.getServiceId(), b.getServiceName(), b.getBusinessId(),
                 b.getBusinessName(), b.getResourceId(), b.getResourceName(), start.toLocalDate().toString(),
-                start.format(HOUR_MINUTE), end.format(HOUR_MINUTE), b.getPriceCop(), b.getCancelReason(),
+                start.format(HOUR_MINUTE), end.format(HOUR_MINUTE), b.getPriceCop(), originOf(b), b.getCancelReason(),
                 b.getCancelledAt(), b.getCreatedAt());
+    }
+
+    private static String originOf(Booking b) {
+        return b.getCancelOrigin() == null ? null : b.getCancelOrigin().name();
     }
 }

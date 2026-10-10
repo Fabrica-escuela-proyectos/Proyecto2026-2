@@ -212,7 +212,7 @@ HUS = [
     dict(hu="HU-25", pts=5, tier=1, owner="B", deps="HU-23",
          tablas="(usa bookings: status, cancel_reason, cancelled_at)",
          endpoints=["POST /api/v1/bookings/{bookingId}/cancellation"],
-         reglas=["Solo el Cliente dueño de la reserva CONFIRMADA; con al menos 1 hora de antelación (regla fija de plataforma)",
+         reglas=["Solo el Cliente dueño de la reserva CONFIRMADA; con al menos 1 hora de antelación (regla fija de plataforma); motivo opcional",
                  "Estado -> CANCELADA con motivo CLIENTE; el horario queda libre (el EXCLUDE solo cuenta CONFIRMADA)",
                  "Fuera de plazo o ya cancelada -> 409 con mensaje claro; ajena -> 403",
                  "El aviso al proveedor del AC queda como evento de auditoría (notificaciones están fuera de alcance)"],

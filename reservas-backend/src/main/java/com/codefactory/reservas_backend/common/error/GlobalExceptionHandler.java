@@ -15,6 +15,8 @@ import com.codefactory.reservas_backend.identity.domain.UserNotFoundException;
 import com.codefactory.reservas_backend.identity.infrastructure.TooManyRequestsException;
 import com.codefactory.reservas_backend.provider.domain.BusinessNotFoundException;
 import com.codefactory.reservas_backend.provider.domain.ProviderNotFoundException;
+import com.codefactory.reservas_backend.reservation.domain.BookingNotCancellableException;
+import com.codefactory.reservas_backend.reservation.domain.BookingNotFoundException;
 import com.codefactory.reservas_backend.reservation.domain.InvalidBookingException;
 import com.codefactory.reservas_backend.reservation.domain.SlotNotAvailableException;
 import com.codefactory.reservas_backend.resource.domain.DuplicateResourceNameException;
@@ -109,7 +111,7 @@ public class GlobalExceptionHandler {
     // HU-09: nombre de servicio repetido dentro del mismo negocio.
     // HU-14: lo mismo para el nombre de un recurso dentro del mismo negocio.
     @ExceptionHandler({DuplicateServiceNameException.class, DuplicateResourceNameException.class,
-            SlotNotAvailableException.class})
+            SlotNotAvailableException.class, BookingNotCancellableException.class})
     public ResponseEntity<ApiError> handleDuplicateService(RuntimeException ex, HttpServletRequest req) {
         return build(HttpStatus.CONFLICT, "CONFLICT", ex.getMessage(), null, req);
     }
@@ -158,7 +160,8 @@ public class GlobalExceptionHandler {
 
     // HU-05/HU-06: el usuario/proveedor objetivo de la operación no existe.
     @ExceptionHandler({UserNotFoundException.class, ProviderNotFoundException.class, BusinessNotFoundException.class,
-            ServiceNotFoundException.class, ResourceNotFoundException.class, ServiceNotAvailableException.class})
+            ServiceNotFoundException.class, ResourceNotFoundException.class, ServiceNotAvailableException.class,
+            BookingNotFoundException.class})
     public ResponseEntity<ApiError> handleNotFound(RuntimeException ex, HttpServletRequest req) {
         return build(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage(), null, req);
     }

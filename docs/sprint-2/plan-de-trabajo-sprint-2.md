@@ -119,7 +119,7 @@ Cada una debe quedar como ADR con contexto, alternativas, elección, consecuenci
 | 6 | HU-13 vs HU-20 | El catálogo exige sesión; la disponibilidad se describía como pública | **Decidido el 2026-10-08 (Simon):** el catálogo (HU-13) exige sesión; la disponibilidad (HU-20) es **pública**, por el escenario "usuario sin sesión" de su AC (CP-HU20-09) | Decidido |
 | 7 | HU-14 | Tipos de recurso: "sala, equipo, personal" vs "consultorio, cancha, puesto" | Enum `SALA`, `EQUIPO`, `PERSONAL` | Equipo |
 | 8 | HU-08 | Unidad y tope de la antelación | Horas enteras, mínimo 1, máximo 720 | Equipo |
-| 9 | HU-22 | El AC pide que el cliente envíe hora de fin | El cliente envía solo el inicio; fin = inicio + duración (si envía fin, se valida) | Equipo |
+| 9 | HU-22 | El AC pide que el cliente envíe hora de fin | **Implementado así:** el cliente envía `date`, `startTime` y `endTime` (hay escenario "fin ≤ inicio"); la duración debe ser la del servicio | Decidido |
 | 10 | HU-09/13 | HU-13 muestra "descripción" pero HU-09 no la captura | Campo opcional `description` en HU-09 | Equipo |
 | 11 | HU-20 | Granularidad de los horarios | Inicios cada 30 min dentro del rango, si cabe la duración | Equipo |
 | 12 | HU-26 | ¿Aplica la regla de 1 hora a la cancelación del proveedor? | No aplica | Calidad |

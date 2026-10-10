@@ -252,3 +252,29 @@ Solo el **PROVEEDOR dueño del negocio** (otro proveedor, cliente o administrado
 Cada reserva muestra fecha, horas, servicio, recurso y **todos los datos del cliente que la reserva conserva**: `clientId`, `clientName` y `clientEmail`. Nombre y correo son copias del momento de reservar (no cambian si el cliente luego los edita ni si borra su cuenta; en ese caso `clientId` pasa a `null`). *Decisión del equipo (2026-10-10):* se incluyen aunque la HU solo pida el nombre, porque pueden servir para contactar al cliente o para futuras funciones. **No incluye el celular**: la reserva no lo guarda (si se necesita habría que copiarlo al reservar, con otra migración). Al ser datos personales, solo los ve el proveedor dueño del negocio. Sin reservas: lista vacía y `message` *"No hay reservas registradas"*; con filtros sin resultados: *"No hay reservas con los filtros indicados"*.
 
 > **Cambio de BD:** la migración `V11__add_client_name_to_bookings.sql` añade `bookings.client_name` y rellena las filas existentes con el nombre actual del usuario (o su correo si ya no existe). Se probó contra una base vacía; con datos previos conviene revisarla antes de aplicarla en una base con reservas.
+
+## HU-25 — Cancelar reserva como cliente (implementado)
+
+### `POST /api/v1/bookings/{bookingId}/cancellation`
+
+Solo el rol **CLIENTE** y solo sobre **sus** reservas (proveedor o administrador: 403; reserva de otro cliente: 403; sin sesión: 401; reserva inexistente: 404; id que no es UUID: 400). Cuerpo **opcional**:
+
+```json
+{ "reason": "No puedo asistir" }
+```
+`reason`: texto libre de hasta 500 caracteres (400 si lo supera); en blanco o ausente se guarda como ausente. Respuesta `200` con la reserva ya cancelada (mismo formato de HU-23):
+
+```json
+{ "id": "…", "status": "CANCELADA", "cancelOrigin": "CLIENTE", "cancelReason": "No puedo asistir",
+  "cancelledAt": "2026-10-10T15:30:00Z", "…": "…" }
+```
+- **Estado + origen** (regla acordada en el plan §6): la reserva pasa a `CANCELADA` con `cancelOrigin = CLIENTE`. El campo `cancelOrigin` también aparece en HU-23 y HU-24 (nulo en reservas no canceladas; los orígenes posibles son `CLIENTE`, `PROVEEDOR`, `ELIMINACION_CUENTA`, `RECURSO_NO_DISPONIBLE`, `SERVICIO_NO_DISPONIBLE`; HU-26 y HU-28 usarán los demás).
+- **Libera el horario:** la restricción anti-overbooking solo cuenta reservas CONFIRMADAS, así que el horario vuelve a aparecer en HU-20 y otro cliente puede reservarlo de inmediato.
+- **Plazo (regla fija de la plataforma):** solo se puede cancelar con **al menos 1 hora de antelación** al inicio (exactamente 1 hora sí se permite). Las cancelaciones que no decide el cliente (proveedor, eliminación de cuenta) no están sujetas a esta regla.
+- **Notificación al proveedor:** las notificaciones están fuera de alcance (plan, decisión 5). El aviso del criterio de aceptación queda como evento de auditoría `CANCELACION_RESERVA` (negocio, servicio y recurso afectados) y el proveedor ve la reserva como `CANCELADA` en HU-24.
+
+| Código | Cuándo |
+|---|---|
+| 409 | Ya está cancelada (*"La reserva ya está cancelada"*), ya fue completada, o faltan menos de 1 hora (*"…al menos 1 hora de antelación…"*). Dos cancelaciones simultáneas: una da 200 y la otra 409 (se bloquea la fila de la reserva) |
+
+> **Cambio de BD:** migración `V12__add_cancel_origin_to_bookings.sql` (`cancel_origin` con CHECK). Las reservas canceladas antes de la migración quedan con origen nulo.
