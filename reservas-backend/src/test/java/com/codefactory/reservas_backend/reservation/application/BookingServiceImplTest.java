@@ -2,6 +2,7 @@ package com.codefactory.reservas_backend.reservation.application;
 
 import com.codefactory.reservas_backend.audit.application.AuditService;
 import com.codefactory.reservas_backend.audit.domain.AuditEventType;
+import com.codefactory.reservas_backend.identity.application.UserDirectoryService;
 import com.codefactory.reservas_backend.identity.application.UserIdentity;
 import com.codefactory.reservas_backend.provider.application.BusinessDirectoryService;
 import com.codefactory.reservas_backend.provider.application.BusinessInfo;
@@ -77,19 +78,22 @@ class BookingServiceImplTest {
     private BusinessSettingsService businessSettingsService;
     @Mock
     private AuditService auditService;
+    @Mock
+    private UserDirectoryService userDirectoryService;
 
     private BookingServiceImpl service;
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(NOW.atZone(BOGOTA).toInstant(), BOGOTA);
-        service = new BookingServiceImpl(bookingRepository, serviceLookupService, resourceLookupService, scheduleLookup,
-                businessDirectoryService, businessSettingsService, auditService, clock);
+        service = new BookingServiceImpl(bookingRepository, userDirectoryService, serviceLookupService, resourceLookupService,
+                scheduleLookup, businessDirectoryService, businessSettingsService, auditService, clock);
         lenient().when(serviceLookupService.findById(SERVICE_ID)).thenReturn(Optional.of(
                 new ServiceInfo(SERVICE_ID, BUSINESS_ID, "Corte", 60, 25_000L, true)));
         lenient().when(businessDirectoryService.isOwnerEnabled(BUSINESS_ID)).thenReturn(true);
         lenient().when(businessDirectoryService.get(BUSINESS_ID)).thenReturn(new BusinessInfo(BUSINESS_ID, "Barbería"));
         lenient().when(businessSettingsService.minAdvanceHoursOf(BUSINESS_ID)).thenReturn(1);
+        lenient().when(userDirectoryService.findFullName(CLIENT.id())).thenReturn(Optional.of("Ana Cliente"));
         lenient().when(serviceLookupService.assignedResourceIds(SERVICE_ID)).thenReturn(List.of(R1));
         lenient().when(resourceLookupService.findByIds(any(Collection.class))).thenReturn(List.of(resource(R1, "Sala 1", true)));
         lenient().when(scheduleLookup.windowsOn(any(Collection.class), eq(DayOfWeek.MONDAY)))
@@ -130,6 +134,7 @@ class BookingServiceImplTest {
         assertThat(b.getStatus()).isEqualTo(BookingStatus.CONFIRMADA);
         assertThat(b.getClientId()).isEqualTo(CLIENT.id());
         assertThat(b.getClientEmail()).isEqualTo("cliente@example.com");
+        assertThat(b.getClientName()).isEqualTo("Ana Cliente");
         assertThat(b.getServiceName()).isEqualTo("Corte");
         assertThat(b.getBusinessName()).isEqualTo("Barbería");
         assertThat(b.getResourceName()).isEqualTo("Sala 1");
@@ -142,6 +147,17 @@ class BookingServiceImplTest {
         assertThat(response.date()).isEqualTo(MONDAY);
         verify(auditService).registerEvent(eq(AuditEventType.CREACION_RESERVA), eq("cliente@example.com"),
                 eq("SUCCESS"), anyString(), eq("10.0.0.1"));
+    }
+
+    @Test
+    void siNoSeEncuentraElNombreDelClienteSeGuardaSuCorreo() {
+        when(userDirectoryService.findFullName(CLIENT.id())).thenReturn(Optional.empty());
+
+        service.create(request(MONDAY, "10:00", "11:00", null), CLIENT, "ip");
+
+        ArgumentCaptor<Booking> saved = ArgumentCaptor.forClass(Booking.class);
+        verify(bookingRepository).saveAndFlush(saved.capture());
+        assertThat(saved.getValue().getClientName()).isEqualTo("cliente@example.com");
     }
 
     @Test

@@ -61,7 +61,7 @@ Respuesta `200`: `{ "businessId": "…", "hours": 1 }`
 
 ## HU-13 — Consultar negocios y servicios (implementado)
 
-Solo lectura, para **cualquier usuario autenticado** (cliente, proveedor o administrador); sin sesión: 401. **Decidido (2026-10-08):** HU-13 y HU-20 exigen un cliente con sesión iniciada; el AC de HU-20 dice "un cliente consulta".
+Solo lectura, para **cualquier usuario autenticado** (cliente, proveedor o administrador); sin sesión: 401. El catálogo exige sesión, como dice su historia; la disponibilidad de HU-20, en cambio, es pública (decisión del 2026-10-08).
 
 ### `GET /api/v1/businesses?page=0&size=20`
 Negocios ordenados por nombre (sin distinguir mayúsculas). `page` desde 0 (defecto 0); `size` defecto 20 y **tope 50** (uno mayor se recorta a 50). `page < 0` o `size < 1` → 400; no numérico → 400; una página fuera de rango devuelve lista vacía con 200.
@@ -231,3 +231,24 @@ Fecha y horas en hora de Bogotá; el precio es el vigente cuando se reservó. `c
 
 ### `GET /api/v1/users/{userId}/bookings`
 Mismos parámetros y respuesta. Si `userId` es el del propio cliente devuelve su lista; si es **de otro usuario devuelve 403** (error de autorización, sin revelar nada sobre ese usuario; un id inexistente da el mismo 403; un id que no es UUID, 400). Existe para que el escenario *"un cliente intenta ver las reservas de otro cliente"* tenga una ruta real que probar; no hay forma de listar reservas ajenas.
+
+## HU-24 — Consultar reservas del negocio (implementado)
+
+Solo el **PROVEEDOR dueño del negocio** (otro proveedor, cliente o administrador: 403; sin sesión: 401; negocio inexistente: 404; `businessId` que no es UUID: 400). Muestra **todas** las reservas del negocio, sin importar qué cliente las creó.
+
+### `GET /api/v1/businesses/{businessId}/bookings?from=&to=&status=&page=0&size=20`
+- **Orden:** de la más reciente a la más antigua por fecha de inicio (desempate por id).
+- `from` / `to` (opcionales, `yyyy-MM-dd`): **inclusivos**, sobre el día de inicio de la reserva en hora de Bogotá (una reserva de 19:00 a 20:00 cuenta para su día local aunque en UTC ya sea el siguiente). Formato inválido o `from` posterior a `to` → 400.
+- `status` (opcional): `CONFIRMADA`, `CANCELADA` o `COMPLETADA`, sin distinguir mayúsculas; otro valor → 400.
+- `page` desde 0; `size` defecto 20, **tope 50** (uno mayor se recorta); `page < 0`, `size < 1` o no numérico → 400.
+
+```json
+{ "items": [ { "id": "…", "status": "CONFIRMADA", "clientId": "…", "clientName": "Ana Cliente",
+               "clientEmail": "ana@example.com", "serviceId": "…", "serviceName": "Corte",
+               "resourceId": "…", "resourceName": "Sala 1", "date": "2026-10-19", "startTime": "10:00", "endTime": "11:00",
+               "priceCop": 25000, "cancelReason": null, "cancelledAt": null, "createdAt": "…" } ],
+  "page": 0, "size": 20, "totalElements": 1, "totalPages": 1, "message": null }
+```
+Cada reserva muestra fecha, horas, servicio, recurso y **todos los datos del cliente que la reserva conserva**: `clientId`, `clientName` y `clientEmail`. Nombre y correo son copias del momento de reservar (no cambian si el cliente luego los edita ni si borra su cuenta; en ese caso `clientId` pasa a `null`). *Decisión del equipo (2026-10-10):* se incluyen aunque la HU solo pida el nombre, porque pueden servir para contactar al cliente o para futuras funciones. **No incluye el celular**: la reserva no lo guarda (si se necesita habría que copiarlo al reservar, con otra migración). Al ser datos personales, solo los ve el proveedor dueño del negocio. Sin reservas: lista vacía y `message` *"No hay reservas registradas"*; con filtros sin resultados: *"No hay reservas con los filtros indicados"*.
+
+> **Cambio de BD:** la migración `V11__add_client_name_to_bookings.sql` añade `bookings.client_name` y rellena las filas existentes con el nombre actual del usuario (o su correo si ya no existe). Se probó contra una base vacía; con datos previos conviene revisarla antes de aplicarla en una base con reservas.

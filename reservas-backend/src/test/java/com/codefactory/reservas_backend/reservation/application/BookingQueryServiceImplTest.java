@@ -2,6 +2,7 @@ package com.codefactory.reservas_backend.reservation.application;
 
 import com.codefactory.reservas_backend.common.error.InvalidPaginationException;
 import com.codefactory.reservas_backend.identity.application.UserIdentity;
+import com.codefactory.reservas_backend.provider.application.BusinessAccessService;
 import com.codefactory.reservas_backend.reservation.controller.dto.BookingDtos.BookingItem;
 import com.codefactory.reservas_backend.reservation.controller.dto.BookingDtos.BookingPageResponse;
 import com.codefactory.reservas_backend.reservation.domain.Booking;
@@ -38,12 +39,14 @@ class BookingQueryServiceImplTest {
 
     @Mock
     private BookingRepository repository;
+    @Mock
+    private BusinessAccessService businessAccessService;
 
     private BookingQueryServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new BookingQueryServiceImpl(repository);
+        service = new BookingQueryServiceImpl(repository, businessAccessService);
     }
 
     private static Booking booking(BookingStatus status) {
@@ -141,6 +144,108 @@ class BookingQueryServiceImplTest {
         ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
         verify(repository).findByClientId(eq(CLIENT.id()), pageable.capture());
         assertThat(pageable.getValue().getPageSize()).isEqualTo(BookingQueryService.MAX_SIZE);
+    }
+
+    // ---------- HU-24: reservas del negocio ----------
+
+    private static final UUID BUSINESS_ID = UUID.randomUUID();
+    private static final UserIdentity PROVIDER = new UserIdentity(UUID.randomUUID(), "proveedor@example.com", "PROVEEDOR");
+
+    @SuppressWarnings("unchecked")
+    private void stubBusinessPage(Page<Booking> page) {
+        when(repository.findAll(org.mockito.ArgumentMatchers.<org.springframework.data.jpa.domain.Specification<Booking>>any(),
+                any(Pageable.class))).thenReturn(page);
+    }
+
+    @Test
+    void listForBusinessDebeVerificarQueElProveedorEsElDuenioYMostrarElNombreDelCliente() {
+        Booking b = booking(BookingStatus.CONFIRMADA);
+        b.setClientName("Ana Cliente");
+        b.setClientEmail("ana@example.com");
+        stubBusinessPage(new PageImpl<>(List.of(b), PageRequest.of(0, 20), 1));
+
+        var response = service.listForBusiness(BUSINESS_ID, PROVIDER, null, null, null, 0, 20);
+
+        verify(businessAccessService).requireOwner(BUSINESS_ID, PROVIDER);
+        assertThat(response.items()).hasSize(1);
+        assertThat(response.items().get(0).clientName()).isEqualTo("Ana Cliente");
+        assertThat(response.items().get(0).clientEmail()).isEqualTo("ana@example.com");
+        assertThat(response.items().get(0).clientId()).isEqualTo(CLIENT.id());
+        assertThat(response.items().get(0).date()).isEqualTo("2026-10-19");
+        assertThat(response.items().get(0).startTime()).isEqualTo("10:00");
+        assertThat(response.message()).isNull();
+    }
+
+    @Test
+    void listForBusinessNoDebeExponerElCelularPorqueLaReservaNoLoGuarda() {
+        assertThat(java.util.Arrays.stream(com.codefactory.reservas_backend.reservation.controller.dto.BookingDtos.BusinessBookingItem.class
+                .getRecordComponents()).map(java.lang.reflect.RecordComponent::getName))
+                .contains("clientId", "clientName", "clientEmail").doesNotContain("clientPhone", "cellphone");
+    }
+
+    @Test
+    void listForBusinessOrdenaDeLaMasRecienteALaMasAntiguaYRecortaElTamano() {
+        stubBusinessPage(new PageImpl<>(List.of(), PageRequest.of(0, BookingQueryService.MAX_SIZE), 2));
+
+        service.listForBusiness(BUSINESS_ID, PROVIDER, null, null, null, 0, 5000);
+
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(repository).findAll(org.mockito.ArgumentMatchers.<org.springframework.data.jpa.domain.Specification<Booking>>any(),
+                pageable.capture());
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(BookingQueryService.MAX_SIZE);
+        assertThat(pageable.getValue().getSort().getOrderFor("startAt").isDescending()).isTrue();
+        assertThat(pageable.getValue().getSort().getOrderFor("id").isDescending()).isTrue();
+    }
+
+    @Test
+    void listForBusinessSinReservasInformaQueNoHayReservasRegistradas() {
+        stubBusinessPage(Page.empty(PageRequest.of(0, 20)));
+
+        var response = service.listForBusiness(BUSINESS_ID, PROVIDER, null, null, null, 0, 20);
+
+        assertThat(response.items()).isEmpty();
+        assertThat(response.message()).isEqualTo(BookingQueryServiceImpl.NO_BUSINESS_BOOKINGS_MESSAGE);
+    }
+
+    @Test
+    void listForBusinessConFiltrosSinResultadosMencionaLosFiltros() {
+        stubBusinessPage(Page.empty(PageRequest.of(0, 20)));
+
+        assertThat(service.listForBusiness(BUSINESS_ID, PROVIDER, "2026-10-01", null, null, 0, 20).message())
+                .isEqualTo(BookingQueryServiceImpl.NO_BUSINESS_BOOKINGS_FILTERED_MESSAGE);
+        assertThat(service.listForBusiness(BUSINESS_ID, PROVIDER, null, "2026-10-31", null, 0, 20).message())
+                .isEqualTo(BookingQueryServiceImpl.NO_BUSINESS_BOOKINGS_FILTERED_MESSAGE);
+        assertThat(service.listForBusiness(BUSINESS_ID, PROVIDER, null, null, "cancelada", 0, 20).message())
+                .isEqualTo(BookingQueryServiceImpl.NO_BUSINESS_BOOKINGS_FILTERED_MESSAGE);
+    }
+
+    @Test
+    void listForBusinessRechazaFechasInvalidasRangoInvertidoYEstadoInvalido() {
+        for (String bad : new String[]{"32/13/2026", "2026-99-99", "hoy", "2026-1-5"}) {
+            assertThatThrownBy(() -> service.listForBusiness(BUSINESS_ID, PROVIDER, bad, null, null, 0, 20))
+                    .as(bad).isInstanceOf(InvalidBookingException.class).hasMessage(BookingQueryServiceImpl.INVALID_DATE_MESSAGE);
+            assertThatThrownBy(() -> service.listForBusiness(BUSINESS_ID, PROVIDER, null, bad, null, 0, 20))
+                    .as(bad).isInstanceOf(InvalidBookingException.class);
+        }
+        assertThatThrownBy(() -> service.listForBusiness(BUSINESS_ID, PROVIDER, "2026-10-20", "2026-10-19", null, 0, 20))
+                .isInstanceOf(InvalidBookingException.class).hasMessage(BookingQueryServiceImpl.INVALID_DATE_RANGE_MESSAGE);
+        assertThatThrownBy(() -> service.listForBusiness(BUSINESS_ID, PROVIDER, null, null, "PENDIENTE", 0, 20))
+                .isInstanceOf(InvalidBookingException.class).hasMessage(BookingQueryServiceImpl.INVALID_STATUS_MESSAGE);
+        assertThatThrownBy(() -> service.listForBusiness(BUSINESS_ID, PROVIDER, null, null, null, -1, 20))
+                .isInstanceOf(InvalidPaginationException.class);
+        assertThatThrownBy(() -> service.listForBusiness(BUSINESS_ID, PROVIDER, null, null, null, 0, 0))
+                .isInstanceOf(InvalidPaginationException.class);
+    }
+
+    @Test
+    void listForBusinessNoConsultaNadaSiElNegocioEsAjeno() {
+        org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("ajeno"))
+                .when(businessAccessService).requireOwner(BUSINESS_ID, PROVIDER);
+
+        assertThatThrownBy(() -> service.listForBusiness(BUSINESS_ID, PROVIDER, null, null, null, 0, 20))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        verify(repository, never()).findAll(org.mockito.ArgumentMatchers.<org.springframework.data.jpa.domain.Specification<Booking>>any(),
+                any(Pageable.class));
     }
 
     @Test

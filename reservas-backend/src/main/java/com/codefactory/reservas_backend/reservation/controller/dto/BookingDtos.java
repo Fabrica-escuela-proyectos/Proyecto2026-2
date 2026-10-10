@@ -59,6 +59,23 @@ public final class BookingDtos {
                                       int totalPages, String message) {
     }
 
+    /**
+     * Reserva vista por el PROVEEDOR del negocio (HU-24): trae los datos del cliente que la reserva
+     * conserva (id, nombre y correo, copiados al reservar; {@code clientId} es nulo si el cliente
+     * eliminó su cuenta) y los del servicio y recurso. No incluye su celular: la reserva no lo guarda.
+     */
+    public record BusinessBookingItem(UUID id, String status, UUID clientId, String clientName, String clientEmail,
+                                      UUID serviceId, String serviceName,
+                                      UUID resourceId, String resourceName, String date, String startTime,
+                                      String endTime, long priceCop, String cancelReason, Instant cancelledAt,
+                                      Instant createdAt) {
+    }
+
+    /** Página de reservas de un negocio; {@code message} solo viene cuando no hay ninguna. */
+    public record BusinessBookingPageResponse(List<BusinessBookingItem> items, int page, int size, long totalElements,
+                                              int totalPages, String message) {
+    }
+
     /** Reserva creada; {@code id} es el que devuelve HU-22 y usan HU-23..28. */
     public record BookingResponse(UUID id, String status, UUID serviceId, String serviceName, UUID businessId,
                                   String businessName, UUID resourceId, String resourceName, String date,

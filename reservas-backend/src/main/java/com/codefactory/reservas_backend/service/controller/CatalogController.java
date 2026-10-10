@@ -15,8 +15,8 @@ import java.util.UUID;
 
 /**
  * HU-13 - Consultar negocios y servicios. Solo lectura, para cualquier usuario
- * autenticado (sin sesión: 401; la regla general de SecurityConfig). Decidido el
- * 2026-10-08: HU-20 (disponibilidad) también exige sesión, no es pública.
+ * autenticado (sin sesión: 401; la regla general de SecurityConfig). A diferencia
+ * de este catálogo, HU-20 (disponibilidad) es pública: ver ServiceAvailabilityController.
  */
 @RestController
 @RequestMapping("/api/v1/businesses")

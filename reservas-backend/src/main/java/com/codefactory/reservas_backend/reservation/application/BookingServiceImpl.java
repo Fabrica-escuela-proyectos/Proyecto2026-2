@@ -3,6 +3,7 @@ package com.codefactory.reservas_backend.reservation.application;
 import com.codefactory.reservas_backend.audit.application.AuditService;
 import com.codefactory.reservas_backend.audit.domain.AuditEventType;
 import com.codefactory.reservas_backend.common.config.TimeConfig;
+import com.codefactory.reservas_backend.identity.application.UserDirectoryService;
 import com.codefactory.reservas_backend.identity.application.UserIdentity;
 import com.codefactory.reservas_backend.provider.application.BusinessDirectoryService;
 import com.codefactory.reservas_backend.provider.application.BusinessSettingsService;
@@ -49,6 +50,7 @@ public class BookingServiceImpl implements BookingService {
     static final String OUT_OF_SCHEDULE_MESSAGE = "El horario seleccionado no está disponible: queda fuera del horario de atención";
 
     private final BookingRepository bookingRepository;
+    private final UserDirectoryService userDirectoryService;
     private final ServiceLookupService serviceLookupService;
     private final ResourceLookupService resourceLookupService;
     private final ResourceScheduleLookup scheduleLookup;
@@ -117,6 +119,7 @@ public class BookingServiceImpl implements BookingService {
         Booking saved = bookingRepository.saveAndFlush(Booking.builder()
                 .clientId(client.id())
                 .clientEmail(client.email())
+                .clientName(userDirectoryService.findFullName(client.id()).orElse(client.email()))
                 .businessId(service.businessId())
                 .businessName(businessName)
                 .serviceId(service.id())

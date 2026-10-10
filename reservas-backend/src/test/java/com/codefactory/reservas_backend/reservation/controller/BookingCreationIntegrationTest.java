@@ -154,6 +154,7 @@ class BookingCreationIntegrationTest extends AbstractIntegrationTest {
         assertThat(saved.getClientEmail()).isEqualToIgnoringCase(c.email());
         assertThat(saved.getClientId()).isEqualTo(userRepository.findByEmailIgnoreCase(c.email()).orElseThrow().getId());
         assertThat(saved.getStatus()).isEqualTo(BookingStatus.CONFIRMADA);
+        assertThat(saved.getClientName()).isEqualTo("Usuario de Prueba");
         assertThat(saved.getStartAt()).isEqualTo(monday().atTime(10, 0).atZone(BOGOTA).toInstant());
         assertThat(auditEvents(AuditEventType.CREACION_RESERVA, c.email())).hasSize(1);
     }
@@ -422,7 +423,7 @@ class BookingCreationIntegrationTest extends AbstractIntegrationTest {
     }
 
     private Booking rawBooking(Fixture f, Instant start, Instant end, BookingStatus status) {
-        return Booking.builder().clientEmail("x@example.com").businessId(f.businessId()).businessName("N")
+        return Booking.builder().clientEmail("x@example.com").clientName("Cliente X").businessId(f.businessId()).businessName("N")
                 .serviceId(f.serviceId()).serviceName("S").resourceId(f.resourceId()).resourceName("R")
                 .startAt(start).endAt(end).status(status).priceCop(1L).build();
     }
