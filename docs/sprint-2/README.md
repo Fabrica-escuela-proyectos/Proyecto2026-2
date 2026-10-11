@@ -1,4 +1,4 @@
-# Sprint 2 — índice
+# Sprint 2 — índices
 
 | Documento | Para qué |
 |---|---|
