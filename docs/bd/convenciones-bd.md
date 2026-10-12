@@ -1,6 +1,6 @@
-# Convenciones de base de datos (BD-01) — propuesta
+# Convenciones de base de datos (BD-01)
 
-**Estado: propuesta para acordar con el equipo de BD (Andraus) y Arquisoft.** Recoge lo que ya aplican las migraciones Flyway reales (V1–V5) y fija las reglas para las tablas nuevas del Sprint 2, para que el modelo formal ([docs/bd/modelo](modelo/)) y el esquema real dejen de divergir (ver [conciliación](../conciliacion-modelo-bd-sprint-1.md)). Mientras no haya acuerdo, **manda el esquema de Flyway** (`reservas-backend/src/main/resources/db/migration/`).
+**Estado: acordadas por BD (Juan Sebastián Andraus) el 2026-10-12**, a partir de la propuesta de Arquisoft. Recogen lo que aplican las migraciones Flyway reales (V1–V12); el modelo formal del Sprint 2 ([docs/bd/modelo/modelo_sprint2.md](modelo/modelo_sprint2.md)) ya describe ese esquema (ver [conciliación](../conciliacion-modelo-bd-sprint-1.md) para el Sprint 1). Ante cualquier diferencia, **manda el esquema de Flyway** (`reservas-backend/src/main/resources/db/migration/`).
 
 | Tema | Convención | Por qué |
 |---|---|---|
@@ -18,4 +18,9 @@
 | Concurrencia | La unicidad se garantiza **en la base** (índice único); lo que la base no expresa fácil (p. ej. rangos de un mismo día sin traslape en `resource_availability`) se valida en Java **con bloqueo de fila** (`PESSIMISTIC_WRITE`) del padre | Dos peticiones simultáneas deben dar 201 y 409, no dos filas |
 | Módulos | Columna UUID simple + `REFERENCES` en SQL; sin `@ManyToOne` entre módulos | ADR-003: un módulo no importa las entidades de otro |
 
-**Decisiones abiertas para BD:** (1) tope de longitudes comunes (`name` 150, `description` 500); (2) si `bookings` usa una restricción de exclusión (`EXCLUDE USING gist` sobre rango de tiempo) para el anti-overbooking de HU-22; (3) si el modelo formal pasa a UUID o se mantiene `BIGSERIAL` solo como documentación.
+**Decisiones que estaban abiertas (resueltas por BD el 2026-10-12):**
+1. Longitudes comunes: `name` 150 y `description` 500 (como en V5/V7); copias en `bookings` también 150.
+2. Anti-overbooking: sí, `EXCLUDE USING gist` sobre `tstzrange(start_at, end_at)` por recurso (V10, ADR-005). Para que las consultas de traslape usen ese índice, escribirlas con `tstzrange(...) && tstzrange(...)` (ver `docs/bd/modelo/documentacion_bd_sprint2.md` §4).
+3. El modelo formal pasa a UUID: `modelo_sprint2.md` documenta el esquema real; los documentos `BIGSERIAL` del Sprint 1 quedan como histórico.
+
+**Agregados de BD:** toda FK que se use en un `ON DELETE SET NULL`/`CASCADE` sobre tablas grandes debe tener índice que empiece por esa columna (falta `bookings.service_id`, propuesta V13 en `docs/bd/propuestas/`). Las migraciones nuevas las propone BD en `docs/bd/propuestas/` y las mueve a `db/migration` el responsable de Flyway tras la revisión de Arquisoft.

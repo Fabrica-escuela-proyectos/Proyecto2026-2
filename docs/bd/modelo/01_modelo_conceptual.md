@@ -1,5 +1,7 @@
 # Modelo Conceptual — Sprint 1 (Identidad y Acceso)
 
+> **Histórico (Sprint 1, `BIGSERIAL`).** No describe el esquema que aplica la app. El modelo vigente (UUID, Flyway V1–V12) está en [`modelo_sprint2.md`](modelo_sprint2.md); diferencias en [`conciliacion-modelo-bd-sprint-1.md`](../../conciliacion-modelo-bd-sprint-1.md).
+
 ## Entidades
 
 - USUARIO
