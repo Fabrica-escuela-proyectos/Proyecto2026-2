@@ -1,3 +1,5 @@
+-- HISTÓRICO (Sprint 1, BIGSERIAL): NO ejecutar contra la app. El esquema real lo crea Flyway (V1–V12);
+-- ver docs/bd/modelo/modelo_sprint2.md y docs/conciliacion-modelo-bd-sprint-1.md.
 
 
 CREATE TABLE users (
