@@ -1,6 +1,6 @@
 # Convenciones de base de datos (BD-01)
 
-**Estado: acordadas por BD (Juan Sebastián Andraus) el 2026-10-12**, a partir de la propuesta de Arquisoft. Recogen lo que aplican las migraciones Flyway reales (V1–V12); el modelo formal del Sprint 2 ([docs/bd/modelo/modelo_sprint2.md](modelo/modelo_sprint2.md)) ya describe ese esquema (ver [conciliación](../conciliacion-modelo-bd-sprint-1.md) para el Sprint 1). Ante cualquier diferencia, **manda el esquema de Flyway** (`reservas-backend/src/main/resources/db/migration/`).
+**Estado: acordadas por BD el 2026-10-12**, a partir de la propuesta de Arquisoft. Recogen lo que aplican las migraciones Flyway reales (V1–V12); el modelo formal del Sprint 2 ([docs/bd/modelo/modelo_sprint2.md](modelo/modelo_sprint2.md)) ya describe ese esquema (ver [conciliación](../conciliacion-modelo-bd-sprint-1.md) para el Sprint 1). Ante cualquier diferencia, **manda el esquema de Flyway** (`reservas-backend/src/main/resources/db/migration/`).
 
 | Tema | Convención | Por qué |
 |---|---|---|
