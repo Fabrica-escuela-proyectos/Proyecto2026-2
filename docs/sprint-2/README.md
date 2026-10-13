@@ -6,6 +6,7 @@
 | [cierre-pendientes-sprint-1.md](cierre-pendientes-sprint-1.md) | MFA (política, matriz de pruebas y su estado, guía), los 4 bugs de Calidad (causa raíz, corrección y evidencia) y brechas de Sprint 1 |
 | [plan-estudio-y-sustentacion.md](plan-estudio-y-sustentacion.md) | Pistas de estudio de los 3 de Arquisoft, recorridos del código, cronograma, banco de 38 preguntas y guion de la sustentación |
 | [azure-boards/](azure-boards/README.md) | Tareas para Azure DevOps: **28 tareas por componente** (CSV `L01`), checklist interno con el avance, y matriz de trazabilidad; fuente única `backlog_data.py` |
+| [informe-arquitectura-sprint-2.md](informe-arquitectura-sprint-2.md) | **El informe del curso (Sprint 2)**: una sección por entregable, con estado, evidencia enlazada y pendientes; es lo que se presenta |
 | [entregable-arquitectura-sprint-2.md](entregable-arquitectura-sprint-2.md) | **Mapa de evidencias para el informe del curso**: cada entregable del Sprint 2 con su estado, dónde está, qué falta y la justificación; pendientes antes del corte y estructura sugerida del informe |
 | [handoff-contexto.md](handoff-contexto.md) | Estado vivo y contexto para retomar el trabajo sin el historial; bitácora |
 
