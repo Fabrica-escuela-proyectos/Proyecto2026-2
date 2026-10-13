@@ -65,7 +65,7 @@
 | | |
 |---|---|
 | **Qué hay** | Reglas de negocio aplicadas **en el servidor**, no en el cliente: el precio de la reserva sale del servicio (no del cuerpo), la duración debe coincidir con la del servicio, el cliente sale de la sesión, el negocio sale de la ruta. **Anti-overbooking en la base de datos** (restricción `EXCLUDE`), bloqueo de fila en las operaciones que compiten (cancelar, desactivar, asignar recursos, editar horarios) y transacciones atómicas; una carrera real entre reservar y desactivar se detectó y corrigió con prueba repetida. Límites de intentos: registro (5 por IP en 10 min) y login/MFA (5 fallos en 15 min) → `429`. Operaciones sensibles con confirmación MFA. Paginación con tope (50). |
-| **Brechas** | ① ~~**`OWASP-03`:** el límite por IP usaba `request.getRemoteAddr()` sin `server.forward-headers-strategy`; detrás del proxy de Render todas las peticiones podían llegar con la IP del proxy (límite «por IP» global y auditoría con la IP equivocada).~~ **Corregido el 2026-10-10** con `server.forward-headers-strategy: native`; `ForwardedHeadersIntegrationTest` prueba con un servidor real que la auditoría guarda la IP de `X-Forwarded-For` (y falla si se desactiva). **Falta confirmarlo en Render** (la IP guardada en `audit_logs` tras un login fallido debe ser la propia, no la del proxy). ② ~~Sin límite de tamaño de cuerpo~~ **corregido:** `RequestSizeLimitFilter` (64 KB; `413 PAYLOAD_TOO_LARGE`). Sigue sin límite de tasa en la consulta pública de HU-20 y en crear reservas. ③ Los límites viven en memoria: se pierden al reiniciar y no se comparten entre instancias (una sola instancia hoy). |
+| **Brechas** | ① ~~**`OWASP-03`:** el límite por IP usaba `request.getRemoteAddr()` sin `server.forward-headers-strategy`; detrás del proxy de Render todas las peticiones podían llegar con la IP del proxy (límite «por IP» global y auditoría con la IP equivocada).~~ **Corregido el 2026-10-10** con `server.forward-headers-strategy: native`; `ForwardedHeadersIntegrationTest` prueba con un servidor real que la auditoría guarda la IP de `X-Forwarded-For` (y falla si se desactiva). **Se verificó en Render el 2026-10-12 y estaba a medias:** la IP guardada era `104.23.186.142` (borde de **Cloudflare**), no la del cliente (`152.202.54.136`); el valor falsificado en `X-Forwarded-For` sí se descartaba. **Corregido:** `server.tomcat.remoteip.internal-proxies` ahora confía en los rangos de Cloudflare (IPv4 e IPv6, generados por [`generar_proxies_confiables.py`](generar_proxies_confiables.py)) además de los privados; 3 pruebas nuevas con servidor real (cliente tras Cloudflare, intento de falsear la cadena e IPv6). **Pendiente:** desplegar y repetir la sonda; la IP guardada debe ser la del cliente. ② ~~Sin límite de tamaño de cuerpo~~ **corregido:** `RequestSizeLimitFilter` (64 KB; `413 PAYLOAD_TOO_LARGE`). Sigue sin límite de tasa en la consulta pública de HU-20 y en crear reservas. ③ Los límites viven en memoria: se pierden al reiniciar y no se comparten entre instancias (una sola instancia hoy). |
 | **Acción** | Comprobar la IP en `audit_logs` tras desplegar; límite de tasa en rutas públicas (resto de OWASP-02). |
 
 ### A05 — Configuración de seguridad incorrecta · **Parcial**
@@ -124,12 +124,32 @@ El backend **no hace ninguna llamada HTTP saliente** (ningún `RestTemplate`, `W
 | `GET /api/v1/inexistente` con un token basura | `401` en formato `ApiError` (no revela rutas ni traza) |
 | `GET /api/v1/services/no-es-uuid/availability` | `400` `VALIDATION_ERROR` con mensaje controlado |
 
+### Sondeos del 2026-10-12 (ya con el código de OWASP-02/03, SEC-05 y API-03 desplegado)
+
+| Prueba | Resultado |
+|---|---|
+| `GET /actuator/health` (cabeceras) | `200`; `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, **`Referrer-Policy: no-referrer`**, **`Permissions-Policy`**, **`Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`** |
+| `GET /api/v1/businesses` sin token, con `X-Request-Id: probe-sprint2-0001` | `401`; el header de respuesta **y** el campo `traceId` del cuerpo repiten `probe-sprint2-0001` |
+| `X-Request-Id` con espacios y texto libre | Se descarta: el servidor genera un UUID (no llega al log) |
+| `GET /actuator`, `/env`, `/beans`, `/mappings`, `/info` | `401` (no expuestos) |
+| `GET /.env`, `GET /api/v1/inexistente` | `401` en formato `ApiError`, sin revelar rutas ni trazas |
+| `GET /v3/api-docs`, `/swagger-ui/index.html` | **`200`: Swagger está activo en Render por decisión del equipo (S-30)**, para que Calidad pruebe sin Postman. Riesgo aceptado: expone la lista de rutas, que ya es pública en el repositorio |
+| `TRACE /actuator/health` | `405` |
+| `http://…/actuator/health` | `301` a `https://` |
+| `OPTIONS /api/v1/auth/login` con `Origin: https://evil.example` | `200` vacío, **sin** `Access-Control-Allow-Origin` (CORS cerrado) |
+| `POST /api/v1/users` con 70 KB | **`413 PAYLOAD_TOO_LARGE`** en formato `ApiError` |
+| `POST /api/v1/users` con cuerpo vacío | `400 VALIDATION_ERROR` |
+| `POST /api/v1/auth/login` con `' OR '1'='1' --` en el correo | `401` «Las credenciales no son válidas» (sin efecto, mensaje genérico) |
+| `GET …/availability?date=2026-10-12';DROP TABLE users;--` | `403` con una página HTML **que no es de la aplicación**: el borde de Render bloquea la cadena sospechosa antes de llegar al backend |
+| Login fallido con `X-Forwarded-For: 203.0.113.99` y un correo único, desde la IP pública 152.202.54.136 | `401`. **Hallazgo (verificado en `audit_logs` de Render):** se guardó **`104.23.186.142`**, una IP del borde de **Cloudflare**, no la del cliente. El `203.0.113.99` falsificado sí se ignoró (bien), pero la corrección de OWASP-03 estaba **a medias**: Render recibe el tráfico a través de Cloudflare, que no era un proxy de confianza. **Corregido el mismo día** (ver A04); falta repetir la sonda tras desplegar |
+| Rama `main` en GitHub (API pública) | **`protected: false`**: sin protección de rama (A08, pendiente) |
+
 ## 5. Plan de cierre
 
 | # | Acción | Riesgo | Tarea | Esfuerzo | Responsable sugerido |
 |---|---|---|---|---:|---|
 | 1 | Rotar la contraseña del admin demo y quitarla de `docs/`; confirmar la rotación de la contraseña de Supabase del historial | A02/A07 | SEC-01, SEC-02 | 1 h | Simon |
-| 2 | ~~`server.forward-headers-strategy: native`~~ **hecho (2026-10-10)**; falta verificar la IP en `audit_logs` en Render | A04/A09 | OWASP-03 | 15 min | Simon |
+| 2 | `server.forward-headers-strategy: native` **hecho (2026-10-10)**; verificado en Render el 2026-10-12: guardaba la IP de Cloudflare → **rangos de Cloudflare añadidos como proxies de confianza (2026-10-12)**; falta repetir la sonda tras desplegar | A04/A09 | OWASP-03 | 15 min | Simon |
 | 3 | ~~Sin perfil `dev` por defecto; fallar si falta `JWT_SECRET` fuera de `dev`; `USER` no root~~ **hecho (2026-10-10)** | A05 | SEC-05 | — | — |
 | 4 | ~~`dependabot.yml` + `jjwt` 0.13.0~~ **hecho (2026-10-10)**; falta activar alertas en GitHub y, opcional, un escaneo en el pipeline | A06 | CI-06 | 1 h | Santiago |
 | 5 | Protección de `main`, `CODEOWNERS` | A08 | CI-05 | 1 h | Santiago |

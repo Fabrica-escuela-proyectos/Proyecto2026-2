@@ -97,3 +97,27 @@ Detalles de la ejecución:
 
 ### Hallazgo de seguridad
 **La contraseña del administrador de la demo en Render sigue siendo la que está publicada en el repositorio público** (`docs/guia-prueba-aplicacion-desplegada.md`). Es el pendiente `SEC-01`/`SEC-02`: debe rotarse y quitarse de la guía. Mitiga el MFA obligatorio (quien conozca la contraseña aún necesita el código), pero no debería quedar así para la entrega.
+
+
+---
+
+## Prueba del servicio desplegado en Render — 2026-10-12
+
+Segunda ejecución de la colección de Postman con Newman, ahora sobre el código con las correcciones de OWASP/Swagger ya desplegado (pipeline de `main` en verde; Quality Gate de Sonar en OK). Servicio despierto tras un primer sondeo.
+
+| Pasada | Carpetas | Peticiones | Aserciones | Fallos |
+|---|---|---:|---:|---:|
+| 1 (primera corrida) | 00 a 07 | 79 | 108 | **0** (pero ver el defecto de la petición 78, abajo) |
+| 1 (repetición limpia) | 00 a 07 | 78 | 106 | **0** |
+| 2 | 08 (administrador con MFA, HU-05/28, eliminación de cuentas y limpieza), con un código TOTP manual | 10 | 13 | **0** |
+| **Total (repetición limpia)** | | **88** | **119** | **0** |
+
+- Duración: 46,9 s; respuesta media 507 ms (mínima 126 ms, máxima 2,9 s).
+- Qué confirma de nuevo: las 12 migraciones y el anti-overbooking en la base de Render, el control de acceso entre proveedores (403/401), la disponibilidad pública, las reservas con sus errores (409 por horario ocupado o traslapado), las cancelaciones de cliente y de proveedor, y `CONFIRMATION_REQUIRED` al desactivar un recurso con reservas.
+- **Defecto encontrado en la colección (corregido):** la petición 78 («Reserva futura 16:00-17:00…») pertenece a la carpeta 08 pero no se omitía cuando no hay administrador, así que corría en la pasada 00–07 (79 peticiones en lugar de 78) y dejaba una reserva confirmada. Al correr después la carpeta 08 sobre esos mismos datos, la petición 78 daba `409 «ya tiene una reserva»` (respuesta correcta de la API) y fallaban 3 aserciones de la HU-28. Se corrigió en `generar_coleccion.py` (la 78 ahora se omite sin administrador) y se repitió: **pasada A 78 peticiones / 106 aserciones / 0 fallos; pasada B (carpeta 08) 10 / 13 / 0**.
+- **Qué confirma la carpeta 08 en Render:** el login del administrador sin código da `401 MFA_REQUIRED` y con código TOTP da `200`; eliminar cuentas sin código da `401` y con código `204`; la reserva futura del cliente eliminado queda `CANCELADA` con origen `ELIMINACION_CUENTA` conservando sus datos; el cliente eliminado ya no puede iniciar sesión; al eliminar al proveedor sus servicios dejan de existir (`404`).
+- **Datos de prueba:** todos los usuarios `qa.*` de estas corridas (`s8t01bvx` y `82b21ho0`) fueron eliminados por la propia carpeta 08. Quedan solo las reservas históricas con referencias en `NULL` (diseño de [ADR-006](arquitectura/adr/ADR-006-historial-snapshots-y-cancelaciones.md)) y la sonda de seguridad `probe-ip-…@example.com` en `audit_logs`.
+- No se forzó el límite de intentos de login/MFA para no bloquear el servicio.
+
+### Sondeos de seguridad del mismo día
+Cabeceras (`Referrer-Policy`, `Permissions-Policy`, CSP), `X-Request-Id`/`traceId`, tope de cuerpo (413), CORS cerrado, superficie de Actuator y una inyección SQL de prueba: ver la sección 4 de [`docs/seguridad/owasp-top10-sprint-2.md`](seguridad/owasp-top10-sprint-2.md).

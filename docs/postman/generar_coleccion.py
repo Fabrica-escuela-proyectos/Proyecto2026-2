@@ -261,14 +261,14 @@ pm.request.url.query.remove('date'); pm.request.url.query.add({key: 'date', valu
     ]))
 
     # 5 ---------------------------------------------------------------- reservas
-    def reserva(name, start, end, var=None, extra_tests=None, auth=C, body=None, code=201):
+    def reserva(name, start, end, var=None, extra_tests=None, auth=C, body=None, code=201, pre=None):
         b = body or J(serviceId="{{serviceId}}", date="{{bookingDate}}", startTime=start, endTime=end)
         t = tests_status(code)
         if code == 201:
             t += ["pm.test('Reserva CONFIRMADA con id y precio vigente', () => { const j = pm.response.json(); pm.expect(j.status).to.eql('CONFIRMADA'); pm.expect(j.id).to.be.a('string'); pm.expect(j.priceCop).to.eql(25000); });"]
             if var:
                 t += save((var, "j.id"))
-        return item(name, "POST", "/api/v1/bookings", auth=auth, body=b, tests=t + (extra_tests or []))
+        return item(name, "POST", "/api/v1/bookings", auth=auth, body=b, pre=pre, tests=t + (extra_tests or []))
 
     carpetas.append(folder("05 · Reservas (HU-22, 23, 24)", [
         reserva("42 Crear reserva 10:00-11:00 (HU-22)", "10:00", "11:00", var="bookingId"),
@@ -346,7 +346,7 @@ pm.request.url.query.remove('date'); pm.request.url.query.add({key: 'date', valu
     admin_login_pre = SKIP_WITHOUT_ADMIN + TOTP_SCRIPT + ADMIN_CODE_SCRIPT
     admin_delete_pre = SKIP_WITHOUT_ADMIN + TOTP_SCRIPT + ADMIN_CODE_SCRIPT
     carpetas.append(folder("08 · Administrador y eliminación de cuentas (HU-05, 28) — OPCIONAL", [
-        reserva("78 Reserva futura 16:00-17:00 que se cancelará al eliminar la cuenta", "16:00", "17:00", var="bookingId4"),
+        reserva("78 Reserva futura 16:00-17:00 que se cancelará al eliminar la cuenta", "16:00", "17:00", var="bookingId4", pre=SKIP_WITHOUT_ADMIN),
         item("79 Login de administrador SIN código → 401 MFA_REQUIRED (HU-02/ADR-004)", "POST", "/api/v1/auth/login",
              pre=SKIP_WITHOUT_ADMIN, body=J(email="{{adminEmail}}", password="{{adminPassword}}"),
              tests=tests_status(401) + ["pm.test('Pide el segundo factor', () => pm.expect(pm.response.json().error).to.eql('MFA_REQUIRED'));"],

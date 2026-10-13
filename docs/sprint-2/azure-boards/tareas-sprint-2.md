@@ -13,8 +13,8 @@
 | **Total que se sube a Azure** | **28** | **348** |
 | Checklist interno (NO se sube; 22 de sus 65 ítems quedan agrupados en las tareas técnicas) | 65 | 220 |
 | **Trabajo nominal total** (HU + checklist interno; base de la capacidad del plan) | | **490** |
-| &nbsp;&nbsp;↳ ya hecho del checklist (19 ítems, 7 parciales sin contar) | | 71 |
-| &nbsp;&nbsp;↳ **por hacer** (HU + checklist pendiente) | | **419** |
+| &nbsp;&nbsp;↳ ya hecho del checklist (20 ítems, 7 parciales sin contar) | | 74 |
+| &nbsp;&nbsp;↳ **por hacer** (HU + checklist pendiente) | | **416** |
 
 ## Lotes (un CSV por lote; un lote ya subido NO se vuelve a importar)
 
@@ -28,7 +28,7 @@
 |---|---:|---:|
 | Dev A (Simon Betancur) · Identidad, seguridad y calidad | 159 | 97 |
 | Dev B (Juan Esteban González) · Catálogo, disponibilidad y reservas del cliente | 182 | 173 |
-| Dev C (Santiago Rendón) · Recursos, horarios, cancelaciones, CI/CD y despliegue | 141 | 141 |
+| Dev C (Santiago Rendón) · Recursos, horarios, cancelaciones, CI/CD y despliegue | 141 | 138 |
 | Bases de Datos (Juan Sebastián Andraus, con apoyo de los 3 de Arquisoft) | 8 | 8 |
 
 Tareas de HU: Tier 1 = 200 h, Tier 2 = 70 h (estimación nominal, sin asistente de IA).
@@ -186,7 +186,7 @@ Documentación interactiva de la API (Swagger), modelo de datos coordinado con B
 |---|---|---|---|---:|---:|---|---|
 | ARQ-01 | Documentación interactiva de la API (Swagger/OpenAPI) | Development | New | 7 | 1 | B | Closed (tras la revisión del PR) |
 | ARQ-02 | Modelo de datos del Sprint 2: convenciones y migraciones Flyway coordinadas con BD | Design | New | 7 | 1 | A | Active (0/2 ítems hechos, 1 parcial) |
-| ARQ-03 | Arquitectura del Sprint 2: diagrama de despliegue, diagrama de componentes y ADRs | Design | New | 12 | 1 | C | Active (0/3 ítems hechos, 1 parcial) |
+| ARQ-03 | Arquitectura del Sprint 2: diagrama de despliegue, diagrama de componentes y ADRs | Design | New | 12 | 1 | C | Active (1/3 ítems hechos, 1 parcial) |
 | ARQ-04 | Seguridad OWASP Top 10: revisión del código y endurecimiento (cabeceras, CORS, límites de entrada) | Development | New | 9 | 1 | A | Active (0/2 ítems hechos, 2 parcial) |
 
 ## Checklist interno — pendientes de detalle (NO se suben a Azure)
@@ -231,7 +231,7 @@ Códigos que citan los demás documentos del sprint. La columna *Azure* indica l
 | API-02 | API, seguridad y documentación | Documentar contratos y códigos de error del Sprint 2 (errores-api-sprint-2.md + ejemplos en Swagger) | Documentation | 2 | 2 | B | ARQ-01 | ✔ 2026-10-10 · contratos y DTO generados del código (docs/api/referencia-api-sprint-2.md), catálogo de errores ampliado (errores-api-sprint-2.md §5-7) y la misma información dentro de Swagger (códigos, mensajes y ejemplos por operación) |
 | OWASP-01 | API, seguridad y documentación | Revisión OWASP Top 10 (A01–A10): matriz contra el código, hallazgos y correcciones | Development | 6 | 1 | A | ARQ-04 | ◐ 2026-10-10 · revisión A01–A10 hecha (docs/seguridad/owasp-top10-sprint-2.md, con sondeo a Render); es una revisión, no una prueba de penetración; faltan las correcciones (SEC-01, SEC-05, OWASP-02/03, CI-05/06) |
 | OWASP-02 | API, seguridad y documentación | Cabeceras de seguridad, CORS explícito, límites de tamaño de payload y de paginación | Development | 3 | 2 | A | ARQ-04 | ◐ 2026-10-10 · cabeceras Referrer-Policy/Permissions-Policy/CSP, CORS explícito (CORS_ALLOWED_ORIGINS), límite de cuerpo de 64 KB (413). Falta límite de tasa en rutas públicas (HU-20, crear reservas) |
-| DOC-01 | API, seguridad y documentación | Diagrama de despliegue (cliente, backend Spring Boot, PostgreSQL, Render, GitHub Actions, Sonar) | Design | 3 | 1 | C | ARQ-03 |  |
+| DOC-01 | API, seguridad y documentación | Diagrama de despliegue (cliente, backend Spring Boot, PostgreSQL, Render, GitHub Actions, Sonar) | Design | 3 | 1 | C | ARQ-03 | ✔ 2026-10-12 · docs/arquitectura/diagramas/diagrama-despliegue.svg/.png y conexiones-diagrama-despliegue.md (Render, PostgreSQL, GitHub Actions, SonarCloud, cliente y entorno local); falta la revision de Juan Esteban y Santiago |
 | DOC-02 | API, seguridad y documentación | Actualizar arquitectura: módulos service/resource/reservation y ADR-004 (MFA), ADR-005 (anti-overbooking), ADR-006 (retención de historial) | Documentation | 5 | 1 | B | ARQ-03 | ◐ 2026-10-10 · ADR-005, 006 y 007 redactados (estado Propuesto) y registro de decisiones/supuestos S-01..S-32 (decisiones-y-supuestos-sprint-2.md) con verificador de dependencias; falta actualizar arquitectura-sprint-1.md y aprobar los ADR |
 | DOC-03 | API, seguridad y documentación | Diagramas de componentes y paquetes del Sprint 2 con tabla de conexiones | Design | 4 | 2 | C | ARQ-03 |  |
 | DOC-04 | API, seguridad y documentación | Evidencias del sprint: reportes Sonar/JaCoCo, pipeline verde, Postman, capturas | Documentation | 3 | 2 | B | — |  |
