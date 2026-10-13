@@ -21,7 +21,7 @@ Figura: [`diagrama-despliegue.png`](diagrama-despliegue.png) (fuente editable: [
 | De | A | Protocolo / mecanismo | Qué viaja | Seguridad |
 |---|---|---|---|---|
 | Cliente | Proxy de Render | HTTPS 443 | Peticiones REST con JSON | TLS de Render; JWT en `Authorization: Bearer`; `X-MFA-Code` en operaciones sensibles |
-| Proxy | Contenedor | HTTP al puerto `$PORT` (red interna de Render) | La misma petición + `X-Forwarded-For` | La IP real del cliente se toma de `X-Forwarded-For`, de derecha a izquierda, saltando los proxies de confianza (privados y **Cloudflare**, que está delante de Render); un cliente no puede falsear su IP. Verificado en Render el 2026-10-12 (ver OWASP A04) |
+| Proxy | Contenedor | HTTP al puerto `$PORT` (red interna de Render) | La misma petición + `X-Forwarded-For` | La IP real del cliente se toma de `X-Forwarded-For`, de derecha a izquierda, saltando los proxies de confianza (privados y **Cloudflare**, que está delante de Render); un cliente no puede falsear su IP. Verificado en Render el 2026-10-12 (guardaba la IP de Cloudflare) y reverificado el 2026-10-13 tras la corrección (guarda la IP real); ver OWASP A04 |
 | Contenedor | PostgreSQL | JDBC | Consultas y migraciones Flyway al arrancar | Credenciales por variables de entorno (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`); nunca en el repositorio |
 | GitHub Actions | Render | HTTPS `POST` al *deploy hook* | Orden de desplegar (solo en `main`) | URL secreta en `RENDER_DEPLOY_HOOK_URL` (GitHub Secrets) |
 | GitHub Actions | Render | HTTPS `GET /actuator/health` | *Smoke test* tras el despliegue (hasta 10 min) | Ruta pública sin datos sensibles |
