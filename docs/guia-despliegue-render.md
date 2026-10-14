@@ -1,6 +1,6 @@
 # Guía de despliegue en Render
 
-Cómo poner el backend en una URL pública en Render, con Postgres administrado. Probado localmente construyendo la imagen y levantándola contra el Postgres de `docker-compose.yml` — arrancó, migró el esquema y `/actuator/health` respondió `UP`. No se probó todavía dentro de Render mismo; sigue esta guía paso a paso y avísame en qué falla si algo no calza.
+Cómo poner el backend en una URL pública en Render, con Postgres administrado. Probado localmente construyendo la imagen y levantándola contra el Postgres de `docker-compose.yml` — arrancó, migró el esquema y `/actuator/health` respondió `UP`. No se probó todavía dentro de Render mismo;
 
 ## 0. Qué se agregó para esto
 
