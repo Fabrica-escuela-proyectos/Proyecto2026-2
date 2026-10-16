@@ -93,7 +93,7 @@ Con el token del administrador (pestaña C) y un código vigente: `DELETE /users
 
 | Síntoma | Causa y arreglo |
 |---|---|
-| `401` en cualquier paso protegido | Falta *Authorize* en esa pestaña o el token es de otro rol; vuelve a pegar el token correcto (sin `Bearer`) |
+| `401` `UNAUTHORIZED` en cualquier paso protegido | **Causa más común: falta el token en el candado (*Authorize*) de esa pestaña** (candado abierto), el token venció (1 h) o es de otra cuenta. Vuelve a hacer login y pega solo el token. Si el `message` dice «El código de verificación no es válido», entonces el problema es el código MFA (incorrecto o vencido) |
 | `429` | Demasiados registros o fallos de login/MFA: espera 10–15 minutos |
 | `400` «La fecha…» o `409` «fuera del horario» | La fecha es pasada o fin de semana, o la hora no cae dentro de 08:00–20:00 |
 | `403` en una operación de proveedor | Estás con el token del cliente (o viceversa) |
