@@ -1,46 +1,34 @@
-HU 04 - Cerrar sesión
-
-Como usuario autenticado
-
+Feature: HU-04 Cerrar sesión
+  Como usuario autenticado
   Quiero cerrar mi sesión
-
   Para impedir que otras personas puedan utilizar mi cuenta sin autorización
 
-Scenario: Cierre de sesión exitoso
+  Scenario: Cierre de sesión exitoso
+    Given un usuario tiene una sesión activa y autenticada
+    When ejecuta la acción de cerrar sesión
+    Then la sesión queda invalidada en todos los dispositivos asociados
 
-    Given el usuario tiene una sesión activa y autenticada
+  Scenario: Renovación automática desactivada tras cerrar sesión
+    Given un usuario cerró su sesión exitosamente
+    When el sistema termina el cierre de sesión
+    Then la renovación automática de la sesión queda desactivada
 
-    When el usuario ejecuta la acción de cerrar sesión
-
-    Then la sesión activa debe quedar invalidada en todos los dispositivos asociados
-
-    And la renovación automática de la sesión quedará desactivada.
-
-
-
-Scenario: Expiración automática de sesión
-
-    Given una sesión ha superado su tiempo de vida maximo (1hora)
-
+  Scenario: Expiración automática de sesión
+    Given una sesión superó su tiempo de vida máximo (1 hora)
     When el usuario intenta usar esa sesión
+    Then el sistema la trata como revocada y deniega el acceso a operaciones protegidas
 
-    Then el sistema debe tratarla como revocada
+  Scenario: Error al cerrar sesión
+    Given un usuario tiene una sesión activa
+    When ejecuta la acción de cerrar sesión y ocurre un error, por ejemplo una falla de conexión con el servidor
+    Then el sistema maneja el error apropiadamente
 
-    And debe denegar el acceso a operaciones protegidas
+  Scenario Outline: Informe del resultado del cierre de sesión
+    Given un usuario ejecuta la acción de cerrar sesión
+    When el cierre de sesión resulta "<resultado>"
+    Then el sistema informa al usuario que el cierre de sesión fue "<mensaje>"
 
-
-Scenario: Error al cerrar sesión
-
-   Given el usuario tiene una sesión activa
-
-   When ejecuta la acción de cerrar sesión
-
-   And ocurre un error (ej. falla de conexión con el servidor)
-
-   Then el sistema debe manejar el error apropiadamente
-
-   And debe informar al usuario si el cierre de sesión fue exitoso o no.
-
-
-
-
+    Examples:
+      | resultado | mensaje  |
+      | exitoso   | exitoso  |
+      | fallido   | fallido  |

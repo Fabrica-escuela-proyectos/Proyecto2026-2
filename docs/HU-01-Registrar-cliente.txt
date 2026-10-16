@@ -1,185 +1,95 @@
-HU-01-Registrar-cliente
+Feature: HU-01 Registrar cliente
+  Como cliente de la plataforma
+  Quiero registrarme proporcionando mis datos personales
+  Para crear una cuenta que me permita acceder de forma segura a los servicios de reserva
 
-Descripción
-Como cliente de la plataforma
-quiero registrarme proporcionando mis datos personales
-para crear una cuenta que me permita acceder de forma segura a los servicios de reserva.
-
-
-Criterios de aceptación
- Scenario: Registro exitoso con datos válidos
-
-    Given un visitante no registrado genera una petición de registro
-
-    When completa nombre completo, correo electrónico, número de celular y contraseña con datos válidos
-
-    And envía la petición
-
+  Scenario: Registro exitoso con datos válidos
+    Given un visitante no registrado está en el registro de cliente
+    When completa todos los datos con información válida y envía la solicitud
     Then el sistema crea la cuenta exitosamente
-
     And le asigna el rol "Cliente" por defecto
 
-    And guarda la contraseña de forma segura, sin que quede visible ni siquiera para el equipo técnico
+  Scenario: Acceso del usuario tras el registro
+    Given un visitante se registró exitosamente
+    When el sistema termina el registro
+    Then el usuario queda autenticado o es llevado a la pantalla de inicio de sesión
 
-    And redirige al usuario a un estado autenticado o a la pantalla de inicio de sesión
-
-
+  Scenario: Protección de la contraseña y los datos sensibles
+    Given un visitante se registró exitosamente con datos válidos
+    When su cuenta queda creada en la plataforma
+    Then su contraseña y demás datos sensibles quedan guardados de forma segura
+    And nadie, ni el equipo desarrollador ni quien administra la plataforma, puede verlos de forma legible
 
   Scenario: Registro con correo ya existente
-
     Given ya existe una cuenta registrada con el correo "cliente@ejemplo.com"
-
-    When un visitante intenta registrarse usando el correo "cliente@ejemplo.com"
-
-    Then el sistema rechaza la solicitud
-
+    When un visitante intenta registrarse con el correo "cliente@ejemplo.com"
+    Then el sistema rechaza la solicitud y no crea una cuenta duplicada
     And muestra un mensaje indicando que el correo ya está en uso
 
-    And no se crea una cuenta duplicada
-
-
-
   Scenario: Registro con formato de correo inválido
-
-    Given un visitante accede genera una petición de registro
-
-    When ingresa un correo con formato inválido, por ejemplo "usuario@@dominio"
-
-    And envía la petición de registro
-
-    Then el sistema rechaza la solicitud
-
+    Given un visitante está en el registro de cliente
+    When ingresa un correo con formato inválido, por ejemplo "usuario@@dominio", y envía la solicitud
+    Then el sistema rechaza la solicitud y no crea ninguna cuenta
     And muestra un mensaje de error indicando que el formato del correo no es válido
 
-    And no se crea ninguna cuenta
-
-
-
   Scenario Outline: Número de celular con formato inválido
-
-    Given un visitante envia una petición de registro con datos válidos de nombre, correo y contraseña
-
-    And el número de celular "<celular>"
-
-    When envía la petición de registro
-
-    Then el sistema rechaza la solicitud
-
+    Given un visitante tiene nombre, correo y contraseña válidos
+    When envía la solicitud con el celular "<celular>"
+    Then el sistema rechaza la solicitud y no crea ninguna cuenta
     And muestra un mensaje de error indicando que el número de celular no es válido
 
-    And no se crea ninguna cuenta
-
-
-
     Examples:
-
-
-
-      | celular       |
-
-      | abcde12345    |
-
-      | 12345         |
-
-      | 123             |
-
-
+      | celular    |
+      | abcde12345 |
+      | 12345      |
+      | 123        |
+      | 1234567890 |
 
   Scenario: Registro con número de celular ya registrado en otra cuenta
-
     Given ya existe una cuenta registrada con el número de celular "3001234567"
-
-    When un visitante intenta registrarse usando el mismo número de celular "3001234567"
-
-    Then el sistema rechaza la solicitud
-
+    When un visitante intenta registrarse con el celular "3001234567"
+    Then el sistema rechaza la solicitud y no crea una cuenta duplicada
     And muestra un mensaje indicando que el número de celular ya está en uso
 
-    And no se crea una cuenta duplicada
+  Scenario Outline: Contraseña válida con un carácter especial permitido
+    Given un visitante tiene nombre, correo y celular válidos
+    When envía una contraseña con mayúscula, minúscula, mínimo 8 caracteres y el carácter especial "<carácter especial>"
+    Then el sistema crea la cuenta exitosamente
 
-
+    Examples:
+      | carácter especial |
+      | ¡                 |
+      | *                 |
+      | +                 |
+      | °                 |
 
   Scenario Outline: Contraseña que no cumple la política de seguridad
-
-    Given un visitante envía una petición de registro con nombre, correo, celular Validos
-
-    And  una contraseña que no contiene mayúsculas, minúsculas, 8 caracteres  mínimo o algún                         "<carácter especial>"
-
-    When el sistema la procesa
-
-    Then el sistema rechaza la petición
-
+    Given un visitante tiene nombre, correo y celular válidos
+    When envía una contraseña que incumple el requisito "<requisito>"
+    Then el sistema rechaza la solicitud y no crea ninguna cuenta
     And muestra un mensaje indicando el requisito de seguridad no cumplido
 
-    And no se crea ninguna cuenta
-
-
-
     Examples:
-
-
-
-      | caracter especial   |
-
-      | ¡      |
-
-      | *      |
-
-      | +     |
-
-      | °      |
-
-     
-
-
+      | requisito                          |
+      | contener al menos una mayúscula    |
+      | contener al menos una minúscula    |
+      | tener mínimo 8 caracteres          |
+      | contener al menos un carácter especial |
 
   Scenario Outline: Campo obligatorio faltante
-
-    Given un visitante genera una petición de registro
-
-    When completa la petición dejando vacío el campo "<campo>"
-
-    And envía la petición
-
-    Then el sistema rechaza la solicitud
-
+    Given un visitante está en el registro de cliente
+    When deja vacío el campo "<campo>" y envía la solicitud
+    Then el sistema rechaza la solicitud y no crea ninguna cuenta
     And muestra un mensaje de error específico para el campo "<campo>"
 
-    And no se crea ninguna cuenta
-
-
-
     Examples:
-
-      | campo               |
-
-      | nombre completo     |
-
-      | correo electrónico  |
-
-      | número de celular   |
-
-      | contraseña          |
-
-
+      | campo              |
+      | nombre completo    |
+      | correo electrónico |
+      | número de celular  |
+      | contraseña         |
 
   Scenario: Bloqueo temporal por múltiples intentos de registro
-
-    Given se detectan muchas solicitudes de registro en poco tiempo desde el mismo origen
-
-    When se supera el número de intentos permitido
-
+    Given un mismo origen realizó 5 intentos de registro en poco tiempo
+    When intenta registrarse nuevamente
     Then el sistema bloquea temporalmente nuevas solicitudes desde ese origen
-
-
-
-  Scenario: La información del usuario queda protegida en todo momento
-
-    Given un visitante se registra exitosamente con datos válidos
-
-    When su cuenta queda creada en la plataforma
-
-    Then su contraseña y demás datos sensibles permanecen protegidos
-
-    And nadie, ni siquiera el equipo que administra la plataforma, puede verlos de forma legible
-

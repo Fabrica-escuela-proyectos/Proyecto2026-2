@@ -1,80 +1,73 @@
-HU 05 - Gestionar roles y permisos
+Feature: HU-05 Gestionar roles y permisos
+  Como administrador
+  Quiero gestionar los roles y permisos de los usuarios
+  Para controlar de forma segura quién puede acceder a cada funcionalidad
 
-Como administrador tengo que poder gestionar los roles y permisos de los usuarios, para controlar de forma segura quién puede acceder a cada funcionalidad.
-
-Background:
-
-    Given que el sistema tiene los roles "Cliente", "Proveedor" y "Administrador" configurados
-
+  Background:
+    Given el sistema tiene los roles "Cliente", "Proveedor" y "Administrador" configurados
     And cada rol tiene permisos definidos sobre los recursos del sistema
 
-Scenario: Administrador asigna un rol "Administrador" a un usuario existente
-
-    Given un usuario autenticado como "Administrador"
-
-    And existe un usuario con rol "Cliente"
-
-    When le asigna el rol "Administrador" al usuario con rol de "Cliente"
-
+  Scenario: Administrador asigna el rol "Administrador" a un usuario Cliente
+    Given un Administrador autenticado y un usuario con rol "Cliente"
+    When le asigna el rol "Administrador" a ese usuario
     Then el sistema actualiza el rol del usuario a "Administrador"
 
-    And se activa un evento obligatorio, para la creación de MFA para el nuevo "Administrador"
+  Scenario: Creación obligatoria de MFA para el nuevo Administrador
+    Given un Administrador asignó el rol "Administrador" a un usuario
+    When el sistema actualiza el rol del usuario
+    Then se activa de forma obligatoria la creación de MFA para el nuevo "Administrador"
 
+  Scenario: Nuevo Administrador sin MFA completado no puede acceder
+    Given un usuario recibió el rol "Administrador" y aún no completa la creación de MFA
+    When intenta acceder como Administrador
+    Then el sistema le deniega el acceso hasta que complete la creación de MFA
 
+  Scenario: Administrador intenta cambiar el rol de un Proveedor
+    Given un Administrador autenticado y un usuario con rol "Proveedor"
+    When intenta cambiarle el rol a ese usuario
+    Then el sistema rechaza la operación y no cambia el rol
+    And informa que a los usuarios con rol "Proveedor" no se les puede cambiar el rol
 
+  Scenario Outline: Administrador elimina un usuario
+    Given un Administrador autenticado y un usuario con rol "<rol>"
+    When elimina a ese usuario
+    Then el sistema elimina al usuario en su totalidad
 
-Scenario: Administrador intenta cambiar un rol "Proveedor" de un usuario existente
+    Examples:
+      | rol       |
+      | Cliente   |
+      | Proveedor |
 
-    Given un usuario autenticado como "Administrador"
+  Scenario: Historial tras eliminar un usuario
+    Given un Administrador eliminó a un usuario con rol "Cliente" o "Proveedor"
+    When el sistema termina la eliminación
+    Then el sistema guarda el historial de las funcionalidades que realizó el usuario
+    And sus reservas, sitios y horarios no se consideran datos válidos
 
-    And existe un usuario con rol "Proveedor"
+  Scenario: Cuenta eliminada sin acceso ni funciones
+    Given un usuario con rol "Cliente" o "Proveedor" fue eliminado
+    When intenta acceder a su cuenta o realizar cualquier función
+    Then el sistema le deniega el acceso y no le permite ninguna función
 
-    When le intenta cambiar el rol de "Proveedor" a un usuario creado
+  Scenario: Administrador intenta eliminar a un Administrador
+    Given un Administrador autenticado y un usuario con rol "Administrador"
+    When intenta eliminar a ese usuario
+    Then el sistema rechaza la operación y no elimina al usuario
 
-    Then el sistema devuelve un error
-
-    And informa que los usuarios con rol "Proveedor" no se les puede cambiar el rol.
-
-
-
-Scenario: administrador elimina usuario con rol
-
-Given: Usuario autenticado como administrador 
-
-When: Elimina Usuario con rol de "Cliente" o "Proveedor"
-Then:Se elimina el usuario en su totalidad, guardando historial de las funcionalidades de usuario sin tener en cuenta sus reservas, sitios u horarios como datos validos.
-
-Scenario: Administrador intenta asignar un rol inexistente
-
-    Given un usuario autenticado con rol "Administrador"
-
-    When intenta asignar el rol inexistente a un usuario con rol "Cliente"
-
+  Scenario: Administrador intenta asignar un rol inexistente
+    Given un Administrador autenticado y un usuario con rol "Cliente"
+    When intenta asignarle un rol inexistente
     Then el sistema rechaza la operación
+    And responde con un error uniforme indicando que el rol no existe
 
-    And responde con un error uniforme indicando que el rol no existe.
-
-
-
-
-Scenario: Usuario intenta modificar sus propios permisos
-
-    Given un usuario autenticado con cualquier rol
-
+  Scenario Outline: Usuario intenta modificar sus propios permisos o rol
+    Given un usuario autenticado con rol "<rol>"
     When intenta modificar sus propios permisos o rol
-
     Then el sistema rechaza la operación
-
     And responde con un error uniforme indicando que no puede modificarse a sí mismo
 
-
-
-
-
-
-
-
-
-
-
-
+    Examples:
+      | rol           |
+      | Cliente       |
+      | Proveedor     |
+      | Administrador |
