@@ -1,21 +1,73 @@
--- Datos de ejemplo para probar consultas_sprint2.sql (ids = los usados en las consultas)
--- Ejecutar en una BD de pruebas. Re-ejecutable.
-INSERT INTO users (id, full_name, email, phone, password_hash) VALUES
-  (1, 'Cliente Demo',    'cliente.demo@example.com',   '3000000001', 'hash-demo'),
-  (2, 'Proveedor Demo',  'proveedor.demo@example.com', '3000000002', 'hash-demo')
-ON CONFLICT DO NOTHING;
-INSERT INTO providers (id, user_id) VALUES (1, 2) ON CONFLICT DO NOTHING;
-INSERT INTO businesses (id, provider_id, name) VALUES (1, 1, 'Centro Deportivo Demo') ON CONFLICT DO NOTHING;
-INSERT INTO services (id, business_id, name, duration_minutes, price) VALUES (1, 1, 'Alquiler de cancha', 60, 40000) ON CONFLICT DO NOTHING;
-INSERT INTO resources (id, business_id, name) VALUES (1, 1, 'Cancha 1') ON CONFLICT DO NOTHING;
-INSERT INTO service_resources (service_id, resource_id, business_id) VALUES (1, 1, 1) ON CONFLICT DO NOTHING;
-INSERT INTO resource_schedules (resource_id, day_of_week, start_time, end_time)
-SELECT 1, d, '08:00', '18:00' FROM generate_series(1,7) d
-WHERE NOT EXISTS (SELECT 1 FROM resource_schedules WHERE resource_id = 1);
+-- ============================================================================
+-- Datos de ejemplo Sprint 2 (FIXTURES DETERMINÍSTICOS)
+-- ============================================================================
+-- Este archivo sí usa UUIDs fijos para demo/validación manual.
+-- No representa SQL de runtime de la aplicación.
+--
+-- Convención de fixtures:
+--   1000... usuarios
+--   2000... proveedores
+--   3000... negocios
+--   4000... servicios
+--   5000... recursos
+--   6000... reservas
+-- ============================================================================
 
--- Alinear secuencias para que los próximos INSERT sin id no choquen
-SELECT setval(pg_get_serial_sequence('users','id'),      GREATEST((SELECT max(id) FROM users), 1));
-SELECT setval(pg_get_serial_sequence('providers','id'),  GREATEST((SELECT max(id) FROM providers), 1));
-SELECT setval(pg_get_serial_sequence('businesses','id'), GREATEST((SELECT max(id) FROM businesses), 1));
-SELECT setval(pg_get_serial_sequence('services','id'),   GREATEST((SELECT max(id) FROM services), 1));
-SELECT setval(pg_get_serial_sequence('resources','id'),  GREATEST((SELECT max(id) FROM resources), 1));
+INSERT INTO users (id, full_name, email, phone_number, password_hash, enabled) VALUES
+  ('10000000-0000-0000-0000-000000000001'::uuid, 'Cliente Demo',   'cliente.demo@example.com',   '3000000001', 'hash-demo', TRUE),
+  ('10000000-0000-0000-0000-000000000002'::uuid, 'Proveedor Demo', 'proveedor.demo@example.com', '3000000002', 'hash-demo', TRUE)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO providers (id, user_id) VALUES
+  ('20000000-0000-0000-0000-000000000001'::uuid, '10000000-0000-0000-0000-000000000002'::uuid)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO businesses (id, provider_id, name) VALUES
+  ('30000000-0000-0000-0000-000000000001'::uuid, '20000000-0000-0000-0000-000000000001'::uuid, 'Centro Deportivo Demo')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO services (id, business_id, name, description, duration_minutes, price_cop, active) VALUES
+  ('40000000-0000-0000-0000-000000000001'::uuid, '30000000-0000-0000-0000-000000000001'::uuid,
+   'Alquiler de cancha', 'Servicio de demostración', 60, 40000, TRUE)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO resources (id, business_id, name, type, active) VALUES
+  ('50000000-0000-0000-0000-000000000001'::uuid, '30000000-0000-0000-0000-000000000001'::uuid,
+   'Cancha 1', 'SALA', TRUE)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO service_resources (service_id, resource_id) VALUES
+  ('40000000-0000-0000-0000-000000000001'::uuid, '50000000-0000-0000-0000-000000000001'::uuid)
+ON CONFLICT (service_id, resource_id) DO NOTHING;
+
+INSERT INTO resource_availability (resource_id, day_of_week, start_time, end_time)
+SELECT '50000000-0000-0000-0000-000000000001'::uuid, d, '08:00'::time, '18:00'::time
+FROM generate_series(1, 7) AS d
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM resource_availability a
+    WHERE a.resource_id = '50000000-0000-0000-0000-000000000001'::uuid
+      AND a.day_of_week = d
+);
+
+INSERT INTO bookings (
+    id,
+    client_id, client_email, client_name,
+    business_id, business_name,
+    service_id, service_name,
+    resource_id, resource_name,
+    start_at, end_at,
+    status, price_cop,
+    cancel_reason, cancelled_at, cancel_origin
+) VALUES (
+    '60000000-0000-0000-0000-000000000001'::uuid,
+    '10000000-0000-0000-0000-000000000001'::uuid, 'cliente.demo@example.com', 'Cliente Demo',
+    '30000000-0000-0000-0000-000000000001'::uuid, 'Centro Deportivo Demo',
+    '40000000-0000-0000-0000-000000000001'::uuid, 'Alquiler de cancha',
+    '50000000-0000-0000-0000-000000000001'::uuid, 'Cancha 1',
+    ((current_date + 7) + TIME '09:00') AT TIME ZONE 'America/Bogota',
+    ((current_date + 7) + TIME '10:00') AT TIME ZONE 'America/Bogota',
+    'CONFIRMADA', 40000,
+    NULL, NULL, NULL
+)
+ON CONFLICT (id) DO NOTHING;
