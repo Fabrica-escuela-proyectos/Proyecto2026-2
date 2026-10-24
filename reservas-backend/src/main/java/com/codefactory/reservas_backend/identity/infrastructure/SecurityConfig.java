@@ -14,8 +14,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
@@ -127,18 +125,6 @@ public class SecurityConfig {
             config.setAllowCredentials(false);   // el JWT viaja en la cabecera Authorization, no en cookies
             config.setMaxAge(3600L);
             return config;
-        };
-    }
-
-    /**
-     * La autenticación es propia (JWT + tabla de sesiones), no por usuario/contraseña de Spring. Declarar este
-     * servicio vacío evita que Spring Boot cree su usuario en memoria con una contraseña generada, que se
-     * imprimía en el log en cada arranque (SEC-03).
-     */
-    @Bean
-    public UserDetailsService noUserDetailsService() {
-        return username -> {
-            throw new UsernameNotFoundException("La autenticación se hace con JWT");
         };
     }
 }

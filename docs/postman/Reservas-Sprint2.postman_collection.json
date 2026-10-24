@@ -3545,6 +3545,18 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Las pruebas de administrador son opcionales: se omiten si el entorno no tiene el administrador configurado.",
+                  "if (!pm.environment.get('adminEmail') || !(pm.environment.get('adminTotpSecret') || pm.environment.get('adminMfaCode'))) {",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",

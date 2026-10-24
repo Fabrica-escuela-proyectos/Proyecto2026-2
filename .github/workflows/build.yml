@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -48,7 +48,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           # Historial completo: Sonar lo necesita para atribuir código nuevo y blame
           fetch-depth: 0
@@ -77,7 +77,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -91,7 +91,7 @@ jobs:
         run: mvn -B package -DskipTests
 
       - name: Upload JAR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: reservas-backend
           # upload-artifact no usa working-directory: la ruta es desde la raíz del repo
