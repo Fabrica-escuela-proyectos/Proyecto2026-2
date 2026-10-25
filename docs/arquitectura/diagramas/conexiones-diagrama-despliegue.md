@@ -44,7 +44,7 @@ Figura: [`diagrama-despliegue.png`](diagrama-despliegue.png) (fuente editable: [
 
 | Decisión | Razón | Costo / límite conocido |
 |---|---|---|
-| **Una sola instancia** en el plan gratuito de Render | Es lo que cubre el proyecto académico sin costo; el monolito modular no necesita orquestación (ADR-001) | Los límites de intentos viven en memoria; el servicio se duerme a los 15 min y tarda ≈ 2 min en despertar; la base gratuita expira ≈ 2026-12-21 |
+| **Una sola instancia** en el plan gratuito de Render | Es lo que cubre el proyecto académico sin costo; el monolito modular no necesita orquestación (ADR-001) | Los límites de intentos viven en memoria; el servicio se duerme a los 15 min y tarda ≈ 2 min en despertar; **el plan gratuito tiene 750 h/mes por espacio de trabajo y la base expira a los 30 días: se agotó el 2026-10-24** (ver [`guia-recuperar-despliegue.md`](../../guia-recuperar-despliegue.md)) |
 | **Contenedor Docker** con construcción en dos etapas | Mismo artefacto en local, CI y Render; el JDK 17 es obligatorio (con 24 Lombok no genera código) | Imagen de ≈ 560 MB (JRE completo) |
 | **Despliegue por *deploy hook* desde Actions** (Auto-Deploy apagado) | Solo se despliega lo que pasó pruebas, Sonar y build | El pipeline completo tarda unos 5 minutos |
 | **Usuario sin privilegios + `HEALTHCHECK`** | Reduce el impacto de una vulnerabilidad (OWASP A05) | — |

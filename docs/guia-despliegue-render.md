@@ -13,7 +13,7 @@ Ambos archivos están sin commitear todavía — revísalos y commitéalos antes
 
 1. Dashboard de Render → **New → PostgreSQL**.
 2. Nombre: `reservas-db` (o el que quieras), región la más cercana, plan **Free**.
-3. **Importante — el plan Free expira en 90 días** y Render borra la base si no la actualizas a un plan pago antes de esa fecha. Para una demo de la materia alcanza de sobra, pero no la dejes como base "definitiva" del proyecto sin más plan.
+3. **Importante — la base del plan Free expira a los 30 días** (corregido el 2026-10-24; antes decíamos 90), tiene **14 días de gracia** y luego Render la borra con sus datos. Además, **el servicio web gratuito tiene 750 horas al mes por espacio de trabajo**: al agotarlas Render lo suspende hasta el mes siguiente. Sirve para una demostración corta, no como despliegue definitivo. Si se agota, ver [`guia-recuperar-despliegue.md`](guia-recuperar-despliegue.md) (la base se puede mover a Neon sin tocar el servicio).
 4. Cuando esté creada, en la pestaña **Info** vas a ver por separado: `Hostname`, `Port`, `Database`, `Username`, `Password`. Los necesitas en el paso 3.
 
 ## 2. Preparar el repo

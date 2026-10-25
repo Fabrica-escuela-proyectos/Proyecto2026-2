@@ -98,12 +98,21 @@ jobs:
           path: reservas-backend/target/reservas-backend-0.0.1-SNAPSHOT.jar
           if-no-files-found: error
 
-  # Deploy's job: solo en main (nunca en PR) y solo si tests, Sonar y build pasaron
+  # Deploy's job: solo en main (nunca en PR) y solo si tests, Sonar y build pasaron.
+  # Interruptor sin tocar código: variable del repositorio DEPLOY_ENABLED=false (Settings >
+  # Secrets and variables > Actions > Variables) lo salta mientras no haya dónde desplegar
+  # (p. ej. el plan gratuito de Render agotado); con la variable ausente o en true despliega.
   deploy:
     name: Deploy to Render
     needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOY_ENABLED != 'false'
     runs-on: ubuntu-latest
+    # Tope duro: un servicio que acepta la conexión pero no responde ya dejó ejecuciones colgadas horas.
+    timeout-minutes: 15
+    # Varias fusiones seguidas (p. ej. los PR de Dependabot) no deben apilar despliegues: gana el último.
+    concurrency:
+      group: deploy-render
+      cancel-in-progress: true
     # Este job no hace checkout: anula el working-directory global
     defaults:
       run:
@@ -122,14 +131,15 @@ jobs:
             echo "::error::Falta el secret RENDER_DEPLOY_HOOK_URL"
             exit 1
           fi
-          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
+          curl -fsS -m 30 -X POST "$RENDER_DEPLOY_HOOK_URL"
 
       # Smoke test: espera a que la app responda UP (el build en Render tarda
       # unos minutos y el plan gratis puede estar dormido)
       - name: Wait for application health
         run: |
           for i in $(seq 1 40); do
-            status=$(curl -s -o /dev/null -w '%{http_code}' "$APP_URL/actuator/health" || true)
+            # -m 15: sin tiempo límite, un servidor que no responde colgaba el paso para siempre
+            status=$(curl -s -m 15 -o /dev/null -w '%{http_code}' "$APP_URL/actuator/health" || true)
             echo "Intento $i: HTTP $status"
             if [ "$status" = "200" ]; then
               echo "Aplicación desplegada y saludable"

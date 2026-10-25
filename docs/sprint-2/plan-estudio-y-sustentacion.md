@@ -64,7 +64,7 @@ Reglas del modelo:
   3. *Calidad:* qué mide cada Quality Gate, dónde se ve la cobertura, cómo se interpreta un hallazgo.
   4. *Arquitectura:* módulos, capas, interfaces entre módulos, diagramas de componentes/paquetes/despliegue.
 - **Ejercicio:** romper a propósito una prueba en una rama y ver que el pipeline bloquea el merge; levantar el proyecto desde cero con la guía `docs/guia-desarrollo-local.md`.
-- **Debe poder explicar:** por qué monolito modular (ADR-001), por qué JDK 17 y no 24 (Lombok no genera código), cómo se separan dev/test/prod, qué limita el plan gratuito de Render (cold start de ≈ 2 min; la BD gratuita expira a los 90 días) y la política OWASP A05/A06/A08.
+- **Debe poder explicar:** por qué monolito modular (ADR-001), por qué JDK 17 y no 24 (Lombok no genera código), cómo se separan dev/test/prod, qué limita el plan gratuito de Render (cold start de ≈ 2 min; la BD gratuita expira a los 30 días y el servicio tiene 750 h/mes) y la política OWASP A05/A06/A08.
 
 ## 4. Cronograma de estudio
 
@@ -111,7 +111,7 @@ Las respuestas que dependen de decisiones del Sprint 2 se marcan *(según decisi
 21. **¿Qué hace el pipeline?** Compila, corre pruebas unitarias y de integración (con PostgreSQL en contenedor), mide cobertura, ejecuta Sonar, construye la imagen y bloquea si algo falla. *(CI-01)*
 22. **¿Cómo se despliega?** Render construye el `Dockerfile` multi-etapa (JDK 17 para compilar, JRE 17 para ejecutar), inyecta variables de entorno y `$PORT`, Flyway migra al arrancar y se verifica con `/actuator/health`. *(docs/guia-despliegue-render.md)*
 23. **¿Por qué JDK 17 y no 24?** Con JDK 24 Lombok no genera getters/builders (el compilador falla en silencio); se fijó 17 en `pom.xml`, `Dockerfile` y guías. *(Sprint 1)*
-24. **¿Qué límites tiene el despliegue gratuito?** El servicio se duerme tras 15 min (arranque ≈ 2 min) y la base gratuita expira a los 90 días (≈ 21 dic); se calienta antes de demos y hay que decidir el plan antes de esa fecha.
+24. **¿Qué límites tiene el despliegue gratuito?** El servicio se duerme tras 15 min (arranque ≈ 2 min), tiene 750 h de instancia al mes por espacio de trabajo (al agotarse suspende el servicio) y la base gratuita expira a los 30 días (14 de gracia); se calienta antes de demos y, si se agota, la base se mueve a Neon o se pasa a un plan de pago (ver `docs/guia-recuperar-despliegue.md`).
 25. **¿Cómo prueban las reglas de negocio y la concurrencia?** Pruebas unitarias AAA por regla (un caso por escenario de los criterios), integración con Testcontainers y una prueba concurrente con barrera para el solapamiento. *(plan §9)*
 26. **¿Cómo se trazó cada HU hasta la prueba?** Matriz HU → regla → API → componente → tabla → prueba generada del backlog. *(azure-boards/trazabilidad-sprint-2.md)*
 
