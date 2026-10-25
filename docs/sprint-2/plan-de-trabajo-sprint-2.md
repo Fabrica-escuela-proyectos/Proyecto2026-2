@@ -166,7 +166,7 @@ Línea base medida hoy con JaCoCo (101 pruebas unitarias, 0 fallas): **77,1% de 
 | R6 | springdoc 3.x + Boot 4/Jackson 3 incompatible | Medio | Spike de 2 h; plan B: contrato OpenAPI escrito a mano y publicado |
 | R7 | Ambigüedad de HU (§7) | Medio | Supuestos por defecto el Día 1 |
 | R8 | Testcontainers no corre en Docker Desktop local | Medio | Correr las IT en CI; probar el bump 1.21.3 con Docker encendido |
-| R9 | Render free: cold start ≈ 2 min; la base gratuita expira a los 90 días (≈ 21 dic) | Medio | Calentar el servicio antes de demos/QA; decidir plan antes de esa fecha |
+| R9 | Render free: cold start ≈ 2 min; **750 h/mes por espacio de trabajo** y **base gratuita que expira a los 30 días** (corregido el 2026-10-24; se materializó: el servicio dejó de responder) | Alto | Calentar el servicio antes de demos/QA; [`guia-recuperar-despliegue.md`](../guia-recuperar-despliegue.md) (base en Neon o plan de pago) |
 | R10 | Colisión de migraciones y de merges | Medio | Un solo dueño de migraciones, módulos separados, ramas cortas |
 | R11 | Concurrencia en reservas | Medio | `EXCLUDE` + prueba concurrente |
 

@@ -45,7 +45,7 @@ package "report" <<planeado>> {
     rep_infra --> rep_dom
 }
 
-package "reservation" <<planeado>> {
+package "reservation" <<implementado>> {
     package "reservation.controller" as rsv_ctrl
     package "reservation.application" as rsv_app
     package "reservation.infrastructure" as rsv_infra
@@ -56,7 +56,7 @@ package "reservation" <<planeado>> {
     rsv_infra --> rsv_dom
 }
 
-package "service" <<planeado>> {
+package "service" <<implementado>> {
     package "service.controller" as srv_ctrl
     package "service.application" as srv_app
     package "service.infrastructure" as srv_infra
@@ -67,7 +67,7 @@ package "service" <<planeado>> {
     srv_infra --> srv_dom
 }
 
-package "resource" <<planeado>> {
+package "resource" <<implementado>> {
     package "resource.controller" as res_ctrl
     package "resource.application" as res_app
     package "resource.infrastructure" as res_infra
@@ -78,7 +78,7 @@ package "resource" <<planeado>> {
     res_infra --> res_dom
 }
 
-package "provider" <<planeado>> {
+package "provider" <<implementado>> {
     package "provider.controller" as prv_ctrl
     package "provider.application" as prv_app
     package "provider.infrastructure" as prv_infra

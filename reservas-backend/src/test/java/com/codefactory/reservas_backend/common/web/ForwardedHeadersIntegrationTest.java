@@ -65,6 +65,37 @@ class ForwardedHeadersIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void detrasDeCloudflareSeGuardaLaIpDelClienteYNoLaDelBordeDeCloudflare() throws Exception {
+        // Render recibe el tráfico a través de Cloudflare: la cadena llega como «cliente, borde de Cloudflare».
+        // Verificado en Render el 2026-10-12: sin confiar en esos rangos se guardaba 104.23.186.142 (Cloudflare).
+        String email = uniqueEmail("cloudflare");
+
+        login(email, "152.202.54.136, 104.23.186.142");
+
+        assertThat(originIpOfLastLoginAudit(email)).isEqualTo("152.202.54.136");
+    }
+
+    @Test
+    void unClienteNoPuedeFalsearSuIpAnteponiendoValoresALaCadena() throws Exception {
+        // Se toma la primera IP no confiable de derecha a izquierda: lo que el cliente escriba a la izquierda
+        // no cuenta cuando hay una IP real (no confiable) más a la derecha.
+        String email = uniqueEmail("falsa");
+
+        login(email, "9.9.9.9, 152.202.54.136, 104.23.186.142");
+
+        assertThat(originIpOfLastLoginAudit(email)).isEqualTo("152.202.54.136");
+    }
+
+    @Test
+    void conIpv6DeCloudflareTambienSeSaltaElBorde() throws Exception {
+        String email = uniqueEmail("cfv6");
+
+        login(email, "198.51.100.77, 2606:4700:4700::1111");
+
+        assertThat(originIpOfLastLoginAudit(email)).isEqualTo("198.51.100.77");
+    }
+
+    @Test
     void sinLaCabeceraSeUsaLaIpDeLaConexion() throws Exception {
         String email = uniqueEmail("directo");
 
