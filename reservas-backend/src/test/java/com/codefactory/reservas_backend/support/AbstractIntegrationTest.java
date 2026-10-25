@@ -4,9 +4,12 @@ import com.codefactory.reservas_backend.audit.domain.AuditEventType;
 import com.codefactory.reservas_backend.audit.domain.AuditLog;
 import com.codefactory.reservas_backend.audit.infrastructure.AuditLogRepository;
 import com.codefactory.reservas_backend.identity.domain.Role;
+import com.codefactory.reservas_backend.identity.domain.Session;
 import com.codefactory.reservas_backend.identity.domain.RoleName;
 import com.codefactory.reservas_backend.identity.domain.User;
 import com.codefactory.reservas_backend.identity.infrastructure.RoleRepository;
+import com.codefactory.reservas_backend.identity.infrastructure.SessionRepository;
+import com.codefactory.reservas_backend.identity.infrastructure.security.JwtTokenProvider;
 import com.codefactory.reservas_backend.identity.infrastructure.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,6 +25,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -84,6 +89,10 @@ public abstract class AbstractIntegrationTest {
     protected PasswordEncoder passwordEncoder;
     @Autowired
     protected AuditLogRepository auditLogRepository;
+    @Autowired
+    protected SessionRepository sessionRepository;
+    @Autowired
+    protected JwtTokenProvider jwtTokenProvider;
 
     /** Sesión de un administrador con MFA activa: su token (ya con código) y su secreto TOTP. */
     protected record AdminSession(UUID userId, String email, String token, String secret) {
@@ -184,5 +193,16 @@ public abstract class AbstractIntegrationTest {
         return auditLogRepository.findAll().stream()
                 .filter(log -> log.getEventType() == type && subjectEmail.equalsIgnoreCase(log.getSubjectEmail()))
                 .toList();
+    }
+
+    /**
+     * Simula una sesión vencida (más de 1 hora): deja la sesión del token con {@code expires_at} en el pasado.
+     * El JWT sigue siendo válido de firma, así que lo que se prueba es que el sistema consulte la sesión.
+     */
+    protected void expireSession(String token) {
+        String tokenId = jwtTokenProvider.parseAndValidate(token).getId();
+        Session session = sessionRepository.findByTokenId(tokenId).orElseThrow();
+        session.setExpiresAt(Instant.now().minus(Duration.ofMinutes(1)));
+        sessionRepository.save(session);
     }
 }

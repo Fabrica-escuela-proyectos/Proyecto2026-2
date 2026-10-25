@@ -149,3 +149,57 @@ jobs:
           done
           echo "::error::La aplicación no respondió UP en 10 minutos"
           exit 1
+
+  # Smoke test post-deploy: corre SOLO un subconjunto de la colección de Postman contra la instancia ya
+  # desplegada en Render (registro, configuración del negocio, catálogo, reserva y, si hay secretos de
+  # administrador, la limpieza). Las demás reglas las prueban las pruebas de `mvn verify` antes del deploy.
+  # Corre después del despliegue, así que avisa pero no lo bloquea. Solo corre si el deploy se
+  # ejecutó y salió bien (se salta con DEPLOY_ENABLED=false o en PR).
+  # Secrets opcionales (Settings > Secrets and variables > Actions): E2E_ADMIN_EMAIL, E2E_ADMIN_PASSWORD
+  # y E2E_ADMIN_TOTP_SECRET. Con ellos corre también la carpeta 08 (HU-05/28), que además BORRA los
+  # usuarios de prueba; sin ellos la carpeta se omite sola y los usuarios qa.* quedan en la base.
+  e2e-render:
+    name: API tests on Render
+    needs: deploy
+    if: needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Una corrida crea 4 cuentas y el registro está limitado a 5 por IP cada 10 min: nunca dos a la vez.
+    concurrency:
+      group: e2e-render
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # ubuntu-latest ya trae Node.js; Newman es el ejecutor de Postman por línea de comandos.
+      - name: Run Postman collection against Render
+        env:
+          ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          ADMIN_TOTP_SECRET: ${{ secrets.E2E_ADMIN_TOTP_SECRET }}
+        run: |
+          npx --yes newman@6 run docs/postman/Reservas-Sprint2.postman_collection.json \
+            -e docs/postman/Reservas-Render.postman_environment.json \
+            --folder "00 · Preparación" \
+            --folder "01 · Registro y acceso (HU-01, 02, 03, 06)" \
+            --folder "02 · Configuración del negocio (HU-08, 09, 14, 18, 19)" \
+            --folder "04 · Catálogo y disponibilidad (HU-13, 20)" \
+            --folder "05 · Reservas (HU-22, 23, 24)" \
+            --folder "08 · Administrador y eliminación de cuentas (HU-05, 28) — OPCIONAL" \
+            --env-var "adminEmail=$ADMIN_EMAIL" \
+            --env-var "adminPassword=$ADMIN_PASSWORD" \
+            --env-var "adminTotpSecret=$ADMIN_TOTP_SECRET" \
+            --timeout-request 150000 \
+            -r cli,junit --reporter-junit-export newman-results.xml
+
+      - name: Upload Newman report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: newman-results
+          path: newman-results.xml
+          if-no-files-found: ignore

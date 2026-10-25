@@ -138,4 +138,16 @@ class BookingLeadTimeIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.businessId").value(p.businessId().toString()))
                 .andExpect(jsonPath("$.hours").value(1));
     }
+
+    /** CP-HU08-03-E4 - Con la sesión vencida (más de 1 hora) se responde 401 y la antelación no cambia. */
+    @Test
+    void unaSesionExpiradaRecibe401YNoCambiaLaAntelacion() throws Exception {
+        ProviderSession p = registerProvider();
+        expireSession(p.token());
+
+        assertThat(putLead(p.businessId(), p.token(), "{\"hours\":5}").getResponse().getStatus()).isEqualTo(401);
+
+        ProviderSession again = new ProviderSession(p.email(), login(p.email()), p.businessId());
+        assertThat(currentHours(again)).isEqualTo(1);
+    }
 }

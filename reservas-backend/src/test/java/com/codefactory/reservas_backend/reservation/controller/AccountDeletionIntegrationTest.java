@@ -1,6 +1,7 @@
 package com.codefactory.reservas_backend.reservation.controller;
 
 import com.codefactory.reservas_backend.audit.domain.AuditEventType;
+import com.codefactory.reservas_backend.reservation.application.BookingBulkCancellationService;
 import com.codefactory.reservas_backend.reservation.domain.Booking;
 import com.codefactory.reservas_backend.reservation.domain.BookingStatus;
 import com.codefactory.reservas_backend.reservation.domain.CancelOrigin;
@@ -9,6 +10,7 @@ import com.codefactory.reservas_backend.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
 
@@ -22,6 +24,10 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -35,6 +41,9 @@ class AccountDeletionIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private BookingRepository bookingRepository;
+    // Espía (llama al método real salvo que la prueba lo reemplace) para provocar un fallo a mitad de la eliminación.
+    @MockitoSpyBean
+    private BookingBulkCancellationService bulkCancellation;
 
     private record Provider(String email, String token, UUID userId, UUID businessId, UUID serviceId) {
     }
@@ -238,5 +247,35 @@ class AccountDeletionIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(result.getResponse().getStatus()).isEqualTo(403);
         assertThat(userRepository.findById(other.userId())).isPresent();
+    }
+
+    /**
+     * CP-HU28-01-E1 - Si falla la cancelación de las reservas durante la eliminación, TODO se deshace.
+     * Con PostgreSQL real: la primera cancelación (como cliente) se ejecuta de verdad y la segunda (como
+     * proveedor) falla, así que además de que el usuario siga existiendo se comprueba que la reserva que
+     * ya se había cancelado vuelve a CONFIRMADA (la transacción completa se revierte).
+     */
+    @Test
+    void siFallaLaCancelacionLaEliminacionSeDeshaceYElUsuarioSigueExistiendo() throws Exception {
+        AdminSession admin = createEnrolledAdmin(uniqueEmail("admin"));
+        Provider p = provider();
+        Client leaving = client();
+        UUID futureBooking = book(leaving, p, "09:00", "10:00");
+        doThrow(new IllegalStateException("fallo simulado al cancelar las reservas del negocio"))
+                .when(bulkCancellation).cancelFutureOfBusinesses(any(), any(), anyString());
+
+        MvcResult result = deleteUser(admin, leaving.id());
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(500);
+        // La primera cancelación sí se ejecutó dentro de la transacción...
+        verify(bulkCancellation).cancelFutureOfClient(any(), any(), anyString());
+        // ...pero nada quedó persistido: el usuario existe, su reserva sigue confirmada y no hay auditoría de éxito.
+        assertThat(userRepository.findById(leaving.id())).isPresent();
+        Booking b = booking(futureBooking);
+        assertThat(b.getStatus()).isEqualTo(BookingStatus.CONFIRMADA);
+        assertThat(b.getCancelOrigin()).isNull();
+        assertThat(b.getCancelledAt()).isNull();
+        assertThat(auditEvents(AuditEventType.ELIMINACION_USUARIO, leaving.email())).isEmpty();
+        assertThat(auditEvents(AuditEventType.CANCELACION_RESERVA, leaving.email())).isEmpty();
     }
 }
