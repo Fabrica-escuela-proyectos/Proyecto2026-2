@@ -257,6 +257,20 @@ class BookingCreationIntegrationTest extends AbstractIntegrationTest {
                 .getResponse().getStatus()).isEqualTo(409);
     }
 
+    /** CP-HU22-01-E5 - Un servicio sin recursos asignados no se puede reservar: 409 y no se registra nada. */
+    @Test
+    void unServicioSinRecursosAsignadosDa409YNoSeRegistra() throws Exception {
+        Fixture f = fixture();
+        UUID sinRecursos = createService(f.token(), f.businessId(), "Masaje");
+
+        MvcResult r = book(client().token(), body(sinRecursos, monday().toString(), "10:00", "11:00"));
+
+        assertThat(r.getResponse().getStatus()).isEqualTo(409);
+        // El mensaje actual es el genérico de horario no disponible; CP-HU09-02-E1 espera "aún no tiene disponibilidad" (ver informe).
+        assertThat(r.getResponse().getContentAsString()).contains("no está disponible");
+        assertThat(bookingRepository.findAll().stream().filter(x -> sinRecursos.equals(x.getServiceId())).count()).isZero();
+    }
+
     @Test
     void sinFechaDa400ConElCampoDate() throws Exception {
         Fixture f = fixture();
@@ -426,5 +440,30 @@ class BookingCreationIntegrationTest extends AbstractIntegrationTest {
         return Booking.builder().clientEmail("x@example.com").clientName("Cliente X").businessId(f.businessId()).businessName("N")
                 .serviceId(f.serviceId()).serviceName("S").resourceId(f.resourceId()).resourceName("R")
                 .startAt(start).endAt(end).status(status).priceCop(1L).build();
+    }
+
+    /**
+     * CP-HU08-02 (camino feliz) - Cambiar la antelación no cancela ni modifica las reservas ya confirmadas,
+     * pero las reservas nuevas sí se rigen por la antelación nueva.
+     */
+    @Test
+    void cambiarLaAntelacionNoAlteraLasReservasYaConfirmadas() throws Exception {
+        Fixture f = fixture();
+        Client c = client();
+        MvcResult first = book(c.token(), body(f.serviceId(), monday().toString(), "10:00", "11:00"));
+        assertThat(first.getResponse().getStatus()).isEqualTo(201);
+        UUID firstId = UUID.fromString(json(first).get("id").asText());
+
+        // 720 h (30 días): la reserva ya hecha, que es de dentro de ≤ 14 días, quedaría fuera de la regla nueva.
+        mockMvc.perform(put("/api/v1/businesses/" + f.businessId() + "/booking-lead-time")
+                .header("Authorization", "Bearer " + f.token()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"hours\":720}")).andExpect(status().isOk());
+
+        Booking existing = bookingRepository.findById(firstId).orElseThrow();
+        assertThat(existing.getStatus()).isEqualTo(BookingStatus.CONFIRMADA);
+        assertThat(existing.getCancelOrigin()).isNull();
+        MvcResult second = book(c.token(), body(f.serviceId(), monday().toString(), "11:00", "12:00"));
+        assertThat(second.getResponse().getStatus()).isEqualTo(400);
+        assertThat(second.getResponse().getContentAsString()).contains("720 horas");
     }
 }
