@@ -1,5 +1,7 @@
 # Modelo Físico (PostgreSQL) — Sprint 1
 
+> **Histórico (Sprint 1, `BIGSERIAL`).** No describe el esquema que aplica la app. El modelo vigente (UUID, Flyway V1–V12) está en [`modelo_sprint2.md`](modelo_sprint2.md); diferencias en [`conciliacion-modelo-bd-sprint-1.md`](../../conciliacion-modelo-bd-sprint-1.md).
+
 ## Convenciones de nombres
 - Tablas: snake_case, plural (`users`, `role_permissions`).
 - PK: `id BIGSERIAL`.
