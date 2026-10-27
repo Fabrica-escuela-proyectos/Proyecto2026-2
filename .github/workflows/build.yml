@@ -149,3 +149,4 @@ jobs:
           done
           echo "::error::La aplicación no respondió UP en 10 minutos"
           exit 1
+

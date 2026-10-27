@@ -1,119 +1,174 @@
 -- ============================================================
--- Consultas críticas Sprint 2 — PostgreSQL / Supabase
--- Requiere datos: correr antes datos_ejemplo_sprint2.sql (ids de ejemplo: cliente 1, proveedor 2, negocio 1, servicio 1, recurso 1)
--- Se pueden correr todas seguidas sin error (el editor muestra solo el resultado de la última);
--- para ver cada resultado, correr una por una.
--- En el backend los literales van como parámetros (:param). Zona horaria de negocio: America/Bogota
+-- Consultas clave Sprint 2 (BD-05) sobre el esquema REAL (Flyway V1–V12).
+-- Son la versión SQL de lo que ejecuta el backend (repositorios JPA de reservation/, resource/, service/),
+-- para revisar planes (EXPLAIN) y justificar índices. Responsable BD: Juan Sebastián Andraus López.
+-- Ejecutables tal cual tras docs/bd/pruebas/datos_semilla_sprint2.sql (UUID fijos en el CTE p).
+-- Las de escritura (C09–C12) van dentro de BEGIN … ROLLBACK para no alterar los datos de ejemplo.
+-- Planes y tiempos con 200.000 reservas: docs/bd/modelo/documentacion_bd_sprint2.md §4.
 -- ============================================================
 
--- C1. Servicios activos de un negocio con sus recursos
-SELECT s.id, s.name, s.duration_minutes, s.price,
-       string_agg(r.name, ', ' ORDER BY r.name) AS recursos
-FROM services s
-JOIN service_resources sr ON sr.service_id = s.id
-JOIN resources r          ON r.id = sr.resource_id AND r.deleted_at IS NULL AND r.is_active
-WHERE s.business_id = 1 AND s.deleted_at IS NULL AND s.is_active
+-- C01 · HU-13 · Catálogo: servicios activos de un negocio con sus recursos activos
+--   Índices: idx_services_business_id, service_resources PK, resources PK
+WITH p AS (SELECT '30000000-0000-0000-0000-000000000001'::uuid AS business_id)
+SELECT s.id, s.name, s.duration_minutes, s.price_cop,
+       count(r.id) FILTER (WHERE r.active) AS recursos_activos
+FROM p
+JOIN services s                ON s.business_id = p.business_id AND s.active
+LEFT JOIN service_resources sr ON sr.service_id = s.id
+LEFT JOIN resources r          ON r.id = sr.resource_id
 GROUP BY s.id
 ORDER BY s.name;
 
--- C2. Disponibilidad: franjas libres de un recurso para un servicio, dentro de 7 días
---     (horario semanal − reservas activas − bloqueos, solo franjas futuras)
-WITH params AS (
-    SELECT r.id AS resource_id,
-           s.duration_minutes * INTERVAL '1 minute' AS dur,
-           (current_date + 7) AS d
-    FROM resources r
-    JOIN service_resources sr ON sr.resource_id = r.id
-    JOIN services s           ON s.id = sr.service_id
-    WHERE r.id = 1 AND s.id = 1
-      AND r.is_active AND r.deleted_at IS NULL
-      AND s.is_active AND s.deleted_at IS NULL
-), ventanas AS (
-    SELECT p.resource_id, p.dur,
-           (p.d + rs.start_time) AT TIME ZONE 'America/Bogota' AS v_ini,
-           (p.d + rs.end_time)   AT TIME ZONE 'America/Bogota' AS v_fin
-    FROM params p
-    JOIN resource_schedules rs ON rs.resource_id = p.resource_id
-                              AND rs.day_of_week = EXTRACT(ISODOW FROM p.d)
+-- C02 · HU-19 / HU-20 · Horario de un recurso en un día (ResourceAvailabilityRepository)
+--   Índice: idx_resource_availability_resource_day
+WITH p AS (SELECT '50000000-0000-0000-0000-000000000001'::uuid AS resource_id, 2 AS dia)
+SELECT ra.start_time, ra.end_time
+FROM p JOIN resource_availability ra ON ra.resource_id = p.resource_id AND ra.day_of_week = p.dia
+ORDER BY ra.start_time;
+
+-- C03 · HU-20 · Disponibilidad pública de un servicio en una fecha local (cálculo completo en SQL)
+--   El backend arma las franjas en Java con C02 + C04; esta versión SQL sirve para revisar el resultado
+--   y el costo. Respeta recursos activos, horario del día, antelación mínima (HU-08) y reservas CONFIRMADAS.
+WITH p AS (
+    SELECT '40000000-0000-0000-0000-000000000001'::uuid AS service_id,
+           ((now() AT TIME ZONE 'America/Bogota')::date + 3) AS fecha
+), svc AS (
+    SELECT s.id, make_interval(mins => s.duration_minutes) AS dur, b.min_advance_hours
+    FROM p JOIN services s ON s.id = p.service_id AND s.active
+    JOIN businesses b ON b.id = s.business_id
 ), franjas AS (
-    SELECT v.resource_id, g AS inicio, g + v.dur AS fin
-    FROM ventanas v,
-         LATERAL generate_series(v.v_ini, v.v_fin - v.dur, v.dur) AS g
+    SELECT r.id AS resource_id, r.name AS resource_name,
+           (g AT TIME ZONE 'America/Bogota')             AS start_at,
+           ((g + svc.dur) AT TIME ZONE 'America/Bogota') AS end_at,
+           svc.min_advance_hours
+    FROM p CROSS JOIN svc
+    JOIN service_resources sr     ON sr.service_id = svc.id
+    JOIN resources r              ON r.id = sr.resource_id AND r.active
+    JOIN resource_availability ra ON ra.resource_id = r.id AND ra.day_of_week = EXTRACT(ISODOW FROM p.fecha)
+    CROSS JOIN LATERAL generate_series(p.fecha + ra.start_time, p.fecha + ra.end_time - svc.dur, svc.dur) g
 )
-SELECT f.inicio, f.fin
+SELECT f.start_at, f.end_at, f.resource_id, f.resource_name
 FROM franjas f
-WHERE f.inicio > now()
-  AND NOT EXISTS (SELECT 1 FROM reservations x
-                  WHERE x.resource_id = f.resource_id AND x.status <> 'CANCELADA'
-                    AND tstzrange(x.starts_at, x.ends_at) && tstzrange(f.inicio, f.fin))
-  AND NOT EXISTS (SELECT 1 FROM resource_blocks b
-                  WHERE b.resource_id = f.resource_id
-                    AND tstzrange(b.starts_at, b.ends_at) && tstzrange(f.inicio, f.fin))
-ORDER BY f.inicio;
+WHERE f.start_at >= now() + make_interval(hours => f.min_advance_hours)
+  AND NOT EXISTS (SELECT 1 FROM bookings b              -- misma expresión que el EXCLUDE: usa su índice GiST
+                  WHERE b.resource_id = f.resource_id AND b.resource_id IS NOT NULL AND b.status = 'CONFIRMADA'
+                    AND tstzrange(b.start_at, b.end_at) && tstzrange(f.start_at, f.end_at))
+ORDER BY f.start_at, f.resource_name;
 
--- C3. Crear reserva (dentro de 7 días, 09:00–10:00 hora Bogotá).
---     El EXCLUDE y los triggers rechazan traslapes, pasado, fuera de horario y bloqueos.
---     Si ya existe esa reserva, no inserta nada (ON CONFLICT DO NOTHING) y no devuelve fila.
-INSERT INTO reservations (client_id, service_id, resource_id, starts_at, ends_at)
-VALUES (1, 1, 1,
-        ((current_date + 7) + TIME '09:00') AT TIME ZONE 'America/Bogota',
-        ((current_date + 7) + TIME '10:00') AT TIME ZONE 'America/Bogota')
-ON CONFLICT DO NOTHING
-RETURNING id, status;
+-- C04 · HU-20 · Reservas confirmadas que tocan un día local para varios recursos (findConfirmedTouching)
+--   Índice: idx_bookings_resource_start (o ex_bookings_no_overlap)
+WITH p AS (
+    SELECT ARRAY['50000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000002']::uuid[] AS recursos,
+           (((now() AT TIME ZONE 'America/Bogota')::date + 3)::timestamp AT TIME ZONE 'America/Bogota') AS dia_ini
+)
+SELECT b.resource_id, b.start_at, b.end_at
+FROM p JOIN bookings b ON b.resource_id = ANY (p.recursos)
+WHERE b.status = 'CONFIRMADA' AND b.start_at < p.dia_ini + INTERVAL '1 day' AND b.end_at > p.dia_ini;
 
--- C4. Reservas de un cliente (próximas primero)
-SELECT rv.id, s.name AS servicio, r.name AS recurso, b.name AS negocio,
-       rv.starts_at, rv.ends_at, rv.status
-FROM reservations rv
-JOIN services s   ON s.id = rv.service_id
-JOIN resources r  ON r.id = rv.resource_id
-JOIN businesses b ON b.id = s.business_id
-WHERE rv.client_id = 1
-ORDER BY (rv.starts_at < now()), rv.starts_at DESC;
+-- C05 · HU-22 · ¿El recurso está libre? (existsConfirmedOverlapping; antes del INSERT, con el recurso bloqueado)
+--   Índice: ex_bookings_no_overlap / idx_bookings_resource_start. La carrera la cubre el EXCLUDE (23P01 → 409).
+WITH p AS (
+    SELECT '50000000-0000-0000-0000-000000000001'::uuid AS resource_id,
+           ((((now() AT TIME ZONE 'America/Bogota')::date + 3) + TIME '10:30') AT TIME ZONE 'America/Bogota') AS ini
+)
+SELECT EXISTS (SELECT 1 FROM p JOIN bookings b ON b.resource_id = p.resource_id
+               WHERE b.status = 'CONFIRMADA' AND b.start_at < p.ini + INTERVAL '1 hour' AND b.end_at > p.ini) AS ocupado;
 
--- C5. Reservas de un negocio en los próximos 30 días (solo el proveedor dueño: HU06)
-SELECT rv.id, u.full_name AS cliente, s.name AS servicio, r.name AS recurso,
-       rv.starts_at, rv.status
-FROM providers p
-JOIN businesses b ON b.provider_id = p.id
-JOIN services s   ON s.business_id = b.id
-JOIN reservations rv ON rv.service_id = s.id
-JOIN resources r  ON r.id = rv.resource_id
-JOIN users u      ON u.id = rv.client_id
-WHERE p.user_id = 2                       -- usuario autenticado (proveedor)
-  AND b.id = 1
-  AND rv.starts_at >= now()
-  AND rv.starts_at <  now() + INTERVAL '30 days'
-ORDER BY rv.starts_at;
+-- C06 · HU-22 · Asignación automática: primer recurso activo y libre del servicio, por nombre (ADR-005 D6)
+WITH p AS (
+    SELECT '40000000-0000-0000-0000-000000000001'::uuid AS service_id,
+           ((((now() AT TIME ZONE 'America/Bogota')::date + 3) + TIME '10:00') AT TIME ZONE 'America/Bogota') AS ini
+)
+SELECT r.id, r.name
+FROM p
+JOIN services s           ON s.id = p.service_id AND s.active
+JOIN service_resources sr ON sr.service_id = s.id
+JOIN resources r          ON r.id = sr.resource_id AND r.active
+WHERE NOT EXISTS (SELECT 1 FROM bookings b
+                  WHERE b.resource_id = r.id AND b.status = 'CONFIRMADA'
+                    AND b.start_at < p.ini + make_interval(mins => s.duration_minutes) AND b.end_at > p.ini)
+ORDER BY r.name
+LIMIT 1;
 
--- C6. Cancelar la próxima reserva confirmada del cliente 1 (solo si es futura y suya).
---     En el backend se cancela por id: WHERE id = :id AND client_id = :cliente
-UPDATE reservations
-SET status = 'CANCELADA', cancelled_at = now(), cancelled_by = 1,
-    cancellation_reason = 'Cambio de planes'
-WHERE id = (SELECT id FROM reservations
-            WHERE client_id = 1 AND status = 'CONFIRMADA' AND starts_at > now()
-            ORDER BY starts_at LIMIT 1)
-RETURNING id, status;
+-- C07 · HU-23 · Mis reservas (findByClientId paginado). Usa las copias: no une con services/resources.
+--   Índice: idx_bookings_client_id (client_id, start_at)
+WITH p AS (SELECT '10000000-0000-0000-0000-000000000001'::uuid AS client_id)
+SELECT b.id, b.status, b.business_name, b.service_name, b.resource_name, b.start_at, b.end_at,
+       b.price_cop, b.cancel_origin, b.cancel_reason
+FROM p JOIN bookings b ON b.client_id = p.client_id
+ORDER BY b.start_at DESC, b.id
+LIMIT 20 OFFSET 0;
 
--- C7. Tasa de cancelación por negocio, próximos/últimos 30 días (agregación + ranking)
-SELECT b.id AS negocio_id, b.name,
-       count(*)                                         AS total,
-       count(*) FILTER (WHERE rv.status = 'CANCELADA')  AS canceladas,
-       round(100.0 * count(*) FILTER (WHERE rv.status = 'CANCELADA') / count(*), 1) AS pct_cancelacion,
-       rank() OVER (ORDER BY count(*) FILTER (WHERE rv.status = 'CANCELADA') DESC) AS ranking
-FROM reservations rv
-JOIN services s   ON s.id = rv.service_id
-JOIN businesses b ON b.id = s.business_id
-WHERE rv.starts_at >= now() - INTERVAL '30 days'
-  AND rv.starts_at <  now() + INTERVAL '30 days'
-GROUP BY b.id, b.name
-ORDER BY ranking;
+-- C08 · HU-24 · Reservas de un negocio con filtros (from/to en día local de Bogotá, status), paginado
+--   Índice: idx_bookings_business_id (business_id, start_at)
+WITH p AS (
+    SELECT '30000000-0000-0000-0000-000000000001'::uuid AS business_id,
+           ((now() AT TIME ZONE 'America/Bogota')::date - 30) AS desde,
+           ((now() AT TIME ZONE 'America/Bogota')::date + 30) AS hasta,
+           NULL::varchar AS estado
+)
+SELECT b.id, b.status, b.client_name, b.client_email, b.service_name, b.resource_name, b.start_at, b.end_at
+FROM p JOIN bookings b ON b.business_id = p.business_id
+WHERE b.start_at >= (p.desde::timestamp AT TIME ZONE 'America/Bogota')
+  AND b.start_at <  ((p.hasta + 1)::timestamp AT TIME ZONE 'America/Bogota')
+  AND (p.estado IS NULL OR b.status = p.estado)
+ORDER BY b.start_at DESC, b.id
+LIMIT 20 OFFSET 0;
 
--- C8. ¿Se puede eliminar el servicio 1? (consulta de solo lectura; false si tiene reservas futuras confirmadas)
-SELECT NOT EXISTS (SELECT 1 FROM reservations
-                   WHERE service_id = 1 AND status = 'CONFIRMADA' AND starts_at > now()) AS se_puede_eliminar;
+-- C09 · HU-25 / HU-26 · Cancelación individual (con la reserva bloqueada: findByIdForUpdate)
+BEGIN;
+SELECT id, status, start_at FROM bookings WHERE id = '60000000-0000-0000-0000-000000000001' FOR UPDATE;
+UPDATE bookings
+SET status = 'CANCELADA', cancel_origin = 'CLIENTE', cancel_reason = 'Ejemplo', cancelled_at = now()
+WHERE id = '60000000-0000-0000-0000-000000000001' AND status = 'CONFIRMADA'
+RETURNING id, status, cancel_origin;
+ROLLBACK;
 
--- C9. Eliminación lógica del servicio 1 (NO ejecutar en la demo: el trigger la rechaza con
---     SERVICIO_CON_RESERVAS_FUTURAS si hay reservas futuras confirmadas; es la regla funcionando).
--- UPDATE services SET is_active = FALSE, deleted_at = now() WHERE id = 1 AND business_id = 1;
+-- C10 · HU-16 · Desactivar recurso: contar (para la confirmación), cancelar futuras confirmadas y desactivar
+--   Índice: idx_bookings_resource_start. Todo en una transacción con el recurso bloqueado (ADR-005 D5).
+BEGIN;
+SELECT active FROM resources WHERE id = '50000000-0000-0000-0000-000000000001' FOR UPDATE;
+SELECT count(*) AS afectadas FROM bookings
+WHERE resource_id = '50000000-0000-0000-0000-000000000001' AND status = 'CONFIRMADA' AND start_at > now();
+UPDATE bookings
+SET status = 'CANCELADA', cancel_origin = 'RECURSO_NO_DISPONIBLE', cancel_reason = 'Recurso desactivado', cancelled_at = now()
+WHERE resource_id = '50000000-0000-0000-0000-000000000001' AND status = 'CONFIRMADA' AND start_at > now();
+UPDATE resources SET active = FALSE, updated_at = now() WHERE id = '50000000-0000-0000-0000-000000000001';
+ROLLBACK;
+
+-- C11 · HU-28 · Eliminar cuenta: cancelar futuras del cliente y de sus negocios, luego borrar el usuario
+--   Índices: idx_bookings_client_id, idx_bookings_business_id. El DELETE propaga:
+--   CASCADE → user_roles, sessions, mfa, providers → businesses → services, resources → service_resources, resource_availability
+--   SET NULL → bookings (client_id, business_id, service_id, resource_id), services/resources.created_by
+BEGIN;
+UPDATE bookings
+SET status = 'CANCELADA', cancel_origin = 'ELIMINACION_CUENTA', cancelled_at = now()
+WHERE status = 'CONFIRMADA' AND start_at > now()
+  AND (client_id = '10000000-0000-0000-0000-000000000002'
+       OR business_id IN (SELECT b.id FROM businesses b JOIN providers pr ON pr.id = b.provider_id
+                          WHERE pr.user_id = '10000000-0000-0000-0000-000000000002'));
+DELETE FROM users WHERE id = '10000000-0000-0000-0000-000000000002';
+SELECT count(*) AS reservas_conservadas, count(*) FILTER (WHERE business_id IS NULL) AS sin_negocio
+FROM bookings WHERE business_name = 'Centro Deportivo Demo';
+ROLLBACK;
+
+-- C12 · HU-18 · Reemplazar los recursos de un servicio (con el servicio bloqueado). Las reservas no dependen
+--   de service_resources, así que el historial no bloquea el cambio.
+BEGIN;
+SELECT id FROM services WHERE id = '40000000-0000-0000-0000-000000000001' FOR UPDATE;
+DELETE FROM service_resources WHERE service_id = '40000000-0000-0000-0000-000000000001'
+  AND resource_id <> ALL (ARRAY['50000000-0000-0000-0000-000000000002']::uuid[]);
+INSERT INTO service_resources (service_id, resource_id)
+VALUES ('40000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+ROLLBACK;
+
+-- C13 · Reporte · Tasa de cancelación por negocio y origen en el mes actual (no es ruta crítica)
+SELECT b.business_name, count(*) AS reservas,
+       count(*) FILTER (WHERE b.status = 'CANCELADA') AS canceladas,
+       round(100.0 * count(*) FILTER (WHERE b.status = 'CANCELADA') / count(*), 1) AS pct_cancelacion,
+       count(*) FILTER (WHERE b.cancel_origin = 'CLIENTE')   AS por_cliente,
+       count(*) FILTER (WHERE b.cancel_origin = 'PROVEEDOR') AS por_proveedor
+FROM bookings b
+WHERE b.start_at >= date_trunc('month', now()) AND b.start_at < date_trunc('month', now()) + INTERVAL '1 month'
+GROUP BY b.business_name
+ORDER BY pct_cancelacion DESC;
