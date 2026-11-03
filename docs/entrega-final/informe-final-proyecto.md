@@ -16,6 +16,8 @@ Construimos el **backend REST** de una plataforma donde **proveedores** (barber�
 | Base de datos | 14 tablas, 14 migraciones Flyway (V1–V14), 2 restricciones `EXCLUDE` |
 | Pruebas automáticas | **815** (471 unitarias + 344 de integración contra PostgreSQL real), todas en verde |
 | Cobertura | **97,6 % de líneas / 91,7 % de ramas** (JaCoCo; meta del curso ≥ 65 %) |
+| SonarCloud | **Quality Gate OK**: 0 bugs, 0 vulnerabilidades, 0 *code smells*, deuda 0 min, A en fiabilidad, seguridad y mantenibilidad (2026-11-03) |
+| Postman en el servicio desplegado | 119 peticiones, 166 aserciones, **0 fallos** contra Render + Neon (2026-11-03) |
 | Decisiones registradas | 8 ADR + 32 supuestos documentados (S-01…S-32) + 13 del Sprint 3 (D1…D13) |
 
 ## 2. Alcance por sprint

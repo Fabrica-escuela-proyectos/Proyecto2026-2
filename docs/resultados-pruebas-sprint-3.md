@@ -25,15 +25,18 @@ Estado al **2026-11-02**. Qué se corrió, con qué resultado y qué **no** se c
 | HU-27 Completar | `BookingCompletionIntegrationTest` (5) | `BookingCompletionServiceImplTest` (6) |
 | HU-29..34 Reportes | `ReportIntegrationTest` (8, con números exactos: 3600 min disponibles, 180 reservados = 5,0 %; cierre que resta 720 min; conteos por estado, valor, ranking con nombre vigente; vacíos con mensaje; periodo por defecto; 400 por parámetros; 403/401; resumen del administrador) | `ReportServiceImplTest` (16) |
 
-## 3. Postman / Newman
+## 3. Sonar
+
+SonarCloud (análisis del commit `6dab10a`, 2026-11-03): **Quality Gate OK**, 0 bugs, 0 vulnerabilidades, 0 *code smells*, deuda técnica 0 min, calificaciones A en fiabilidad, seguridad y mantenibilidad, 100 % de *hotspots* revisados, cobertura 96,1 % (líneas 97,6 %, ramas 91,8 %), duplicación 0,9 %, 8.021 líneas de código. El primer análisis del Sprint 3 (`b311731`) dio el gate en **ERROR** por fiabilidad (D): 7 issues S8696 en dos pruebas unitarias (comparación con `==` dentro de Mockito) y uno S2201 antiguo en `MfaServiceImpl`; corregidos en `6dab10a`.
+
+## 4. Postman / Newman
 
 **Contra Render (2026-11-03, código del Sprint 3 desplegado por el pipeline #71, base en Neon), sin administrador: 119 peticiones, 166 aserciones, 0 fallos** (1 min 15 s; corrida `989ty7xb`). Quedaron en la base los usuarios de prueba `qa.*.989ty7xb@example.com` (dos proveedores y un cliente) con su negocio y reservas; se borran con un administrador (`DELETE /api/v1/users/{id}` + `X-MFA-Code`) o corriendo la carpeta 08.
 
 Antes, contra la aplicación **local** (perfil dev, PostgreSQL 16 temporal en Docker, V1–V14 desde cero), sin administrador: **119 peticiones, 166 aserciones, 0 fallos**. Colección: [`docs/postman/`](postman/README.md) (131 peticiones; la carpeta 07b es la del Sprint 3).
 
-## 4. Lo que NO se ha corrido todavía
+## 5. Lo que NO se ha corrido todavía
 
 * La consulta directa a Neon de `flyway_schema_history` (V13 y V14): la hace Simon en el SQL Editor. Indirectamente ya está comprobado: la aplicación arranca con `ddl-auto: validate` y el Swagger de Render expone los 48 endpoints.
 * La carpeta 08 de Postman con administrador (incluido HU-34) en esta versión.
-* El resultado del Quality Gate de Sonar para `b311731`: el análisis terminó en *success* en el pipeline #71, pero el resultado del gate no se revisó aquí (se ve en SonarCloud).
 * Pruebas de Calidad (17-23 nov) con sus casos `CP-*`.
