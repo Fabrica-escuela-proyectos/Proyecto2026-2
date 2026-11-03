@@ -2,6 +2,7 @@ package com.codefactory.reservas_backend.reservation.application;
 
 import com.codefactory.reservas_backend.reservation.domain.CancelOrigin;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.UUID;
 
@@ -25,4 +26,16 @@ public interface BookingBulkCancellationService {
 
     /** Cancela las reservas futuras confirmadas de unos negocios (HU-28, proveedor eliminado); devuelve cuántas. */
     int cancelFutureOfBusinesses(Collection<UUID> businessIds, CancelOrigin origin, String reason);
+
+    /** HU-11: cuántas reservas futuras confirmadas tiene el servicio. */
+    long countFutureOfService(UUID serviceId);
+
+    /** HU-11: cancela las reservas futuras confirmadas del servicio; devuelve cuántas. */
+    int cancelFutureOfService(UUID serviceId, CancelOrigin origin, String reason);
+
+    /** HU-21: cuántas reservas confirmadas del recurso, aún no iniciadas, se traslapan con [start, end). */
+    long countFutureOfResourceIn(UUID resourceId, Instant start, Instant end);
+
+    /** HU-21: cancela las reservas confirmadas del recurso, aún no iniciadas, que se traslapan con [start, end). */
+    int cancelFutureOfResourceIn(UUID resourceId, Instant start, Instant end, CancelOrigin origin, String reason);
 }

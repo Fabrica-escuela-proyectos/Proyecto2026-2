@@ -1,6 +1,6 @@
 # Colección de Postman — Sprint 2
 
-Prueba de extremo a extremo de la API: registro y acceso, configuración del negocio, catálogo, disponibilidad pública, reservas, cancelaciones, desactivación de recursos y eliminación de cuentas. Son **88 peticiones con 119 aserciones**; cada una trae sus pruebas en la pestaña *Tests* y la corrida completa tarda unos 10 segundos (más el arranque de Render).
+Prueba de extremo a extremo de la API: registro y acceso, configuración del negocio, catálogo, disponibilidad pública, reservas, cancelaciones, desactivación de recursos, **edición, cierres puntuales, completar reserva y reportes (Sprint 3)** y eliminación de cuentas. Son **131 peticiones** (Sprint 2: 88; Sprint 3: +43); cada una trae sus pruebas en la pestaña *Tests* y la corrida completa tarda unos 10 segundos (más el arranque de Render).
 
 | Archivo | Para qué |
 |---|---|
@@ -32,7 +32,8 @@ Resultado esperado: **0 fallos**. Si algo falla, el nombre de la petición lleva
 | 05 · Reservas | 22, 23, 24 | Reservar, horario ocupado/traslapado/fuera de horario, validaciones, mis reservas, reservas del negocio con datos del cliente |
 | 06 · Cancelaciones | 25, 26 | El cliente cancela, el horario se libera, el proveedor cancela con motivo, cada rol solo lo suyo |
 | 07 · Desactivar y reactivar recurso | 16, 17 | `409 CONFIRMATION_REQUIRED`, desactivar confirmando, ya no ofrece horarios ni acepta reservas, reactivar |
-| 08 · Administrador y eliminación de cuentas | 05, 28 | **Opcional.** Login con MFA, eliminar cliente y proveedores, reservas canceladas por `ELIMINACION_CUENTA`, limpieza |
+| 07b · Sprint 3 | 07, 10, 11, 12, 15, 21, 27, 29-33 | Editar negocio, servicio y recurso (y sus 400/403); cierre parcial sin reservas, horas cerradas, reserva dentro del cierre (409), cierre traslapado, fin antes del inicio y fecha pasada (400), listar y eliminar; cierre sobre una reserva con `CONFIRMATION_REQUIRED` y confirmando; desactivar el servicio con confirmación, reservar inactivo (404), reactivar; completar una reserva futura (409); los 5 reportes con números exactos y sus 400/403 |
+| 08 · Administrador y eliminación de cuentas | 05, 28, 34 | **Opcional.** Login con MFA, eliminar cliente y proveedores, reservas canceladas por `ELIMINACION_CUENTA`, limpieza |
 
 ## Límites y avisos
 
@@ -45,4 +46,6 @@ Resultado esperado: **0 fallos**. Si algo falla, el nombre de la petición lleva
 
 ## Cómo se validó
 
-La colección se ejecutó con Newman contra la aplicación corriendo localmente (PostgreSQL 16 temporal, las 12 migraciones aplicadas desde cero): **0 fallos**, tanto con la carpeta de administrador (119 aserciones, TOTP incluido) como sin ella (108 aserciones), y en corridas consecutivas. **Contra Render se ejecutó el 2026-10-10: 88 peticiones, 119 aserciones, 0 fallos** (detalle en [`docs/resultados-pruebas-sprint-2.md`](../resultados-pruebas-sprint-2.md)).
+**2026-11-02 (Sprint 3):** Newman contra la aplicación local (PostgreSQL 16 temporal, migraciones V1–V14 desde cero) sin administrador: **119 peticiones, 166 aserciones, 0 fallos**. La carpeta 08 con administrador (incluidas las nuevas 80b/80c de HU-34) no se ejecutó en esa corrida; HU-34 sí está cubierta por `ReportIntegrationTest`. **No se ha ejecutado contra Render con el código del Sprint 3** (hay que desplegar primero).
+
+Antes (Sprint 2): la colección se ejecutó con Newman contra la aplicación corriendo localmente (PostgreSQL 16 temporal, las 12 migraciones aplicadas desde cero): **0 fallos**, tanto con la carpeta de administrador (119 aserciones, TOTP incluido) como sin ella (108 aserciones), y en corridas consecutivas. **Contra Render se ejecutó el 2026-10-10: 88 peticiones, 119 aserciones, 0 fallos** (detalle en [`docs/resultados-pruebas-sprint-2.md`](../resultados-pruebas-sprint-2.md)).

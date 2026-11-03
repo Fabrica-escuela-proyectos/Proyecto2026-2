@@ -98,7 +98,8 @@ class ServiceAvailabilityServiceImplTest {
     }
 
     private void windows(Map<UUID, List<TimeWindow>> windows, DayOfWeek day) {
-        when(scheduleLookup.windowsOn(any(Collection.class), org.mockito.ArgumentMatchers.eq(day))).thenReturn(windows);
+        when(scheduleLookup.effectiveWindowsOn(any(Collection.class),
+                org.mockito.ArgumentMatchers.argThat((LocalDate d) -> d.getDayOfWeek() == day))).thenReturn(windows);
     }
 
     private static TimeWindow w(int h1, int m1, int h2, int m2) {
@@ -188,7 +189,7 @@ class ServiceAvailabilityServiceImplTest {
         ServiceAvailabilityResponse r = engine.getAvailability(SERVICE_ID, NEXT_MONDAY.toString());
 
         assertThat(r.slots().get(0).resources()).extracting("name").containsExactly("Activa");
-        verify(scheduleLookup).windowsOn(List.of(R1), DayOfWeek.MONDAY);
+        verify(scheduleLookup).effectiveWindowsOn(List.of(R1), NEXT_MONDAY);
     }
 
     @Test
@@ -262,7 +263,7 @@ class ServiceAvailabilityServiceImplTest {
         service(60, true);
         when(assignmentRepository.findByIdServiceId(SERVICE_ID)).thenReturn(List.of());
         when(resourceLookupService.findByIds(any(Collection.class))).thenReturn(List.of());
-        when(scheduleLookup.windowsOn(any(Collection.class), any(DayOfWeek.class))).thenReturn(Map.of());
+        when(scheduleLookup.effectiveWindowsOn(any(Collection.class), any(LocalDate.class))).thenReturn(Map.of());
 
         ServiceAvailabilityResponse r = engine.getAvailability(SERVICE_ID, NEXT_MONDAY.toString());
 

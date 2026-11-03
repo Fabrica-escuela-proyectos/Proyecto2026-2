@@ -6,14 +6,18 @@ import com.codefactory.reservas_backend.identity.application.UserIdentity;
 import com.codefactory.reservas_backend.provider.application.BusinessAccessService;
 import com.codefactory.reservas_backend.service.controller.dto.CreateServiceRequest;
 import com.codefactory.reservas_backend.service.controller.dto.ServiceResponse;
+import com.codefactory.reservas_backend.service.controller.dto.UpdateServiceRequest;
 import com.codefactory.reservas_backend.service.domain.DuplicateServiceNameException;
+import com.codefactory.reservas_backend.service.domain.ServiceNotFoundException;
 import com.codefactory.reservas_backend.service.domain.ServiceOffering;
 import com.codefactory.reservas_backend.service.infrastructure.ServiceOfferingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -60,6 +64,51 @@ public class ServiceOfferingServiceImpl implements ServiceOfferingService {
         return serviceRepository.findByBusinessIdOrderByCreatedAtAsc(businessId).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public ServiceResponse update(UUID serviceId, UpdateServiceRequest request, UserIdentity requester, String originIp) {
+        // Bloqueo de fila: serializa la edición con otras ediciones y con las reservas que se crean a la vez
+        // (BookingServiceImpl toma un bloqueo compartido del servicio antes de leer su duración y precio).
+        ServiceOffering service = serviceRepository.findByIdForUpdate(serviceId)
+                .orElseThrow(() -> new ServiceNotFoundException("El servicio solicitado no existe"));
+        businessAccessService.requireOwner(service.getBusinessId(), requester);
+
+        List<String> changes = new ArrayList<>();
+        if (request.getName() != null) {
+            String name = request.getName().trim();
+            if (!name.equals(service.getName())) {
+                if (serviceRepository.existsByBusinessIdAndNameIgnoreCaseAndIdNot(service.getBusinessId(), name, serviceId)) {
+                    throw new DuplicateServiceNameException("Ya existe un servicio con ese nombre en el negocio");
+                }
+                changes.add("nombre");
+                service.setName(name);
+            }
+        }
+        if (request.getDescription() != null) {
+            String description = request.getDescription().isBlank() ? null : request.getDescription().trim();
+            if (!Objects.equals(description, service.getDescription())) {
+                changes.add("descripción");
+                service.setDescription(description);
+            }
+        }
+        if (request.getDurationMinutes() != null && request.getDurationMinutes() != service.getDurationMinutes()) {
+            changes.add("duración " + service.getDurationMinutes() + " -> " + request.getDurationMinutes() + " min");
+            service.setDurationMinutes(request.getDurationMinutes());
+        }
+        if (request.getPriceCop() != null && request.getPriceCop() != service.getPriceCop()) {
+            changes.add("precio " + service.getPriceCop() + " -> " + request.getPriceCop() + " COP");
+            service.setPriceCop(request.getPriceCop());
+        }
+
+        if (!changes.isEmpty()) {
+            // El precio de las reservas existentes no cambia: bookings.price_cop es una copia (ADR-006).
+            serviceRepository.saveAndFlush(service);
+            auditService.registerEvent(AuditEventType.EDICION_SERVICIO, requester.email(), "SUCCESS",
+                    "Servicio " + serviceId + " editado (" + String.join(", ", changes) + ")", originIp);
+        }
+        return toResponse(service);
     }
 
     private ServiceResponse toResponse(ServiceOffering s) {

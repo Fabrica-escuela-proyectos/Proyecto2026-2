@@ -15,12 +15,17 @@ import com.codefactory.reservas_backend.identity.domain.UserNotFoundException;
 import com.codefactory.reservas_backend.identity.infrastructure.TooManyRequestsException;
 import com.codefactory.reservas_backend.provider.domain.BusinessNotFoundException;
 import com.codefactory.reservas_backend.provider.domain.ProviderNotFoundException;
+import com.codefactory.reservas_backend.report.domain.InvalidReportPeriodException;
 import com.codefactory.reservas_backend.reservation.domain.BookingNotCancellableException;
 import com.codefactory.reservas_backend.reservation.domain.BookingNotFoundException;
+import com.codefactory.reservas_backend.reservation.domain.BookingStateConflictException;
 import com.codefactory.reservas_backend.reservation.domain.ConfirmationRequiredException;
 import com.codefactory.reservas_backend.reservation.domain.InvalidBookingException;
 import com.codefactory.reservas_backend.reservation.domain.SlotNotAvailableException;
+import com.codefactory.reservas_backend.resource.domain.ClosureConflictException;
+import com.codefactory.reservas_backend.resource.domain.ClosureNotFoundException;
 import com.codefactory.reservas_backend.resource.domain.DuplicateResourceNameException;
+import com.codefactory.reservas_backend.resource.domain.InvalidClosureException;
 import com.codefactory.reservas_backend.resource.domain.InvalidAvailabilityException;
 import com.codefactory.reservas_backend.resource.domain.ResourceNotFoundException;
 import com.codefactory.reservas_backend.service.domain.DuplicateServiceNameException;
@@ -120,7 +125,8 @@ public class GlobalExceptionHandler {
 
     // HU-14: lo mismo para el nombre de un recurso dentro del mismo negocio.
     @ExceptionHandler({DuplicateServiceNameException.class, DuplicateResourceNameException.class,
-            SlotNotAvailableException.class, BookingNotCancellableException.class})
+            SlotNotAvailableException.class, BookingNotCancellableException.class, BookingStateConflictException.class,
+            ClosureConflictException.class})
     public ResponseEntity<ApiError> handleDuplicateService(RuntimeException ex, HttpServletRequest req) {
         return build(HttpStatus.CONFLICT, "CONFLICT", ex.getMessage(), null, req);
     }
@@ -162,7 +168,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({RoleNotFoundException.class, InvalidMfaCodeException.class, MfaNotConfiguredException.class,
             InvalidPaginationException.class, InvalidResourceAssignmentException.class,
             InvalidAvailabilityException.class, InvalidAvailabilityQueryException.class,
-            InvalidBookingException.class})
+            InvalidBookingException.class, InvalidClosureException.class, InvalidReportPeriodException.class})
     public ResponseEntity<ApiError> handleBusinessValidation(RuntimeException ex, HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage(), null, req);
     }
@@ -170,7 +176,7 @@ public class GlobalExceptionHandler {
     // HU-05/HU-06: el usuario/proveedor objetivo de la operación no existe.
     @ExceptionHandler({UserNotFoundException.class, ProviderNotFoundException.class, BusinessNotFoundException.class,
             ServiceNotFoundException.class, ResourceNotFoundException.class, ServiceNotAvailableException.class,
-            BookingNotFoundException.class})
+            BookingNotFoundException.class, ClosureNotFoundException.class})
     public ResponseEntity<ApiError> handleNotFound(RuntimeException ex, HttpServletRequest req) {
         return build(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage(), null, req);
     }
@@ -208,7 +214,11 @@ public class GlobalExceptionHandler {
             return build(HttpStatus.CONFLICT, "CONFLICT", uniqueViolationMessage(violatedConstraintOf(ex)), null, req);
         }
         if (SQLSTATE_EXCLUSION_VIOLATION.equals(sqlState)) {
-            return build(HttpStatus.CONFLICT, "CONFLICT", "El horario seleccionado no está disponible: ya tiene una reserva", null, req);
+            // HU-21: la misma clase de restricción impide cierres traslapados de un recurso.
+            String message = "ex_resource_closures_no_overlap".equals(violatedConstraintOf(ex))
+                    ? "Ya existe un cierre programado que se cruza con ese periodo"
+                    : "El horario seleccionado no está disponible: ya tiene una reserva";
+            return build(HttpStatus.CONFLICT, "CONFLICT", message, null, req);
         }
         if (SQLSTATE_VALUE_TOO_LONG.equals(sqlState)) {
             return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",

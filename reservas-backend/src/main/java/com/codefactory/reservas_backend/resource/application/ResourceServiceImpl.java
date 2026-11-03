@@ -6,14 +6,17 @@ import com.codefactory.reservas_backend.identity.application.UserIdentity;
 import com.codefactory.reservas_backend.provider.application.BusinessAccessService;
 import com.codefactory.reservas_backend.resource.controller.dto.CreateResourceRequest;
 import com.codefactory.reservas_backend.resource.controller.dto.ResourceResponse;
+import com.codefactory.reservas_backend.resource.controller.dto.UpdateResourceRequest;
 import com.codefactory.reservas_backend.resource.domain.DuplicateResourceNameException;
 import com.codefactory.reservas_backend.resource.domain.Resource;
+import com.codefactory.reservas_backend.resource.domain.ResourceNotFoundException;
 import com.codefactory.reservas_backend.resource.domain.ResourceType;
 import com.codefactory.reservas_backend.resource.infrastructure.ResourceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -58,6 +61,42 @@ public class ResourceServiceImpl implements ResourceService {
         return resourceRepository.findByBusinessIdOrderByCreatedAtAsc(businessId).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public ResourceResponse update(UUID resourceId, UpdateResourceRequest request, UserIdentity requester, String originIp) {
+        // Bloqueo de fila: dos ediciones simultáneas del mismo recurso se aplican una tras otra.
+        Resource resource = resourceRepository.findByIdForUpdate(resourceId)
+                .orElseThrow(() -> new ResourceNotFoundException("El recurso solicitado no existe"));
+        businessAccessService.requireOwner(resource.getBusinessId(), requester);
+
+        List<String> changes = new ArrayList<>();
+        if (request.getName() != null) {
+            String name = request.getName().trim();
+            if (!name.equals(resource.getName())) {
+                if (resourceRepository.existsByBusinessIdAndNameIgnoreCaseAndIdNot(resource.getBusinessId(), name, resourceId)) {
+                    throw new DuplicateResourceNameException("Ya existe un recurso con ese nombre en el negocio");
+                }
+                changes.add("nombre");
+                resource.setName(name);
+            }
+        }
+        if (request.getType() != null) {
+            ResourceType type = ResourceType.valueOf(request.getType().trim().toUpperCase(Locale.ROOT));
+            if (type != resource.getType()) {
+                changes.add("tipo");
+                resource.setType(type);
+            }
+        }
+
+        if (!changes.isEmpty()) {
+            // saveAndFlush: el índice único uk_resources_business_name defiende la carrera de dos ediciones (409).
+            resourceRepository.saveAndFlush(resource);
+            auditService.registerEvent(AuditEventType.EDICION_RECURSO, requester.email(), "SUCCESS",
+                    "Recurso " + resourceId + " editado (" + String.join(", ", changes) + ")", originIp);
+        }
+        return toResponse(resource);
     }
 
     private ResourceResponse toResponse(Resource r) {

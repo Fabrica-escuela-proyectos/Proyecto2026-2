@@ -47,6 +47,21 @@ public class ResourceLookupServiceImpl implements ResourceLookupService {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ResourceInfo> findAllOfBusiness(UUID businessId) {
+        return resourceRepository.findByBusinessIdOrderByCreatedAtAsc(businessId).stream()
+                .map(ResourceLookupServiceImpl::toInfo)
+                .sorted(Comparator.comparing(ResourceInfo::name, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> allActiveIds() {
+        return resourceRepository.findActiveIds();
+    }
+
     private static ResourceInfo toInfo(Resource r) {
         return new ResourceInfo(r.getId(), r.getBusinessId(), r.getName(), r.getType().name(), r.isActive());
     }

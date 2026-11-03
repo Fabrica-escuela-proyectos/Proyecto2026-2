@@ -24,4 +24,13 @@ public interface BusinessDirectoryService {
 
     /** Ids de los negocios del proveedor cuyo usuario es {@code userId}; vacío si no es proveedor (HU-28). */
     List<UUID> businessIdsOfUser(UUID userId);
+
+    /**
+     * HU-07/HU-13: todos los datos públicos del negocio (los que ve el cliente en el catálogo).
+     * @throws com.codefactory.reservas_backend.provider.domain.BusinessNotFoundException si no existe
+     */
+    BusinessProfile profile(UUID businessId);
+
+    /** HU-34: cuántos negocios tienen al proveedor con la cuenta habilitada («negocios activos»). */
+    long countWithEnabledOwner();
 }

@@ -3,6 +3,7 @@ package com.codefactory.reservas_backend.service.application;
 import com.codefactory.reservas_backend.common.error.InvalidPaginationException;
 import com.codefactory.reservas_backend.provider.application.BusinessDirectoryService;
 import com.codefactory.reservas_backend.provider.application.BusinessInfo;
+import com.codefactory.reservas_backend.provider.application.BusinessProfile;
 import com.codefactory.reservas_backend.provider.application.BusinessPage;
 import com.codefactory.reservas_backend.provider.domain.BusinessNotFoundException;
 import com.codefactory.reservas_backend.service.controller.dto.CatalogDtos.BusinessDetailResponse;
@@ -92,7 +93,8 @@ class CatalogServiceImplTest {
 
     @Test
     void getBusinessDebeMostrarSoloLosServiciosActivosConSusDatos() {
-        when(directory.get(BUSINESS_ID)).thenReturn(new BusinessInfo(BUSINESS_ID, "Barbería Central"));
+        when(directory.profile(BUSINESS_ID)).thenReturn(new BusinessProfile(BUSINESS_ID, "Barbería Central",
+                "Cortes clásicos", "Calle 10", "BELLEZA", "6045551234", null));
         when(serviceRepository.findByBusinessIdAndActiveTrueOrderByNameAsc(BUSINESS_ID)).thenReturn(List.of(
                 ServiceOffering.builder().id(UUID.randomUUID()).businessId(BUSINESS_ID).name("Corte")
                         .description("Con lavado").durationMinutes(45).priceCop(30_000L).active(true).build()));
@@ -100,6 +102,11 @@ class CatalogServiceImplTest {
         BusinessDetailResponse response = catalog.getBusiness(BUSINESS_ID);
 
         assertThat(response.name()).isEqualTo("Barbería Central");
+        // HU-07: el cliente ve todos los datos públicos del negocio.
+        assertThat(response.description()).isEqualTo("Cortes clásicos");
+        assertThat(response.address()).isEqualTo("Calle 10");
+        assertThat(response.businessType()).isEqualTo("BELLEZA");
+        assertThat(response.phone()).isEqualTo("6045551234");
         assertThat(response.services()).hasSize(1);
         assertThat(response.services().get(0).durationMinutes()).isEqualTo(45);
         assertThat(response.services().get(0).priceCop()).isEqualTo(30_000L);
@@ -108,7 +115,8 @@ class CatalogServiceImplTest {
 
     @Test
     void getBusinessDebeAvisarSiNoTieneServiciosDisponibles() {
-        when(directory.get(BUSINESS_ID)).thenReturn(new BusinessInfo(BUSINESS_ID, "Sin servicios"));
+        when(directory.profile(BUSINESS_ID)).thenReturn(new BusinessProfile(BUSINESS_ID, "Sin servicios",
+                null, null, null, null, null));
         when(serviceRepository.findByBusinessIdAndActiveTrueOrderByNameAsc(BUSINESS_ID)).thenReturn(List.of());
 
         BusinessDetailResponse response = catalog.getBusiness(BUSINESS_ID);
@@ -119,7 +127,7 @@ class CatalogServiceImplTest {
 
     @Test
     void getBusinessDebePropagarElNegocioInexistente() {
-        when(directory.get(BUSINESS_ID)).thenThrow(new BusinessNotFoundException("no existe"));
+        when(directory.profile(BUSINESS_ID)).thenThrow(new BusinessNotFoundException("no existe"));
 
         assertThatThrownBy(() -> catalog.getBusiness(BUSINESS_ID)).isInstanceOf(BusinessNotFoundException.class);
         verify(serviceRepository, never()).findByBusinessIdAndActiveTrueOrderByNameAsc(BUSINESS_ID);

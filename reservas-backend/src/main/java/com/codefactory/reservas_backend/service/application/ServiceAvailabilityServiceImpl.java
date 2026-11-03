@@ -91,7 +91,8 @@ public class ServiceAvailabilityServiceImpl implements ServiceAvailabilityServic
                 .toList();
         List<UUID> resourceIds = resources.stream().map(ResourceInfo::id).toList();
 
-        Map<UUID, List<TimeWindow>> windows = scheduleLookup.windowsOn(resourceIds, date.getDayOfWeek());
+        // Horario efectivo de la fecha: el semanal (HU-19) menos los cierres puntuales (HU-21).
+        Map<UUID, List<TimeWindow>> windows = scheduleLookup.effectiveWindowsOn(resourceIds, date);
         if (windows.isEmpty()) {
             return response(service, date, List.of(), NO_SCHEDULE_MESSAGE);
         }

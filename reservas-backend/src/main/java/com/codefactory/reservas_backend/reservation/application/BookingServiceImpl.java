@@ -74,6 +74,11 @@ public class BookingServiceImpl implements BookingService {
             throw new InvalidBookingException(PAST_DATE_MESSAGE);
         }
 
+        // Bloqueo compartido del servicio ANTES de leerlo: una desactivación (HU-11) o edición (HU-10) en curso
+        // termina primero y esta reserva ve su resultado; varias reservas del mismo servicio no se esperan entre sí.
+        if (!serviceLookupService.lockForBooking(request.getServiceId())) {
+            throw new ServiceNotAvailableException(SERVICE_NOT_AVAILABLE_MESSAGE);
+        }
         ServiceInfo service = serviceLookupService.findById(request.getServiceId())
                 .filter(ServiceInfo::active)
                 .filter(s -> businessDirectoryService.isOwnerEnabled(s.businessId()))
@@ -91,8 +96,9 @@ public class BookingServiceImpl implements BookingService {
         }
 
         List<ResourceInfo> candidates = candidateResources(service, request.getResourceId());
-        Map<UUID, List<TimeWindow>> windows = scheduleLookup.windowsOn(
-                candidates.stream().map(ResourceInfo::id).toList(), date.getDayOfWeek());
+        // Horario efectivo de la fecha: el semanal (HU-19) menos los cierres puntuales (HU-21).
+        Map<UUID, List<TimeWindow>> windows = scheduleLookup.effectiveWindowsOn(
+                candidates.stream().map(ResourceInfo::id).toList(), date);
 
         Instant startAt = date.atTime(start).atZone(TimeConfig.BUSINESS_ZONE).toInstant();
         Instant endAt = date.atTime(end).atZone(TimeConfig.BUSINESS_ZONE).toInstant();
@@ -106,6 +112,11 @@ public class BookingServiceImpl implements BookingService {
             withinSchedule = true;
             // Bloqueo del recurso: serializa esta reserva con una desactivación simultánea (HU-16) y con otras reservas.
             if (!resourceLookupService.lockActive(candidate.id())) {
+                continue;
+            }
+            // Con el bloqueo tomado se vuelve a mirar si hay un cierre: uno creado mientras esta reserva leía el
+            // horario ya está confirmado aquí (HU-21 bloquea el mismo recurso antes de cerrarlo).
+            if (scheduleLookup.isClosed(candidate.id(), startAt, endAt)) {
                 continue;
             }
             if (!bookingRepository.existsConfirmedOverlapping(candidate.id(), startAt, endAt)) {

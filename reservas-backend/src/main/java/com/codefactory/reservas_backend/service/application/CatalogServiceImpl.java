@@ -3,6 +3,7 @@ package com.codefactory.reservas_backend.service.application;
 import com.codefactory.reservas_backend.common.error.InvalidPaginationException;
 import com.codefactory.reservas_backend.provider.application.BusinessDirectoryService;
 import com.codefactory.reservas_backend.provider.application.BusinessInfo;
+import com.codefactory.reservas_backend.provider.application.BusinessProfile;
 import com.codefactory.reservas_backend.provider.application.BusinessPage;
 import com.codefactory.reservas_backend.service.controller.dto.CatalogDtos.BusinessDetailResponse;
 import com.codefactory.reservas_backend.service.controller.dto.CatalogDtos.BusinessItem;
@@ -49,11 +50,13 @@ public class CatalogServiceImpl implements CatalogService {
     @Override
     @Transactional(readOnly = true)
     public BusinessDetailResponse getBusiness(UUID businessId) {
-        BusinessInfo business = businessDirectoryService.get(businessId);
+        // HU-07: el detalle trae todos los datos públicos del negocio, así el cliente ve los cambios del proveedor.
+        BusinessProfile business = businessDirectoryService.profile(businessId);
         List<ServiceItem> services = serviceRepository.findByBusinessIdAndActiveTrueOrderByNameAsc(businessId).stream()
                 .map(s -> new ServiceItem(s.getId(), s.getName(), s.getDescription(), s.getDurationMinutes(), s.getPriceCop()))
                 .toList();
-        return new BusinessDetailResponse(business.id(), business.name(), services,
+        return new BusinessDetailResponse(business.id(), business.name(), business.description(), business.address(),
+                business.businessType(), business.phone(), services,
                 services.isEmpty() ? NO_SERVICES_MESSAGE : null);
     }
 }

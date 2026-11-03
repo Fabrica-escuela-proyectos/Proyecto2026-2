@@ -3,6 +3,7 @@ package com.codefactory.reservas_backend.service.application;
 import com.codefactory.reservas_backend.identity.application.UserIdentity;
 import com.codefactory.reservas_backend.service.controller.dto.CreateServiceRequest;
 import com.codefactory.reservas_backend.service.controller.dto.ServiceResponse;
+import com.codefactory.reservas_backend.service.controller.dto.UpdateServiceRequest;
 
 import java.util.List;
 import java.util.UUID;
@@ -13,4 +14,7 @@ public interface ServiceOfferingService {
     ServiceResponse create(UUID businessId, CreateServiceRequest request, UserIdentity requester, String originIp);
 
     List<ServiceResponse> list(UUID businessId, UserIdentity requester);
+
+    /** HU-10: edita los datos de un servicio propio (edición parcial). */
+    ServiceResponse update(UUID serviceId, UpdateServiceRequest request, UserIdentity requester, String originIp);
 }

@@ -36,11 +36,36 @@ public class Business {
     @Builder.Default
     private int minAdvanceHours = 1;
 
+    /** HU-07: datos opcionales del negocio que ven los clientes en el catálogo. */
+    @Column(name = "description", length = 500)
+    private String description;
+
+    @Column(name = "address", length = 200)
+    private String address;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "business_type", length = 30)
+    private BusinessType businessType;
+
+    /** 10 dígitos: celular (3...) o fijo nacional (60...); lo valida también un CHECK de la base (V13). */
+    @Column(name = "phone", length = 10)
+    private String phone;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
     @PrePersist
     void onCreate() {
-        this.createdAt = Instant.now();
+        Instant now = Instant.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        this.updatedAt = Instant.now();
     }
 }

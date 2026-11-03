@@ -49,7 +49,8 @@ set('pastDate', y.toISOString().slice(0, 10));
 
 // Limpia lo que dejó la corrida anterior.
 ['providerToken', 'providerBToken', 'clientToken', 'adminToken', 'providerUserId', 'providerBUserId', 'clientUserId',
- 'businessId', 'businessBId', 'serviceId', 'resourceId', 'bookingId', 'bookingId2', 'bookingId3', 'bookingId4']
+ 'businessId', 'businessBId', 'serviceId', 'resourceId', 'bookingId', 'bookingId2', 'bookingId3', 'bookingId4',
+ 'closureId', 'bookingS3', 'bookingS3b', 'bookingS3c']
     .forEach(k => pm.collectionVariables.unset(k));
 """
 
@@ -342,6 +343,80 @@ pm.request.url.query.remove('date'); pm.request.url.query.add({key: 'date', valu
         item("77 Proveedor B no puede reactivar mi recurso → 403 (HU-17)", "POST", "/api/v1/resources/{{resourceId}}/reactivation", auth=B, tests=tests_status(403)),
     ]))
 
+    # 7b --------------------------------------------------------------- Sprint 3 (deja el servicio y el recurso como estaban)
+    day = "{{bookingDate}}"
+    carpetas.append(folder("07b · Sprint 3: editar, cerrar, completar y reportes (HU-07, 10, 11, 12, 15, 21, 27, 29-33)", [
+        item("S3-01 Editar toda la información del negocio (HU-07)", "PATCH", "/api/v1/businesses/{{businessId}}", auth=P,
+             body=J(name="Negocio QA {{runId}}", description="Cortes y barba", address="Calle 10 # 43-12", businessType="BELLEZA", phone="6045551234"),
+             tests=tests_status(200) + ["pm.test('Informa que se actualizó', () => pm.expect(pm.response.json().message).to.eql('La información del negocio fue actualizada'));"]),
+        item("S3-02 Teléfono inválido (12345) → 400 (HU-07)", "PATCH", "/api/v1/businesses/{{businessId}}", auth=P, body=J(phone="12345"), tests=tests_status(400)),
+        item("S3-03 Tipo de negocio inexistente (Panadería) → 400 (HU-07)", "PATCH", "/api/v1/businesses/{{businessId}}", auth=P, body=J(businessType="Panadería"), tests=tests_status(400)),
+        item("S3-04 Nombre vacío → 400 (HU-07)", "PATCH", "/api/v1/businesses/{{businessId}}", auth=P, body=J(name=""), tests=tests_status(400)),
+        item("S3-05 El cliente ve los datos nuevos en el catálogo (HU-07 + 13)", "GET", "/api/v1/businesses/{{businessId}}", auth=C,
+             tests=tests_status(200) + ["pm.test('Dirección, tipo y teléfono actualizados', () => { const j = pm.response.json(); pm.expect(j.address).to.eql('Calle 10 # 43-12'); pm.expect(j.businessType).to.eql('BELLEZA'); pm.expect(j.phone).to.eql('6045551234'); });"]),
+        item("S3-06 Proveedor B edita mi negocio → 403 (HU-07)", "PATCH", "/api/v1/businesses/{{businessId}}", auth=B, body=J(name="Intruso"), tests=tests_status(403)),
+        reserva("S3-07 Reserva 09:00-10:00 (para HU-10 y HU-21)", "09:00", "10:00", var="bookingS3"),
+        item("S3-08 Subir el precio del servicio a 60000 (HU-10)", "PATCH", "/api/v1/services/{{serviceId}}", auth=P, body=J(priceCop=60000),
+             tests=tests_status(200) + ["pm.test('Precio nuevo', () => pm.expect(pm.response.json().priceCop).to.eql(60000));"]),
+        item("S3-09 La reserva conserva su precio de 25000 (HU-10)", "GET", "/api/v1/bookings/me", auth=C,
+             tests=["pm.test('Precio guardado en la reserva', () => { const it = pm.response.json().items.find(i => i.id === pm.collectionVariables.get('bookingS3')); pm.expect(it.priceCop).to.eql(25000); });"]),
+        item("S3-10 Volver al precio de 25000 (HU-10)", "PATCH", "/api/v1/services/{{serviceId}}", auth=P, body=J(priceCop=25000), tests=tests_status(200)),
+        item("S3-11 Servicio con nombre vacío → 400 (HU-10)", "PATCH", "/api/v1/services/{{serviceId}}", auth=P, body=J(name=""), tests=tests_status(400)),
+        item("S3-12 Proveedor B edita mi servicio → 403 (HU-10)", "PATCH", "/api/v1/services/{{serviceId}}", auth=B, body=J(priceCop=1), tests=tests_status(403)),
+        item("S3-13 Renombrar el recurso (HU-15)", "PATCH", "/api/v1/resources/{{resourceId}}", auth=P, body=J(name="Sala Principal"),
+             tests=tests_status(200) + ["pm.test('Nombre nuevo y mismo negocio', () => { const j = pm.response.json(); pm.expect(j.name).to.eql('Sala Principal'); pm.expect(j.businessId).to.eql(pm.collectionVariables.get('businessId')); });"]),
+        item("S3-14 Recurso con nombre vacío → 400 (HU-15)", "PATCH", "/api/v1/resources/{{resourceId}}", auth=P, body=J(name=""), tests=tests_status(400)),
+        item("S3-15 Cerrar el recurso de 12:00 a 14:00 sin reservas (HU-21)", "POST", "/api/v1/resources/{{resourceId}}/closures", auth=P,
+             body=J(start=day + " 12:00", end=day + " 14:00", reason="Mantenimiento"),
+             tests=tests_status(201) + ["pm.test('Sin reservas canceladas', () => pm.expect(pm.response.json().cancelledBookings).to.eql(0));"] + save(("closureId", "j.closure.id"))),
+        item("S3-16 Esas horas ya no aparecen libres (HU-21 + 20)", "GET", "/api/v1/services/{{serviceId}}/availability?date=" + day,
+             tests=["pm.test('12:00 y 13:00 cerradas; 14:00 libre', () => { const s = pm.response.json().slots.map(x => x.start); pm.expect(s).to.not.include('12:00'); pm.expect(s).to.not.include('13:00'); pm.expect(s).to.include('14:00'); });"]),
+        item("S3-17 Reservar dentro del cierre → 409 (HU-21 + 22)", "POST", "/api/v1/bookings", auth=C,
+             body=J(serviceId="{{serviceId}}", date=day, startTime="12:00", endTime="13:00"), tests=tests_status(409)),
+        item("S3-18 Cierre que se cruza con otro → 409 (HU-21)", "POST", "/api/v1/resources/{{resourceId}}/closures", auth=P,
+             body=J(start=day + " 13:00", end=day + " 15:00"), tests=tests_status(409)),
+        item("S3-19 Cierre con fin anterior al inicio → 400 (HU-21)", "POST", "/api/v1/resources/{{resourceId}}/closures", auth=P,
+             body=J(start=day + " 14:00", end=day + " 10:00"), tests=tests_status(400)),
+        item("S3-20 Cierre en una fecha pasada → 400 (HU-21)", "POST", "/api/v1/resources/{{resourceId}}/closures", auth=P,
+             body=J(date="{{pastDate}}"), tests=tests_status(400)),
+        item("S3-21 Listar los cierres del recurso (HU-21)", "GET", "/api/v1/resources/{{resourceId}}/closures", auth=P,
+             tests=tests_status(200) + ["pm.test('Aparece el cierre', () => pm.expect(pm.response.json().map(c => c.id)).to.include(pm.collectionVariables.get('closureId')));"]),
+        item("S3-22 Eliminar el cierre antes de que empiece (HU-21)", "DELETE", "/api/v1/resources/{{resourceId}}/closures/{{closureId}}", auth=P, tests=tests_status(204)),
+        item("S3-23 Cerrar sobre la reserva de las 09:00 sin confirmar → 409 CONFIRMATION_REQUIRED (HU-21)", "POST", "/api/v1/resources/{{resourceId}}/closures", auth=P,
+             body=J(start=day + " 08:00", end=day + " 10:00"),
+             tests=tests_status(409) + ["pm.test('1 reserva afectada', () => pm.expect(pm.response.json().fields.affectedBookings).to.eql('1'));"]),
+        item("S3-24 Cerrar confirmando: cancela esa reserva (HU-21)", "POST", "/api/v1/resources/{{resourceId}}/closures", auth=P,
+             body='{"start":"' + day + ' 08:00","end":"' + day + ' 10:00","confirm":true}',
+             tests=tests_status(201) + ["pm.test('1 reserva cancelada', () => pm.expect(pm.response.json().cancelledBookings).to.eql(1));"] + save(("closureId", "j.closure.id"))),
+        item("S3-25 Quitar ese cierre (deja el recurso como estaba)", "DELETE", "/api/v1/resources/{{resourceId}}/closures/{{closureId}}", auth=P, tests=tests_status(204)),
+        reserva("S3-26 Reserva 15:00-16:00 (para HU-11)", "15:00", "16:00", var="bookingS3b"),
+        item("S3-27 Desactivar el servicio sin confirmar → 409 con la cantidad (HU-11)", "POST", "/api/v1/services/{{serviceId}}/deactivation", auth=P, body=J(confirm=False),
+             tests=tests_status(409) + ["pm.test('1 reserva afectada', () => pm.expect(pm.response.json().fields.affectedBookings).to.eql('1'));"]),
+        item("S3-28 Desactivar confirmando: cancela con SERVICIO_NO_DISPONIBLE (HU-11)", "POST", "/api/v1/services/{{serviceId}}/deactivation", auth=P, body=J(confirm=True),
+             tests=tests_status(200) + ["pm.test('Inactivo y 1 cancelada', () => { const j = pm.response.json(); pm.expect(j.active).to.eql(false); pm.expect(j.cancelledBookings).to.eql(1); });"]),
+        item("S3-29 Reservar un servicio inactivo → 404 (HU-11)", "POST", "/api/v1/bookings", auth=C,
+             body=J(serviceId="{{serviceId}}", date=day, startTime="17:00", endTime="18:00"), tests=tests_status(404)),
+        item("S3-30 Reactivar el servicio (HU-12)", "POST", "/api/v1/services/{{serviceId}}/reactivation", auth=P,
+             tests=tests_status(200) + ["pm.test('Activo y mismo servicio', () => { const j = pm.response.json(); pm.expect(j.active).to.eql(true); pm.expect(j.id).to.eql(pm.collectionVariables.get('serviceId')); });"]),
+        item("S3-31 La reserva cancelada sigue cancelada (HU-12)", "GET", "/api/v1/bookings/me?status=CANCELADA", auth=C,
+             tests=["pm.test('Origen SERVICIO_NO_DISPONIBLE', () => { const it = pm.response.json().items.find(i => i.id === pm.collectionVariables.get('bookingS3b')); pm.expect(it.cancelOrigin).to.eql('SERVICIO_NO_DISPONIBLE'); });"]),
+        reserva("S3-32 Reserva 17:00-18:00 (confirmada, para los reportes)", "17:00", "18:00", var="bookingS3c"),
+        item("S3-33 Completar una reserva que no ha terminado → 409 (HU-27)", "POST", "/api/v1/bookings/{{bookingS3c}}/completion", auth=P, tests=tests_status(409)),
+        item("S3-34 Ocupación por recurso del día (HU-29)", "GET", "/api/v1/businesses/{{businessId}}/reports/resource-occupancy?from=" + day + "&to=" + day, auth=P,
+             tests=tests_status(200) + ["pm.test('720 min disponibles, 60 reservados, 8,3 %', () => { const r = pm.response.json().resources[0]; pm.expect(r.availableMinutes).to.eql(720); pm.expect(r.bookedMinutes).to.eql(60); pm.expect(r.occupancyPercent).to.eql(8.3); });"]),
+        item("S3-35 Ocupación del negocio por semana (HU-30)", "GET", "/api/v1/businesses/{{businessId}}/reports/occupancy?from=" + day + "&groupBy=WEEK", auth=P,
+             tests=tests_status(200) + ["pm.test('Agrupado por semana con mayor demanda', () => { const j = pm.response.json(); pm.expect(j.groupBy).to.eql('WEEK'); pm.expect(j.highestDemand).to.be.an('object'); });"]),
+        item("S3-36 Reservas por estado del día (HU-31)", "GET", "/api/v1/businesses/{{businessId}}/reports/bookings-by-status?from=" + day + "&to=" + day, auth=P,
+             tests=tests_status(200) + ["pm.test('1 confirmada y 5 canceladas', () => { const j = pm.response.json(); pm.expect(j.confirmed).to.eql(1); pm.expect(j.cancelled).to.eql(5); pm.expect(j.completed).to.eql(0); });"]),
+        item("S3-37 Servicios más reservados (HU-32)", "GET", "/api/v1/businesses/{{businessId}}/reports/top-services?from=" + day + "&to=" + day, auth=P,
+             tests=tests_status(200) + ["pm.test('El servicio aparece primero', () => { const s = pm.response.json().services[0]; pm.expect(s.serviceName).to.eql('Corte de cabello'); pm.expect(s.bookings).to.eql(1); });"]),
+        item("S3-38 Valor de las reservas (HU-33)", "GET", "/api/v1/businesses/{{businessId}}/reports/booking-value?from=" + day + "&to=" + day, auth=P,
+             tests=tests_status(200) + ["pm.test('25000 confirmados y 125000 cancelados', () => { const j = pm.response.json(); pm.expect(j.confirmedValue).to.eql(25000); pm.expect(j.cancelledValue).to.eql(125000); pm.expect(j.currency).to.eql('COP'); });"]),
+        item("S3-39 Fechas invertidas → 400 (reportes)", "GET", "/api/v1/businesses/{{businessId}}/reports/bookings-by-status?from=2026-12-10&to=2026-12-01", auth=P, tests=tests_status(400)),
+        item("S3-40 El cliente no ve reportes → 403", "GET", "/api/v1/businesses/{{businessId}}/reports/bookings-by-status", auth=C, tests=tests_status(403)),
+        item("S3-41 Proveedor B no ve mis reportes → 403", "GET", "/api/v1/businesses/{{businessId}}/reports/booking-value", auth=B, tests=tests_status(403)),
+    ], desc="Requiere las carpetas 00-07 en la misma corrida. Deja el servicio activo, el recurso sin cierres y una reserva confirmada a las 17:00."))
+
     # 8 ---------------------------------------------------------------- administrador (opcional)
     admin_login_pre = SKIP_WITHOUT_ADMIN + TOTP_SCRIPT + ADMIN_CODE_SCRIPT
     admin_delete_pre = SKIP_WITHOUT_ADMIN + TOTP_SCRIPT + ADMIN_CODE_SCRIPT
@@ -354,6 +429,11 @@ pm.request.url.query.remove('date'); pm.request.url.query.add({key: 'date', valu
         item("80 Login de administrador con código TOTP", "POST", "/api/v1/auth/login", pre=admin_login_pre,
              body=J(email="{{adminEmail}}", password="{{adminPassword}}", mfaCode="{{adminCode}}"),
              tests=tests_status(200) + save(("adminToken", "j.token"))),
+        item("80b Resumen de la plataforma (HU-34)", "GET", "/api/v1/admin/reports/platform-summary?from={{bookingDate}}&to={{bookingDate}}", auth=A,
+             pre=SKIP_WITHOUT_ADMIN,
+             tests=tests_status(200) + ["pm.test('Negocios activos y reservas del día', () => { const j = pm.response.json(); pm.expect(j.activeBusinesses).to.be.above(0); pm.expect(j.totalBookings).to.be.above(0); });"]),
+        item("80c Un proveedor no ve el resumen de la plataforma → 403 (HU-34)", "GET", "/api/v1/admin/reports/platform-summary", auth=P,
+             pre=SKIP_WITHOUT_ADMIN, tests=tests_status(403)),
         item("81 Eliminar al cliente SIN código MFA → 401 (HU-05)", "DELETE", "/api/v1/users/{{clientUserId}}", auth=A, pre=SKIP_WITHOUT_ADMIN, tests=tests_status(401)),
         item("82 Eliminar al cliente con código MFA (HU-05/28)", "DELETE", "/api/v1/users/{{clientUserId}}", auth=A, pre=admin_delete_pre,
              headers={"X-MFA-Code": "{{adminCode}}"}, tests=tests_status(204)),
@@ -373,9 +453,9 @@ pm.request.url.query.remove('date'); pm.request.url.query.add({key: 'date', valu
 def coleccion():
     return {
         "info": {
-            "name": "Plataforma de Reservas · Sprint 2 (flujo completo)",
-            "description": ("Prueba de extremo a extremo de la API del Sprint 2: registro, configuración del negocio, catálogo, "
-                            "disponibilidad pública, reservas, cancelaciones, desactivación de recursos y eliminación de cuentas. "
+            "name": "Plataforma de Reservas · Sprints 1 a 3 (flujo completo)",
+            "description": ("Prueba de extremo a extremo de la API: registro, configuración del negocio, catálogo, "
+                            "disponibilidad pública, reservas, cancelaciones, desactivación de recursos, edición, cierres, reportes y eliminación de cuentas. "
                             "Cada petición trae sus pruebas (pestaña Tests) y se ejecuta de principio a fin con el Collection Runner. "
                             "Lee docs/postman/README.md antes de correrla contra Render (límite de registros, tiempo de arranque)."),
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",

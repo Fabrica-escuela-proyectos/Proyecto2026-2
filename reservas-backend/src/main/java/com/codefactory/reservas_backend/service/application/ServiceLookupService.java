@@ -15,4 +15,11 @@ public interface ServiceLookupService {
 
     /** Ids de los recursos asignados al servicio (HU-18), activos o no. */
     List<UUID> assignedResourceIds(UUID serviceId);
+
+    /**
+     * Bloqueo compartido del servicio hasta el fin de la transacción (HU-22 con HU-10/HU-11): la reserva
+     * espera a una edición o desactivación en curso y viceversa. Debe llamarse ANTES de {@link #findById}
+     * para leer los datos ya confirmados. Devuelve si el servicio existe y está activo.
+     */
+    boolean lockForBooking(UUID serviceId);
 }

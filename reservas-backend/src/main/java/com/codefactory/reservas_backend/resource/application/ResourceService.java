@@ -3,6 +3,7 @@ package com.codefactory.reservas_backend.resource.application;
 import com.codefactory.reservas_backend.identity.application.UserIdentity;
 import com.codefactory.reservas_backend.resource.controller.dto.CreateResourceRequest;
 import com.codefactory.reservas_backend.resource.controller.dto.ResourceResponse;
+import com.codefactory.reservas_backend.resource.controller.dto.UpdateResourceRequest;
 
 import java.util.List;
 import java.util.UUID;
@@ -13,4 +14,7 @@ public interface ResourceService {
     ResourceResponse create(UUID businessId, CreateResourceRequest request, UserIdentity requester, String originIp);
 
     List<ResourceResponse> list(UUID businessId, UserIdentity requester);
+
+    /** HU-15: edita nombre y/o tipo de un recurso propio; el negocio no cambia nunca. */
+    ResourceResponse update(UUID resourceId, UpdateResourceRequest request, UserIdentity requester, String originIp);
 }

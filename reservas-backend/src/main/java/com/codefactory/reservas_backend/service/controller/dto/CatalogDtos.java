@@ -23,6 +23,7 @@ public final class CatalogDtos {
     }
 
     /** Detalle de un negocio con sus servicios ACTIVOS; {@code message} solo si no tiene ninguno. */
-    public record BusinessDetailResponse(UUID id, String name, List<ServiceItem> services, String message) {
+    public record BusinessDetailResponse(UUID id, String name, String description, String address, String businessType,
+                                         String phone, List<ServiceItem> services, String message) {
     }
 }

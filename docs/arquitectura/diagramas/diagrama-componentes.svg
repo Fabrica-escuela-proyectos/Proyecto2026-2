@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1458 932" width="1458" height="932" font-family="Arial, Helvetica, sans-serif">
+<rect width="1458" height="932" fill="#ffffff"/>
+<text x="729" y="30" text-anchor="middle" font-size="20" font-weight="bold" fill="#0d1b2a">Diagrama de componentes — Plataforma de Reservas (entrega final)</text>
+<text x="729" y="50" text-anchor="middle" font-size="12" fill="#546e7a">Generado del código (generar_diagrama_componentes.py). Bola = interfaz provista · media luna = interfaz requerida · cada carril vertical une la bola con quienes la usan.</text>
+<circle cx="40" cy="78" r="7" fill="#fff" stroke="#37474f" stroke-width="2"/><text x="54" y="82" font-size="12" fill="#37474f">provista (bola)</text>
+<path d="M 160 71 A 8 8 0 0 0 160 85" fill="none" stroke="#37474f" stroke-width="2.2"/><text x="172" y="82" font-size="12" fill="#37474f">requerida (media luna)</text>
+<text x="330" y="82" font-size="12" fill="#37474f">«event» = evento de dominio síncrono (UserDeletionRequested, HU-28) · BusyTimeSource: la declara service y la implementa reservation (inversión de dependencias)</text>
+<line x1="270" y1="270" x2="1098" y2="270" stroke="#b0bec5" stroke-width="1.5"/>
+<line x1="270" y1="362" x2="1354" y2="362" stroke="#b0bec5" stroke-width="1.5"/>
+<line x1="270" y1="454" x2="1354" y2="454" stroke="#b0bec5" stroke-width="1.5"/>
+<line x1="270" y1="546" x2="1354" y2="546" stroke="#b0bec5" stroke-width="1.5"/>
+<line x1="270" y1="638" x2="1354" y2="638" stroke="#b0bec5" stroke-width="1.5"/>
+<line x1="270" y1="730" x2="1354" y2="730" stroke="#b0bec5" stroke-width="1.5"/>
+<line x1="270" y1="822" x2="1354" y2="822" stroke="#b0bec5" stroke-width="1.5"/>
+<text x="334" y="224" font-size="12" font-weight="bold" fill="#6a1b9a" transform="rotate(-60 334 224)">BookingReportQuery</text>
+<line x1="330" y1="230" x2="330" y2="362" stroke="#6a1b9a" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="330" cy="362" r="8" fill="#ffffff" stroke="#6a1b9a" stroke-width="2.5"/>
+<path d="M 319 268 A 11 11 0 0 0 341 268" fill="#ffffff" stroke="#6a1b9a" stroke-width="2.5"/>
+<circle cx="330" cy="270" r="2.5" fill="#6a1b9a"/>
+<text x="398" y="224" font-size="12" font-weight="bold" fill="#6a1b9a" transform="rotate(-60 398 224)">BusyTimeSource</text>
+<line x1="394" y1="230" x2="394" y2="454" stroke="#6a1b9a" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="394" cy="362" r="8" fill="#ffffff" stroke="#6a1b9a" stroke-width="2.5"/>
+<path d="M 383 456 A 11 11 0 0 1 405 456" fill="#ffffff" stroke="#6a1b9a" stroke-width="2.5"/>
+<circle cx="394" cy="454" r="2.5" fill="#6a1b9a"/>
+<text x="462" y="224" font-size="12" font-weight="bold" fill="#ef6c00" transform="rotate(-60 462 224)">ServiceLifecycleService</text>
+<line x1="458" y1="230" x2="458" y2="454" stroke="#ef6c00" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="458" cy="454" r="8" fill="#ffffff" stroke="#ef6c00" stroke-width="2.5"/>
+<path d="M 447 360 A 11 11 0 0 0 469 360" fill="#ffffff" stroke="#ef6c00" stroke-width="2.5"/>
+<circle cx="458" cy="362" r="2.5" fill="#ef6c00"/>
+<text x="526" y="224" font-size="12" font-weight="bold" fill="#ef6c00" transform="rotate(-60 526 224)">ServiceLookupService</text>
+<line x1="522" y1="230" x2="522" y2="454" stroke="#ef6c00" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="522" cy="454" r="8" fill="#ffffff" stroke="#ef6c00" stroke-width="2.5"/>
+<path d="M 511 268 A 11 11 0 0 0 533 268" fill="#ffffff" stroke="#ef6c00" stroke-width="2.5"/>
+<circle cx="522" cy="270" r="2.5" fill="#ef6c00"/>
+<path d="M 511 360 A 11 11 0 0 0 533 360" fill="#ffffff" stroke="#ef6c00" stroke-width="2.5"/>
+<circle cx="522" cy="362" r="2.5" fill="#ef6c00"/>
+<text x="590" y="224" font-size="12" font-weight="bold" fill="#00838f" transform="rotate(-60 590 224)">ResourceClosureService</text>
+<line x1="586" y1="230" x2="586" y2="546" stroke="#00838f" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="586" cy="546" r="8" fill="#ffffff" stroke="#00838f" stroke-width="2.5"/>
+<path d="M 575 360 A 11 11 0 0 0 597 360" fill="#ffffff" stroke="#00838f" stroke-width="2.5"/>
+<circle cx="586" cy="362" r="2.5" fill="#00838f"/>
+<text x="654" y="224" font-size="12" font-weight="bold" fill="#00838f" transform="rotate(-60 654 224)">ResourceLifecycleService</text>
+<line x1="650" y1="230" x2="650" y2="546" stroke="#00838f" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="650" cy="546" r="8" fill="#ffffff" stroke="#00838f" stroke-width="2.5"/>
+<path d="M 639 360 A 11 11 0 0 0 661 360" fill="#ffffff" stroke="#00838f" stroke-width="2.5"/>
+<circle cx="650" cy="362" r="2.5" fill="#00838f"/>
+<text x="718" y="224" font-size="12" font-weight="bold" fill="#00838f" transform="rotate(-60 718 224)">ResourceLookupService</text>
+<line x1="714" y1="230" x2="714" y2="546" stroke="#00838f" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="714" cy="546" r="8" fill="#ffffff" stroke="#00838f" stroke-width="2.5"/>
+<path d="M 703 268 A 11 11 0 0 0 725 268" fill="#ffffff" stroke="#00838f" stroke-width="2.5"/>
+<circle cx="714" cy="270" r="2.5" fill="#00838f"/>
+<path d="M 703 360 A 11 11 0 0 0 725 360" fill="#ffffff" stroke="#00838f" stroke-width="2.5"/>
+<circle cx="714" cy="362" r="2.5" fill="#00838f"/>
+<path d="M 703 452 A 11 11 0 0 0 725 452" fill="#ffffff" stroke="#00838f" stroke-width="2.5"/>
+<circle cx="714" cy="454" r="2.5" fill="#00838f"/>
+<text x="782" y="224" font-size="12" font-weight="bold" fill="#00838f" transform="rotate(-60 782 224)">ResourceScheduleLookup</text>
+<line x1="778" y1="230" x2="778" y2="546" stroke="#00838f" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="778" cy="546" r="8" fill="#ffffff" stroke="#00838f" stroke-width="2.5"/>
+<path d="M 767 268 A 11 11 0 0 0 789 268" fill="#ffffff" stroke="#00838f" stroke-width="2.5"/>
+<circle cx="778" cy="270" r="2.5" fill="#00838f"/>
+<path d="M 767 360 A 11 11 0 0 0 789 360" fill="#ffffff" stroke="#00838f" stroke-width="2.5"/>
+<circle cx="778" cy="362" r="2.5" fill="#00838f"/>
+<path d="M 767 452 A 11 11 0 0 0 789 452" fill="#ffffff" stroke="#00838f" stroke-width="2.5"/>
+<circle cx="778" cy="454" r="2.5" fill="#00838f"/>
+<text x="846" y="224" font-size="12" font-weight="bold" fill="#1565c0" transform="rotate(-60 846 224)">BusinessAccessService</text>
+<line x1="842" y1="230" x2="842" y2="638" stroke="#1565c0" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="842" cy="638" r="8" fill="#ffffff" stroke="#1565c0" stroke-width="2.5"/>
+<path d="M 831 268 A 11 11 0 0 0 853 268" fill="#ffffff" stroke="#1565c0" stroke-width="2.5"/>
+<circle cx="842" cy="270" r="2.5" fill="#1565c0"/>
+<path d="M 831 360 A 11 11 0 0 0 853 360" fill="#ffffff" stroke="#1565c0" stroke-width="2.5"/>
+<circle cx="842" cy="362" r="2.5" fill="#1565c0"/>
+<path d="M 831 452 A 11 11 0 0 0 853 452" fill="#ffffff" stroke="#1565c0" stroke-width="2.5"/>
+<circle cx="842" cy="454" r="2.5" fill="#1565c0"/>
+<path d="M 831 544 A 11 11 0 0 0 853 544" fill="#ffffff" stroke="#1565c0" stroke-width="2.5"/>
+<circle cx="842" cy="546" r="2.5" fill="#1565c0"/>
+<text x="910" y="224" font-size="12" font-weight="bold" fill="#1565c0" transform="rotate(-60 910 224)">BusinessDirectoryService</text>
+<line x1="906" y1="230" x2="906" y2="638" stroke="#1565c0" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="906" cy="638" r="8" fill="#ffffff" stroke="#1565c0" stroke-width="2.5"/>
+<path d="M 895 268 A 11 11 0 0 0 917 268" fill="#ffffff" stroke="#1565c0" stroke-width="2.5"/>
+<circle cx="906" cy="270" r="2.5" fill="#1565c0"/>
+<path d="M 895 360 A 11 11 0 0 0 917 360" fill="#ffffff" stroke="#1565c0" stroke-width="2.5"/>
+<circle cx="906" cy="362" r="2.5" fill="#1565c0"/>
+<path d="M 895 452 A 11 11 0 0 0 917 452" fill="#ffffff" stroke="#1565c0" stroke-width="2.5"/>
+<circle cx="906" cy="454" r="2.5" fill="#1565c0"/>
+<text x="974" y="224" font-size="12" font-weight="bold" fill="#1565c0" transform="rotate(-60 974 224)">BusinessSettingsService</text>
+<line x1="970" y1="230" x2="970" y2="638" stroke="#1565c0" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="970" cy="638" r="8" fill="#ffffff" stroke="#1565c0" stroke-width="2.5"/>
+<path d="M 959 360 A 11 11 0 0 0 981 360" fill="#ffffff" stroke="#1565c0" stroke-width="2.5"/>
+<circle cx="970" cy="362" r="2.5" fill="#1565c0"/>
+<path d="M 959 452 A 11 11 0 0 0 981 452" fill="#ffffff" stroke="#1565c0" stroke-width="2.5"/>
+<circle cx="970" cy="454" r="2.5" fill="#1565c0"/>
+<text x="1038" y="224" font-size="12" font-weight="bold" fill="#c62828" transform="rotate(-60 1038 224)">AccountStatusService</text>
+<line x1="1034" y1="230" x2="1034" y2="730" stroke="#c62828" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="1034" cy="730" r="8" fill="#ffffff" stroke="#c62828" stroke-width="2.5"/>
+<path d="M 1023 636 A 11 11 0 0 0 1045 636" fill="#ffffff" stroke="#c62828" stroke-width="2.5"/>
+<circle cx="1034" cy="638" r="2.5" fill="#c62828"/>
+<text x="1102" y="224" font-size="12" font-weight="bold" fill="#c62828" transform="rotate(-60 1102 224)">IdentityService</text>
+<line x1="1098" y1="230" x2="1098" y2="730" stroke="#c62828" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="1098" cy="730" r="8" fill="#ffffff" stroke="#c62828" stroke-width="2.5"/>
+<path d="M 1087 268 A 11 11 0 0 0 1109 268" fill="#ffffff" stroke="#c62828" stroke-width="2.5"/>
+<circle cx="1098" cy="270" r="2.5" fill="#c62828"/>
+<path d="M 1087 360 A 11 11 0 0 0 1109 360" fill="#ffffff" stroke="#c62828" stroke-width="2.5"/>
+<circle cx="1098" cy="362" r="2.5" fill="#c62828"/>
+<path d="M 1087 452 A 11 11 0 0 0 1109 452" fill="#ffffff" stroke="#c62828" stroke-width="2.5"/>
+<circle cx="1098" cy="454" r="2.5" fill="#c62828"/>
+<path d="M 1087 544 A 11 11 0 0 0 1109 544" fill="#ffffff" stroke="#c62828" stroke-width="2.5"/>
+<circle cx="1098" cy="546" r="2.5" fill="#c62828"/>
+<path d="M 1087 636 A 11 11 0 0 0 1109 636" fill="#ffffff" stroke="#c62828" stroke-width="2.5"/>
+<circle cx="1098" cy="638" r="2.5" fill="#c62828"/>
+<text x="1166" y="224" font-size="12" font-weight="bold" fill="#c62828" transform="rotate(-60 1166 224)">«event» UserDeletionRequested</text>
+<line x1="1162" y1="230" x2="1162" y2="730" stroke="#c62828" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="1162" cy="730" r="8" fill="#ffffff" stroke="#c62828" stroke-width="2.5"/>
+<path d="M 1151 360 A 11 11 0 0 0 1173 360" fill="#ffffff" stroke="#c62828" stroke-width="2.5"/>
+<circle cx="1162" cy="362" r="2.5" fill="#c62828"/>
+<text x="1230" y="224" font-size="12" font-weight="bold" fill="#c62828" transform="rotate(-60 1230 224)">UserDirectoryService</text>
+<line x1="1226" y1="230" x2="1226" y2="730" stroke="#c62828" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="1226" cy="730" r="8" fill="#ffffff" stroke="#c62828" stroke-width="2.5"/>
+<path d="M 1215 360 A 11 11 0 0 0 1237 360" fill="#ffffff" stroke="#c62828" stroke-width="2.5"/>
+<circle cx="1226" cy="362" r="2.5" fill="#c62828"/>
+<text x="1294" y="224" font-size="12" font-weight="bold" fill="#c62828" transform="rotate(-60 1294 224)">UserProvisioningService</text>
+<line x1="1290" y1="230" x2="1290" y2="730" stroke="#c62828" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="1290" cy="730" r="8" fill="#ffffff" stroke="#c62828" stroke-width="2.5"/>
+<path d="M 1279 636 A 11 11 0 0 0 1301 636" fill="#ffffff" stroke="#c62828" stroke-width="2.5"/>
+<circle cx="1290" cy="638" r="2.5" fill="#c62828"/>
+<text x="1358" y="224" font-size="12" font-weight="bold" fill="#5d4037" transform="rotate(-60 1358 224)">AuditService</text>
+<line x1="1354" y1="230" x2="1354" y2="822" stroke="#5d4037" stroke-width="2" stroke-dasharray="1,0"/>
+<circle cx="1354" cy="822" r="8" fill="#ffffff" stroke="#5d4037" stroke-width="2.5"/>
+<path d="M 1343 360 A 11 11 0 0 0 1365 360" fill="#ffffff" stroke="#5d4037" stroke-width="2.5"/>
+<circle cx="1354" cy="362" r="2.5" fill="#5d4037"/>
+<path d="M 1343 452 A 11 11 0 0 0 1365 452" fill="#ffffff" stroke="#5d4037" stroke-width="2.5"/>
+<circle cx="1354" cy="454" r="2.5" fill="#5d4037"/>
+<path d="M 1343 544 A 11 11 0 0 0 1365 544" fill="#ffffff" stroke="#5d4037" stroke-width="2.5"/>
+<circle cx="1354" cy="546" r="2.5" fill="#5d4037"/>
+<path d="M 1343 636 A 11 11 0 0 0 1365 636" fill="#ffffff" stroke="#5d4037" stroke-width="2.5"/>
+<circle cx="1354" cy="638" r="2.5" fill="#5d4037"/>
+<path d="M 1343 728 A 11 11 0 0 0 1365 728" fill="#ffffff" stroke="#5d4037" stroke-width="2.5"/>
+<circle cx="1354" cy="730" r="2.5" fill="#5d4037"/>
+<rect x="30" y="242" width="240" height="56" rx="5" fill="#ffffff" stroke="#2e7d32" stroke-width="2.2"/>
+<rect x="246" y="248" width="14" height="10" fill="#fff" stroke="#2e7d32"/><rect x="243" y="250" width="6" height="3" fill="#fff" stroke="#2e7d32"/><rect x="243" y="254" width="6" height="3" fill="#fff" stroke="#2e7d32"/>
+<text x="42" y="260" font-size="11" fill="#546e7a">«component»</text>
+<text x="42" y="278" font-size="15" font-weight="bold" fill="#2e7d32">report</text>
+<text x="42" y="292" font-size="10.5" fill="#455a64">Reportes HU-29..34 · solo lectura</text>
+<rect x="30" y="334" width="240" height="56" rx="5" fill="#ffffff" stroke="#6a1b9a" stroke-width="2.2"/>
+<rect x="246" y="340" width="14" height="10" fill="#fff" stroke="#6a1b9a"/><rect x="243" y="342" width="6" height="3" fill="#fff" stroke="#6a1b9a"/><rect x="243" y="346" width="6" height="3" fill="#fff" stroke="#6a1b9a"/>
+<text x="42" y="352" font-size="11" fill="#546e7a">«component»</text>
+<text x="42" y="370" font-size="15" font-weight="bold" fill="#6a1b9a">reservation</text>
+<text x="42" y="384" font-size="10.5" fill="#455a64">Reservas HU-22..28 · orquesta cancelaciones</text>
+<rect x="30" y="426" width="240" height="56" rx="5" fill="#ffffff" stroke="#ef6c00" stroke-width="2.2"/>
+<rect x="246" y="432" width="14" height="10" fill="#fff" stroke="#ef6c00"/><rect x="243" y="434" width="6" height="3" fill="#fff" stroke="#ef6c00"/><rect x="243" y="438" width="6" height="3" fill="#fff" stroke="#ef6c00"/>
+<text x="42" y="444" font-size="11" fill="#546e7a">«component»</text>
+<text x="42" y="462" font-size="15" font-weight="bold" fill="#ef6c00">service</text>
+<text x="42" y="476" font-size="10.5" fill="#455a64">Servicios, catálogo y disponibilidad</text>
+<rect x="30" y="518" width="240" height="56" rx="5" fill="#ffffff" stroke="#00838f" stroke-width="2.2"/>
+<rect x="246" y="524" width="14" height="10" fill="#fff" stroke="#00838f"/><rect x="243" y="526" width="6" height="3" fill="#fff" stroke="#00838f"/><rect x="243" y="530" width="6" height="3" fill="#fff" stroke="#00838f"/>
+<text x="42" y="536" font-size="11" fill="#546e7a">«component»</text>
+<text x="42" y="554" font-size="15" font-weight="bold" fill="#00838f">resource</text>
+<text x="42" y="568" font-size="10.5" fill="#455a64">Recursos, horarios y cierres</text>
+<rect x="30" y="610" width="240" height="56" rx="5" fill="#ffffff" stroke="#1565c0" stroke-width="2.2"/>
+<rect x="246" y="616" width="14" height="10" fill="#fff" stroke="#1565c0"/><rect x="243" y="618" width="6" height="3" fill="#fff" stroke="#1565c0"/><rect x="243" y="622" width="6" height="3" fill="#fff" stroke="#1565c0"/>
+<text x="42" y="628" font-size="11" fill="#546e7a">«component»</text>
+<text x="42" y="646" font-size="15" font-weight="bold" fill="#1565c0">provider</text>
+<text x="42" y="660" font-size="10.5" fill="#455a64">Proveedor y negocio</text>
+<rect x="30" y="702" width="240" height="56" rx="5" fill="#ffffff" stroke="#c62828" stroke-width="2.2"/>
+<rect x="246" y="708" width="14" height="10" fill="#fff" stroke="#c62828"/><rect x="243" y="710" width="6" height="3" fill="#fff" stroke="#c62828"/><rect x="243" y="714" width="6" height="3" fill="#fff" stroke="#c62828"/>
+<text x="42" y="720" font-size="11" fill="#546e7a">«component»</text>
+<text x="42" y="738" font-size="15" font-weight="bold" fill="#c62828">identity</text>
+<text x="42" y="752" font-size="10.5" fill="#455a64">Usuarios, sesión, roles y MFA</text>
+<rect x="30" y="794" width="240" height="56" rx="5" fill="#ffffff" stroke="#5d4037" stroke-width="2.2"/>
+<rect x="246" y="800" width="14" height="10" fill="#fff" stroke="#5d4037"/><rect x="243" y="802" width="6" height="3" fill="#fff" stroke="#5d4037"/><rect x="243" y="806" width="6" height="3" fill="#fff" stroke="#5d4037"/>
+<text x="42" y="812" font-size="11" fill="#546e7a">«component»</text>
+<text x="42" y="830" font-size="15" font-weight="bold" fill="#5d4037">audit</text>
+<text x="42" y="844" font-size="10.5" fill="#455a64">Registro de eventos</text>
+<text x="30" y="912" font-size="11" fill="#78909c">common (errores, configuración, filtros web) es transversal y no expone interfaces de negocio; no se dibuja. Todos los componentes salvo audit exponen además su API REST (48 endpoints).</text>
+</svg>

@@ -32,4 +32,10 @@ public interface ResourceRepository extends JpaRepository<Resource, UUID> {
     Optional<Boolean> lockAndReadActive(@Param("id") UUID id);
 
     boolean existsByBusinessIdAndNameIgnoreCase(UUID businessId, String name);
+
+    @Query("select r.id from Resource r where r.active = true")
+    List<UUID> findActiveIds();
+
+    /** HU-15: ¿otro recurso del negocio ya usa ese nombre? */
+    boolean existsByBusinessIdAndNameIgnoreCaseAndIdNot(UUID businessId, String name, UUID id);
 }

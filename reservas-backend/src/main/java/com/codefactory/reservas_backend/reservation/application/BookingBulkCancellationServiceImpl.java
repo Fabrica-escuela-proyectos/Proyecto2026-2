@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.UUID;
 
@@ -42,5 +43,29 @@ public class BookingBulkCancellationServiceImpl implements BookingBulkCancellati
     @Transactional
     public int cancelFutureOfResource(UUID resourceId, CancelOrigin origin, String reason) {
         return bookingRepository.cancelFutureConfirmedOfResource(resourceId, origin, reason, clock.instant());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countFutureOfService(UUID serviceId) {
+        return bookingRepository.countFutureConfirmedOfService(serviceId, clock.instant());
+    }
+
+    @Override
+    @Transactional
+    public int cancelFutureOfService(UUID serviceId, CancelOrigin origin, String reason) {
+        return bookingRepository.cancelFutureConfirmedOfService(serviceId, origin, reason, clock.instant());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countFutureOfResourceIn(UUID resourceId, Instant start, Instant end) {
+        return bookingRepository.countFutureConfirmedOfResourceIn(resourceId, start, end, clock.instant());
+    }
+
+    @Override
+    @Transactional
+    public int cancelFutureOfResourceIn(UUID resourceId, Instant start, Instant end, CancelOrigin origin, String reason) {
+        return bookingRepository.cancelFutureConfirmedOfResourceIn(resourceId, start, end, origin, reason, clock.instant());
     }
 }

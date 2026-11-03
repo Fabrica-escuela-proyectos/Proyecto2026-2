@@ -32,6 +32,12 @@ public class ServiceLookupServiceImpl implements ServiceLookupService {
                 .toList();
     }
 
+    @Override
+    @Transactional
+    public boolean lockForBooking(UUID serviceId) {
+        return serviceRepository.lockSharedAndReadActive(serviceId).orElse(false);
+    }
+
     private static ServiceInfo toInfo(ServiceOffering s) {
         return new ServiceInfo(s.getId(), s.getBusinessId(), s.getName(), s.getDurationMinutes(), s.getPriceCop(), s.isActive());
     }

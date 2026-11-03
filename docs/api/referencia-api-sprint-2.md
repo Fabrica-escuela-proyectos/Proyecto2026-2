@@ -1,13 +1,14 @@
-# Referencia de la API — Sprint 2 (generada desde el código)
+# Referencia de la API — Sprints 1 a 3 (generada desde el código)
 
 > **Generado automáticamente** por `docs/api/generar_referencia.py` leyendo los controladores, `SecurityConfig` y los DTO. **No editar a mano**: ejecuta `python docs/api/generar_referencia.py`. Los contratos narrados, con ejemplos y reglas de negocio, están en [endpoints-sprint-2.md](endpoints-sprint-2.md); los códigos de error, en [errores-api-sprint-2.md](errores-api-sprint-2.md); la guía para verlos en Swagger, en [guia-swagger-openapi.md](guia-swagger-openapi.md).
 
 ## 1. Matriz de endpoints y control de acceso
 
-**33 endpoints.** Resumen: 15 Rol PROVEEDOR; 8 Autenticado (cualquier rol); 4 Público; 4 Rol CLIENTE; 2 Rol ADMINISTRADOR. Toda ruta que no es pública exige un token JWT válido con sesión vigente (si no, `401`); un rol insuficiente da `403`. Además de la matriz, los endpoints de gestión comprueban la **pertenencia** (el recurso es del proveedor/cliente que llama) en la capa de servicio (`BusinessAccessService`): ver [OWASP A01](../seguridad/owasp-top10-sprint-2.md).
+**48 endpoints.** Resumen: 29 Rol PROVEEDOR; 8 Autenticado (cualquier rol); 4 Público; 4 Rol CLIENTE; 3 Rol ADMINISTRADOR. Toda ruta que no es pública exige un token JWT válido con sesión vigente (si no, `401`); un rol insuficiente da `403`. Además de la matriz, los endpoints de gestión comprueban la **pertenencia** (el recurso es del proveedor/cliente que llama) en la capa de servicio (`BusinessAccessService`): ver [OWASP A01](../seguridad/owasp-top10-sprint-2.md).
 
 | Método | Ruta | Acceso | HU | Controlador |
 |---|---|---|---|---|
+| GET | `/api/v1/admin/reports/platform-summary` | Rol ADMINISTRADOR | HU-34 | PlatformReportController |
 | POST | `/api/v1/auth/login` | **Público** | HU-02 | AuthController |
 | POST | `/api/v1/auth/logout` | Autenticado (cualquier rol) | HU-04 | AuthController |
 | POST | `/api/v1/auth/mfa/activate` | Autenticado (cualquier rol) | HU-02/05 (ADR-004) | MfaController |
@@ -15,12 +16,19 @@
 | POST | `/api/v1/bookings` | Rol CLIENTE | HU-22 | BookingController |
 | GET | `/api/v1/bookings/me` | Rol CLIENTE | HU-23 | MyBookingsController |
 | POST | `/api/v1/bookings/{bookingId}/cancellation` | Rol CLIENTE | HU-25 | BookingCancellationController |
+| POST | `/api/v1/bookings/{bookingId}/completion` | Rol PROVEEDOR | HU-27 | BookingCompletionController |
 | POST | `/api/v1/bookings/{bookingId}/provider-cancellation` | Rol PROVEEDOR | HU-26 | ProviderBookingCancellationController |
 | GET | `/api/v1/businesses` | Autenticado (cualquier rol) | HU-13 | CatalogController |
 | GET | `/api/v1/businesses/{businessId}` | Autenticado (cualquier rol) | HU-13 | CatalogController |
+| PATCH | `/api/v1/businesses/{businessId}` | Rol PROVEEDOR | HU-07 | BusinessProfileController |
 | GET | `/api/v1/businesses/{businessId}/booking-lead-time` | Rol PROVEEDOR | HU-08 | BusinessSettingsController |
 | PUT | `/api/v1/businesses/{businessId}/booking-lead-time` | Rol PROVEEDOR | HU-08 | BusinessSettingsController |
 | GET | `/api/v1/businesses/{businessId}/bookings` | Rol PROVEEDOR | HU-24 | BusinessBookingsController |
+| GET | `/api/v1/businesses/{businessId}/reports/booking-value` | Rol PROVEEDOR | HU-33 | BusinessReportController |
+| GET | `/api/v1/businesses/{businessId}/reports/bookings-by-status` | Rol PROVEEDOR | HU-31 | BusinessReportController |
+| GET | `/api/v1/businesses/{businessId}/reports/occupancy` | Rol PROVEEDOR | HU-30 | BusinessReportController |
+| GET | `/api/v1/businesses/{businessId}/reports/resource-occupancy` | Rol PROVEEDOR | HU-29 | BusinessReportController |
+| GET | `/api/v1/businesses/{businessId}/reports/top-services` | Rol PROVEEDOR | HU-32 | BusinessReportController |
 | GET | `/api/v1/businesses/{businessId}/resources` | Rol PROVEEDOR | HU-14 | ResourceController |
 | POST | `/api/v1/businesses/{businessId}/resources` | Rol PROVEEDOR | HU-14 | ResourceController |
 | GET | `/api/v1/businesses/{businessId}/services` | Rol PROVEEDOR | HU-09 | ServiceController |
@@ -28,12 +36,19 @@
 | POST | `/api/v1/providers` | **Público** | HU-03 | ProviderController |
 | GET | `/api/v1/providers/me` | Autenticado (cualquier rol) | HU-06 | ProviderController |
 | GET | `/api/v1/providers/{providerId}` | Autenticado (cualquier rol) | HU-06 | ProviderController |
+| PATCH | `/api/v1/resources/{resourceId}` | Rol PROVEEDOR | HU-15 | ResourceEditController |
 | GET | `/api/v1/resources/{resourceId}/availability` | Rol PROVEEDOR | HU-19 | ResourceAvailabilityController |
 | PUT | `/api/v1/resources/{resourceId}/availability` | Rol PROVEEDOR | HU-19 | ResourceAvailabilityController |
 | PUT | `/api/v1/resources/{resourceId}/availability/{dayOfWeek}` | Rol PROVEEDOR | HU-19 | ResourceAvailabilityController |
+| GET | `/api/v1/resources/{resourceId}/closures` | Rol PROVEEDOR | HU-21 | ResourceClosureQueryController |
+| POST | `/api/v1/resources/{resourceId}/closures` | Rol PROVEEDOR | HU-21 | ResourceClosureController |
+| DELETE | `/api/v1/resources/{resourceId}/closures/{closureId}` | Rol PROVEEDOR | HU-21 | ResourceClosureQueryController |
 | POST | `/api/v1/resources/{resourceId}/deactivation` | Rol PROVEEDOR | HU-16 | ResourceDeactivationController |
 | POST | `/api/v1/resources/{resourceId}/reactivation` | Rol PROVEEDOR | HU-17 | ResourceReactivationController |
+| PATCH | `/api/v1/services/{serviceId}` | Rol PROVEEDOR | HU-10 | ServiceManagementController |
 | GET | `/api/v1/services/{serviceId}/availability` | **Público** | HU-20 | ServiceAvailabilityController |
+| POST | `/api/v1/services/{serviceId}/deactivation` | Rol PROVEEDOR | HU-11 | ServiceDeactivationController |
+| POST | `/api/v1/services/{serviceId}/reactivation` | Rol PROVEEDOR | HU-12 | ServiceManagementController |
 | GET | `/api/v1/services/{serviceId}/resources` | Rol PROVEEDOR | HU-18 | ServiceResourceController |
 | PUT | `/api/v1/services/{serviceId}/resources` | Rol PROVEEDOR | HU-18 | ServiceResourceController |
 | POST | `/api/v1/users` | **Público** | HU-01 | UserController |
@@ -175,6 +190,16 @@ Tipos: `UUID` se serializa como texto; `Instant` como fecha-hora ISO-8601 en UTC
 | `businessId` | `UUID` | — | — |
 | `businessName` | `String` | — | — |
 
+**`UpdateBusinessRequest`** — `UpdateBusinessRequest.java`
+
+| Campo | Tipo | Restricciones | Mensaje de error |
+|---|---|---|---|
+| `name` | `String` | patrón `(?s).*\S.*`; tamaño ≤ 150 | El nombre del negocio es obligatorio · El nombre del negocio no puede superar los 150 caracteres |
+| `description` | `String` | tamaño ≤ 500 | La descripción no puede superar los 500 caracteres |
+| `address` | `String` | tamaño ≤ 200 | La dirección no puede superar los 200 caracteres |
+| `businessType` | `String` | patrón `(?i)\s*\|\s*(SALUD\|BELLEZA\|BIENESTAR\|DEPORTE\|EDUCACION\|CONSULTORIA\|ENTRETENIMIENTO\|OTRO)\s*` | El tipo de negocio no es válido: use SALUD, BELLEZA, BIENESTAR, DEPORTE,  |
+| `phone` | `String` | patrón `\s*\|\s*(3\d{9}\|60\d{8})\s*` | El teléfono no es válido: use 10 dígitos, celular (3XXXXXXXXX) o fijo (60XXXXXXXX) |
+
 ### Servicios y catálogo (módulo `service`)
 
 **`BusinessItem`** — `CatalogDtos.java`
@@ -211,6 +236,10 @@ Tipos: `UUID` se serializa como texto; `Instant` como fecha-hora ISO-8601 en UTC
 |---|---|---|---|
 | `id` | `UUID` | — | — |
 | `name` | `String` | — | — |
+| `description` | `String` | — | — |
+| `address` | `String` | — | — |
+| `businessType` | `String` | — | — |
+| `phone` | `String` | — | — |
 | `services` | `List<ServiceItem>` | — | — |
 | `message` | `String` | — | — |
 
@@ -291,6 +320,15 @@ Tipos: `UUID` se serializa como texto; `Instant` como fecha-hora ISO-8601 en UTC
 | `active` | `boolean` | — | — |
 | `createdAt` | `Instant` | — | — |
 
+**`UpdateServiceRequest`** — `UpdateServiceRequest.java`
+
+| Campo | Tipo | Restricciones | Mensaje de error |
+|---|---|---|---|
+| `name` | `String` | patrón `(?s).*\S.*`; tamaño ≤ 150 | El nombre del servicio es obligatorio · El nombre del servicio no puede superar los 150 caracteres |
+| `description` | `String` | tamaño ≤ 500 | La descripción no puede superar los 500 caracteres |
+| `durationMinutes` | `Integer` | ≥ 1; ≤ 1440 | La duración debe ser un número entero de minutos mayor que 0 · La duración no puede superar 1440 minutos (24 horas) |
+| `priceCop` | `Long` | ≥ 0; ≤ 1000000000 | El precio no puede ser negativo · El precio no puede superar 1.000.000.000 COP |
+
 ### Recursos y horarios (módulo `resource`)
 
 **`TimeRange`** — `AvailabilityDtos.java`
@@ -359,6 +397,13 @@ Tipos: `UUID` se serializa como texto; `Instant` como fecha-hora ISO-8601 en UTC
 | `resourceId` | `UUID` | — | — |
 | `name` | `String` | — | — |
 | `active` | `boolean` | — | — |
+
+**`UpdateResourceRequest`** — `UpdateResourceRequest.java`
+
+| Campo | Tipo | Restricciones | Mensaje de error |
+|---|---|---|---|
+| `name` | `String` | patrón `(?s).*\S.*`; tamaño ≤ 150 | El nombre del recurso es obligatorio · El nombre del recurso no puede superar los 150 caracteres |
+| `type` | `String` | patrón `(?i)\s*(SALA\|EQUIPO\|PERSONAL)\s*` | El tipo debe ser SALA, EQUIPO o PERSONAL |
 
 ### Reservas (módulo `reservation`)
 
@@ -502,6 +547,143 @@ Tipos: `UUID` se serializa como texto; `Instant` como fecha-hora ISO-8601 en UTC
 | `active` | `boolean` | — | — |
 | `cancelledBookings` | `int` | — | — |
 
+**`ResourceClosureController`** — `ResourceClosureController.java`
+
+| Campo | Tipo | Restricciones | Mensaje de error |
+|---|---|---|---|
+| `closureBookingService` | `ResourceClosureBookingService` | — | — |
+| `identityService` | `IdentityService` | — | — |
+| `date` | `String` | — | — |
+| `start` | `String` | — | — |
+| `end` | `String` | — | — |
+| `reason` | `String` | tamaño ≤ 300 | El motivo no puede superar los 300 caracteres |
+| `confirm` | `boolean` | — | — |
+
+**`CloseResourceRequest`** — `ResourceClosureController.java`
+
+| Campo | Tipo | Restricciones | Mensaje de error |
+|---|---|---|---|
+| `date` | `String` | — | — |
+| `start` | `String` | — | — |
+| `end` | `String` | — | — |
+| `reason` | `String` | tamaño ≤ 300 | El motivo no puede superar los 300 caracteres |
+| `confirm` | `boolean` | — | — |
+
+### Reportes (módulo `report`)
+
+**`ResourceOccupancy`** — `ReportDtos.java`
+
+| Campo | Tipo | Restricciones | Mensaje de error |
+|---|---|---|---|
+| `resourceId` | `UUID` | — | — |
+| `name` | `String` | — | — |
+| `type` | `String` | — | — |
+| `availableMinutes` | `long` | — | — |
+| `bookedMinutes` | `long` | — | — |
+| `occupancyPercent` | `Double` | — | — |
+
+**`ResourceOccupancyReport`** — `ReportDtos.java`
+
+| Campo | Tipo | Restricciones | Mensaje de error |
+|---|---|---|---|
+| `businessId` | `UUID` | — | — |
+| `from` | `LocalDate` | — | — |
+| `to` | `LocalDate` | — | — |
+| `resources` | `List<ResourceOccupancy>` | — | — |
+| `availableMinutes` | `long` | — | — |
+| `bookedMinutes` | `long` | — | — |
+| `occupancyPercent` | `Double` | — | — |
+| `message` | `String` | — | — |
+
+**`PeriodOccupancy`** — `ReportDtos.java`
+
+| Campo | Tipo | Restricciones | Mensaje de error |
+|---|---|---|---|
+| `start` | `LocalDate` | — | — |
+| `end` | `LocalDate` | — | — |
+| `availableMinutes` | `long` | — | — |
+| `bookedMinutes` | `long` | — | — |
+| `occupancyPercent` | `Double` | — | — |
+
+**`BusinessOccupancyReport`** — `ReportDtos.java`
+
+| Campo | Tipo | Restricciones | Mensaje de error |
+|---|---|---|---|
+| `businessId` | `UUID` | — | — |
+| `from` | `LocalDate` | — | — |
+| `to` | `LocalDate` | — | — |
+| `groupBy` | `String` | — | — |
+| `periods` | `List<PeriodOccupancy>` | — | — |
+| `highestDemand` | `PeriodOccupancy` | — | — |
+| `lowestDemand` | `PeriodOccupancy` | — | — |
+| `occupancyPercent` | `Double` | — | — |
+| `message` | `String` | — | — |
+
+**`BookingsByStatusReport`** — `ReportDtos.java`
+
+| Campo | Tipo | Restricciones | Mensaje de error |
+|---|---|---|---|
+| `businessId` | `UUID` | — | — |
+| `from` | `LocalDate` | — | — |
+| `to` | `LocalDate` | — | — |
+| `confirmed` | `long` | — | — |
+| `cancelled` | `long` | — | — |
+| `completed` | `long` | — | — |
+| `total` | `long` | — | — |
+| `cancelledByOrigin` | `Map<String, Long>` | — | — |
+| `message` | `String` | — | — |
+
+**`ServiceRanking`** — `ReportDtos.java`
+
+| Campo | Tipo | Restricciones | Mensaje de error |
+|---|---|---|---|
+| `rank` | `int` | — | — |
+| `serviceId` | `UUID` | — | — |
+| `serviceName` | `String` | — | — |
+| `bookings` | `long` | — | — |
+| `cancelled` | `long` | — | — |
+
+**`TopServicesReport`** — `ReportDtos.java`
+
+| Campo | Tipo | Restricciones | Mensaje de error |
+|---|---|---|---|
+| `businessId` | `UUID` | — | — |
+| `from` | `LocalDate` | — | — |
+| `to` | `LocalDate` | — | — |
+| `services` | `List<ServiceRanking>` | — | — |
+| `message` | `String` | — | — |
+
+**`BookingValueReport`** — `ReportDtos.java`
+
+| Campo | Tipo | Restricciones | Mensaje de error |
+|---|---|---|---|
+| `businessId` | `UUID` | — | — |
+| `from` | `LocalDate` | — | — |
+| `to` | `LocalDate` | — | — |
+| `currency` | `String` | — | — |
+| `completedValue` | `long` | — | — |
+| `confirmedValue` | `long` | — | — |
+| `totalValue` | `long` | — | — |
+| `cancelledValue` | `long` | — | — |
+| `note` | `String` | — | — |
+| `message` | `String` | — | — |
+
+**`PlatformSummaryReport`** — `ReportDtos.java`
+
+| Campo | Tipo | Restricciones | Mensaje de error |
+|---|---|---|---|
+| `from` | `LocalDate` | — | — |
+| `to` | `LocalDate` | — | — |
+| `activeBusinesses` | `long` | — | — |
+| `confirmed` | `long` | — | — |
+| `cancelled` | `long` | — | — |
+| `completed` | `long` | — | — |
+| `totalBookings` | `long` | — | — |
+| `availableMinutes` | `long` | — | — |
+| `bookedMinutes` | `long` | — | — |
+| `occupancyPercent` | `Double` | — | — |
+| `message` | `String` | — | — |
+
 ### Errores (común a todos los módulos) (módulo `common`)
 
 **`ApiError`** — `ApiError.java`
@@ -516,4 +698,4 @@ Tipos: `UUID` se serializa como texto; `Instant` como fecha-hora ISO-8601 en UTC
 | `fields` | `Map<String, String>` | — | — |
 | `traceId` | `String` | — | — |
 
-_Total: 50 DTO._
+_Total: 64 DTO._

@@ -43,3 +43,13 @@ El despliegue actual es una sola instancia, pero la solución no debe depender d
 * Prueba de integración **contra PostgreSQL real**: dos clientes reservan el mismo horario a la vez → `[201, 409]` (`BookingCreationIntegrationTest`); la base rechaza dos reservas confirmadas traslapadas aunque se salte la aplicación y acepta una cancelada en el mismo horario.
 * Reservar contra desactivar simultáneamente, repetido 8 veces por ejecución (`ResourceLifecycleIntegrationTest`): 24 de 24 correctas tras la corrección del bloqueo.
 * Concurrencia en cancelar (`200` y `409`), asignar recursos y editar horarios (cada una con su prueba).
+
+## 6. Adenda del Sprint 3 (2026-11-02): cierres puntuales, edición y desactivación de servicios
+
+El mismo enfoque —**la base garantiza la regla y un bloqueo serializa la carrera**— se extendió a tres casos nuevos:
+
+| Caso | Riesgo | Mecanismo |
+|---|---|---|
+| Dos cierres traslapados del mismo recurso (HU-21) | Dos peticiones simultáneas pasan la verificación | `ex_resource_closures_no_overlap EXCLUDE USING gist` (V14) + bloqueo de la fila del recurso; probado con dos cierres simultáneos → `[201, 409]` |
+| Reservar mientras se crea un cierre (HU-21 vs HU-22) | La reserva leyó el horario antes de que el cierre se confirmara | El cierre se descuenta del **horario efectivo** (`ResourceScheduleLookup.effectiveWindowsOn`) y, **con el recurso ya bloqueado**, la reserva vuelve a preguntar a la base `isClosed(...)` |
+| Reservar mientras se desactiva o edita el servicio (HU-11/HU-10 vs HU-22) | La reserva queda CONFIRMADA en un servicio inactivo, o con la duración vieja | La reserva toma un **bloqueo compartido** del servicio (`SELECT active … FOR SHARE`) antes de leerlo; desactivar y editar toman el **exclusivo** (`FOR UPDATE`). Varias reservas del mismo servicio no se esperan entre sí; probado con 4 reservas y una desactivación simultáneas: ninguna queda confirmada en el servicio inactivo |

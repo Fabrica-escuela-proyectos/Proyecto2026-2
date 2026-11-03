@@ -23,10 +23,17 @@ EXTRA_DTO_FILES = [
     os.path.join(SRC, "common", "error", "ApiError.java"),
     os.path.join(SRC, "reservation", "controller", "ResourceDeactivationController.java"),
     os.path.join(SRC, "reservation", "application", "ResourceDeactivationService.java"),
+    os.path.join(SRC, "reservation", "controller", "ResourceClosureController.java"),
 ]
 
 # HU a la que pertenece cada endpoint (clave: método + ruta con las variables de ruta como {x}).
 HU_POR_RUTA = [
+    # Sprint 3 (van primero: el primer patrón que coincide gana).
+    (r"PATCH /api/v1/businesses/", "HU-07"), (r"PATCH /api/v1/services/", "HU-10"),
+    (r"/api/v1/services/\{[^}]+\}/deactivation", "HU-11"), (r"/api/v1/services/\{[^}]+\}/reactivation", "HU-12"),
+    (r"PATCH /api/v1/resources/", "HU-15"), (r"/closures", "HU-21"), (r"/completion$", "HU-27"),
+    (r"resource-occupancy", "HU-29"), (r"/reports/occupancy", "HU-30"), (r"bookings-by-status", "HU-31"),
+    (r"top-services", "HU-32"), (r"booking-value", "HU-33"), (r"platform-summary", "HU-34"),
     (r"POST /api/v1/users$", "HU-01"), (r"POST /api/v1/auth/login", "HU-02"), (r"POST /api/v1/providers$", "HU-03"),
     (r"POST /api/v1/auth/logout", "HU-04"), (r"/api/v1/auth/mfa", "HU-02/05 (ADR-004)"),
     (r"(PATCH|DELETE|GET) /api/v1/users/\{[^}]+\}(/role)?$", "HU-05/06"), (r"GET /api/v1/providers/", "HU-06"),
@@ -278,7 +285,7 @@ def escribir():
     eps = endpoints()
     cat = catalogo()
     L = []
-    L.append("# Referencia de la API — Sprint 2 (generada desde el código)\n")
+    L.append("# Referencia de la API — Sprints 1 a 3 (generada desde el código)\n")
     L.append("> **Generado automáticamente** por `docs/api/generar_referencia.py` leyendo los controladores, `SecurityConfig` y los DTO. "
              "**No editar a mano**: ejecuta `python docs/api/generar_referencia.py`. Los contratos narrados, con ejemplos y reglas de negocio, "
              "están en [endpoints-sprint-2.md](endpoints-sprint-2.md); los códigos de error, en [errores-api-sprint-2.md](errores-api-sprint-2.md); "
@@ -302,10 +309,10 @@ def escribir():
              "texto (`yyyy-MM-dd`, `HH:mm`) en hora de Bogotá. «obligatorio» = `@NotNull`/`@NotBlank`/`@NotEmpty`. Un error de validación responde "
              "`400 VALIDATION_ERROR` con un mapa `fields` (campo → mensaje).\n")
     nombres = {"identity": "Identidad y acceso", "provider": "Proveedores y negocio", "service": "Servicios y catálogo",
-               "resource": "Recursos y horarios", "reservation": "Reservas",
+               "resource": "Recursos y horarios", "reservation": "Reservas", "report": "Reportes",
                "common": "Errores (común a todos los módulos)"}
     total = 0
-    for modulo in ("identity", "provider", "service", "resource", "reservation", "common"):
+    for modulo in ("identity", "provider", "service", "resource", "reservation", "report", "common"):
         if modulo not in cat:
             continue
         L.append("### %s (módulo `%s`)\n" % (nombres[modulo], modulo))

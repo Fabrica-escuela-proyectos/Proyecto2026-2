@@ -23,4 +23,10 @@ public interface ResourceLookupService {
 
     /** Recursos existentes con esos ids (sin filtrar por negocio), ordenados por nombre. */
     List<ResourceInfo> findByIds(Collection<UUID> resourceIds);
+
+    /** Reportes (HU-29/30): todos los recursos del negocio, activos o no, ordenados por nombre. */
+    List<ResourceInfo> findAllOfBusiness(UUID businessId);
+
+    /** Reporte de la plataforma (HU-34): ids de todos los recursos activos. */
+    List<UUID> allActiveIds();
 }
