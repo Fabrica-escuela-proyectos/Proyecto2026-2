@@ -97,9 +97,17 @@ class ServiceAvailabilityServiceImplTest {
         return new ResourceInfo(id, BUSINESS_ID, name, "SALA", active);
     }
 
+    /**
+     * Fecha cuyo día de la semana es {@code day}. Se comparan los números ISO (1..7) en vez de usar {@code ==}
+     * entre objetos de java.time (Sonar S8696) o {@code equals} entre enums (S4551).
+     */
+    private static LocalDate dateOn(DayOfWeek day) {
+        return org.mockito.ArgumentMatchers.argThat(d -> d != null && d.getDayOfWeek().getValue() == day.getValue());
+    }
+
     private void windows(Map<UUID, List<TimeWindow>> windows, DayOfWeek day) {
         when(scheduleLookup.effectiveWindowsOn(any(Collection.class),
-                org.mockito.ArgumentMatchers.argThat((LocalDate d) -> d.getDayOfWeek() == day))).thenReturn(windows);
+                dateOn(day))).thenReturn(windows);
     }
 
     private static TimeWindow w(int h1, int m1, int h2, int m2) {

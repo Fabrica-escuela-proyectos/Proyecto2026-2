@@ -27,11 +27,13 @@ Estado al **2026-11-02**. Qué se corrió, con qué resultado y qué **no** se c
 
 ## 3. Postman / Newman
 
-Contra la aplicación **local** (perfil dev, PostgreSQL 16 temporal en Docker, V1–V14 desde cero), sin administrador: **119 peticiones, 166 aserciones, 0 fallos**. Colección: [`docs/postman/`](postman/README.md) (131 peticiones; la carpeta 07b es la del Sprint 3).
+**Contra Render (2026-11-03, código del Sprint 3 desplegado por el pipeline #71, base en Neon), sin administrador: 119 peticiones, 166 aserciones, 0 fallos** (1 min 15 s; corrida `989ty7xb`). Quedaron en la base los usuarios de prueba `qa.*.989ty7xb@example.com` (dos proveedores y un cliente) con su negocio y reservas; se borran con un administrador (`DELETE /api/v1/users/{id}` + `X-MFA-Code`) o corriendo la carpeta 08.
+
+Antes, contra la aplicación **local** (perfil dev, PostgreSQL 16 temporal en Docker, V1–V14 desde cero), sin administrador: **119 peticiones, 166 aserciones, 0 fallos**. Colección: [`docs/postman/`](postman/README.md) (131 peticiones; la carpeta 07b es la del Sprint 3).
 
 ## 4. Lo que NO se ha corrido todavía
 
-* **Nada del Sprint 3 contra Render**: el código no está commiteado ni desplegado. Tras el despliegue: correr la colección contra Render (`--timeout-request 150000`) y verificar que Flyway aplicó V13 y V14 en Neon (`select version from flyway_schema_history order by installed_rank desc limit 2;`).
+* La consulta directa a Neon de `flyway_schema_history` (V13 y V14): la hace Simon en el SQL Editor. Indirectamente ya está comprobado: la aplicación arranca con `ddl-auto: validate` y el Swagger de Render expone los 48 endpoints.
 * La carpeta 08 de Postman con administrador (incluido HU-34) en esta versión.
-* El análisis de Sonar del código nuevo (corre en el pipeline al hacer push).
+* El resultado del Quality Gate de Sonar para `b311731`: el análisis terminó en *success* en el pipeline #71, pero el resultado del gate no se revisó aquí (se ve en SonarCloud).
 * Pruebas de Calidad (17-23 nov) con sus casos `CP-*`.

@@ -85,6 +85,14 @@ class BookingServiceImplTest {
 
     private BookingServiceImpl service;
 
+    /**
+     * Fecha cuyo día de la semana es {@code day}. Se comparan los números ISO (1..7) en vez de usar {@code ==}
+     * entre objetos de java.time (Sonar S8696) o {@code equals} entre enums (S4551).
+     */
+    private static LocalDate dateOn(DayOfWeek day) {
+        return argThat(d -> d != null && d.getDayOfWeek().getValue() == day.getValue());
+    }
+
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(NOW.atZone(BOGOTA).toInstant(), BOGOTA);
@@ -100,7 +108,7 @@ class BookingServiceImplTest {
         lenient().when(userDirectoryService.findFullName(CLIENT.id())).thenReturn(Optional.of("Ana Cliente"));
         lenient().when(serviceLookupService.assignedResourceIds(SERVICE_ID)).thenReturn(List.of(R1));
         lenient().when(resourceLookupService.findByIds(any(Collection.class))).thenReturn(List.of(resource(R1, "Sala 1", true)));
-        lenient().when(scheduleLookup.effectiveWindowsOn(any(Collection.class), argThat((LocalDate d) -> d.getDayOfWeek() == DayOfWeek.MONDAY)))
+        lenient().when(scheduleLookup.effectiveWindowsOn(any(Collection.class), dateOn(DayOfWeek.MONDAY)))
                 .thenReturn(Map.of(R1, List.of(window(9, 18))));
         lenient().when(bookingRepository.saveAndFlush(any(Booking.class))).thenAnswer(inv -> {
             Booking b = inv.getArgument(0);
@@ -177,7 +185,7 @@ class BookingServiceImplTest {
     void sinRecursoIndicadoElegiElPrimeroLibrePorNombre() {
         when(serviceLookupService.assignedResourceIds(SERVICE_ID)).thenReturn(List.of(R1, R2));
         when(resourceLookupService.findByIds(any(Collection.class))).thenReturn(List.of(resource(R1, "Sala B", true), resource(R2, "Sala A", true)));
-        when(scheduleLookup.effectiveWindowsOn(any(Collection.class), argThat((LocalDate d) -> d.getDayOfWeek() == DayOfWeek.MONDAY)))
+        when(scheduleLookup.effectiveWindowsOn(any(Collection.class), dateOn(DayOfWeek.MONDAY)))
                 .thenReturn(Map.of(R1, List.of(window(9, 18)), R2, List.of(window(9, 18))));
 
         BookingResponse response = service.create(request(MONDAY, "10:00", "11:00", null), CLIENT, "ip");
@@ -190,7 +198,7 @@ class BookingServiceImplTest {
     void siElPrimeroEstaOcupadoUsaElSiguienteRecursoLibre() {
         when(serviceLookupService.assignedResourceIds(SERVICE_ID)).thenReturn(List.of(R1, R2));
         when(resourceLookupService.findByIds(any(Collection.class))).thenReturn(List.of(resource(R1, "Sala A", true), resource(R2, "Sala B", true)));
-        when(scheduleLookup.effectiveWindowsOn(any(Collection.class), argThat((LocalDate d) -> d.getDayOfWeek() == DayOfWeek.MONDAY)))
+        when(scheduleLookup.effectiveWindowsOn(any(Collection.class), dateOn(DayOfWeek.MONDAY)))
                 .thenReturn(Map.of(R1, List.of(window(9, 18)), R2, List.of(window(9, 18))));
         when(bookingRepository.existsConfirmedOverlapping(eq(R1), any(), any())).thenReturn(true);
         when(bookingRepository.existsConfirmedOverlapping(eq(R2), any(), any())).thenReturn(false);
@@ -202,7 +210,7 @@ class BookingServiceImplTest {
     void conRecursoIndicadoSoloUsaEse() {
         when(serviceLookupService.assignedResourceIds(SERVICE_ID)).thenReturn(List.of(R1, R2));
         when(resourceLookupService.findByIds(any(Collection.class))).thenReturn(List.of(resource(R1, "Sala A", true), resource(R2, "Sala B", true)));
-        when(scheduleLookup.effectiveWindowsOn(any(Collection.class), argThat((LocalDate d) -> d.getDayOfWeek() == DayOfWeek.MONDAY)))
+        when(scheduleLookup.effectiveWindowsOn(any(Collection.class), dateOn(DayOfWeek.MONDAY)))
                 .thenReturn(Map.of(R2, List.of(window(9, 18))));
 
         assertThat(service.create(request(MONDAY, "10:00", "11:00", R2), CLIENT, "ip").resourceId()).isEqualTo(R2);
@@ -245,7 +253,7 @@ class BookingServiceImplTest {
 
     @Test
     void unDiaSinHorarioDefinidoDa409() {
-        when(scheduleLookup.effectiveWindowsOn(any(Collection.class), argThat((LocalDate d) -> d.getDayOfWeek() == DayOfWeek.MONDAY))).thenReturn(Map.of());
+        when(scheduleLookup.effectiveWindowsOn(any(Collection.class), dateOn(DayOfWeek.MONDAY))).thenReturn(Map.of());
 
         assertThatThrownBy(() -> service.create(request(MONDAY, "10:00", "11:00", null), CLIENT, "ip"))
                 .isInstanceOf(SlotNotAvailableException.class);
@@ -293,7 +301,7 @@ class BookingServiceImplTest {
 
     @Test
     void laAntelacionMinimaDelNegocioSeExige() {
-        when(scheduleLookup.effectiveWindowsOn(any(Collection.class), argThat((LocalDate d) -> d.getDayOfWeek() == DayOfWeek.WEDNESDAY))).thenReturn(Map.of(R1, List.of(window(7, 20))));
+        when(scheduleLookup.effectiveWindowsOn(any(Collection.class), dateOn(DayOfWeek.WEDNESDAY))).thenReturn(Map.of(R1, List.of(window(7, 20))));
         when(businessSettingsService.minAdvanceHoursOf(BUSINESS_ID)).thenReturn(3);
 
         // Son las 08:00 de hoy (miércoles) y la antelación es de 3 h: 10:00 no alcanza, 11:00 sí.

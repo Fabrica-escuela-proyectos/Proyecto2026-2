@@ -77,12 +77,7 @@ Después de esto, repetir el paso 3 con el **mismo** token debe dar `401` — el
 
 ## 6. Gestión de roles (HU-05, requiere una cuenta de Administrador con MFA)
 
-Estos pasos necesitan iniciar sesión como Administrador (repetir el paso 2 con estas credenciales):
-
-```
-email: admin@example.com
-password: Segura#2026
-```
+Estos pasos necesitan iniciar sesión como Administrador (repetir el paso 2 con el correo y la contraseña de un administrador). **Las credenciales del administrador no se publican en el repositorio** (es público): pídeselas por un canal privado a quien administra el despliegue. La cuenta de demostración que aparecía aquí antes ya no existe (se eliminó al migrar la base a Neon el 2026-10-25).
 
 > **MFA obligatorio para administradores (desde el Sprint 2, ADR-004).** Un administrador que todavía no configuró su verificación en dos pasos puede iniciar sesión, pero **solo** puede usar `/api/v1/auth/mfa/*` y el cierre de sesión; cualquier otra ruta responde `403` con `"error": "MFA_ENROLLMENT_REQUIRED"`. Hay que enrolarla una sola vez:
 >

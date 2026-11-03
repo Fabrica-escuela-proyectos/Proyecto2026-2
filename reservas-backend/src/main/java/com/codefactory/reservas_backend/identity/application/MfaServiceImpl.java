@@ -79,10 +79,13 @@ public class MfaServiceImpl implements MfaService {
     @Override
     @Transactional
     public void triggerMandatorySetup(UUID userId) {
-        mfaRepository.findByUserId(userId).orElseGet(() -> mfaRepository.save(Mfa.builder()
-                .userId(userId)
-                .secret(totpService.generateSecret())
-                .build()));
+        // Solo se crea el registro pendiente si el usuario aún no tiene uno (Sonar S2201: no ignorar orElseGet).
+        if (mfaRepository.findByUserId(userId).isEmpty()) {
+            mfaRepository.save(Mfa.builder()
+                    .userId(userId)
+                    .secret(totpService.generateSecret())
+                    .build());
+        }
 
         String email = userRepository.findById(userId).map(u -> u.getEmail()).orElse(null);
         auditService.registerEvent(AuditEventType.ACTIVACION_MFA, email, "PENDING",
