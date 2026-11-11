@@ -1,32 +1,20 @@
-﻿ID,Work Item Type,Title 1,Title 2,Description,Assigned To,State,Tags,Activity,Original Estimate,Remaining Work,Completed Work,Priority,Story Points,Iteration Path
-72,User Story,HU 07 - Editar información del negocio,,,,New,,,,,,,,Service Booking Plataform\Sprint 3
-,Task,,"[HU07-DATOS] Perfil del negocio: columnas descripción, dirección, tipo y teléfono (migración V13)",ALTER TABLE businesses con CHECK de tipo y teléfono. docs/api/endpoints-sprint-3.md §1.<br>Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,3,3,,1,,Service Booking Plataform\Sprint 3
-,Task,,[HU07-API] Perfil del negocio: edición parcial (PATCH /api/v1/businesses/{id}) y datos visibles en el catálogo,Solo el proveedor dueño; auditoría EDICION_NEGOCIO. Supuestos D6-D8 del plan del Sprint 3.<br>Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,10,10,,1,,Service Booking Plataform\Sprint 3
-75,User Story,HU 10 - Editar servicio,,,,New,,,,,,,,Service Booking Plataform\Sprint 3
-,Task,,[HU10-API] Módulo de servicios: editar servicio (PATCH /api/v1/services/{id}) sin alterar el precio de las reservas,Bloqueo de fila del servicio; las reservas conservan su snapshot de precio (ADR-006).<br>Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,8,8,,1,,Service Booking Plataform\Sprint 3
-76,User Story,HU 11 - Desactivar servicio,,,,New,,,,,,,,Service Booking Plataform\Sprint 3
-,Task,,[HU11-API] Ciclo de vida del servicio: desactivar con confirmación y cancelación de reservas futuras,Orquestado en reservation (patrón de HU-16); 409 CONFIRMATION_REQUIRED; bloqueo compartido en la reserva (ADR-005 §6).<br>Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,10,10,,1,,Service Booking Plataform\Sprint 3
-77,User Story,HU 12 - Reactivar servicio,,,,New,,,,,,,,Service Booking Plataform\Sprint 3
-,Task,,"[HU12-API] Ciclo de vida del servicio: reactivar (idempotente, sin restaurar canceladas)",Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,4,4,,1,,Service Booking Plataform\Sprint 3
-80,User Story,HU 15 - Editar recurso,,,,New,,,,,,,,Service Booking Plataform\Sprint 3
-,Task,,[HU15-API] Módulo de recursos: editar nombre y tipo (PATCH /api/v1/resources/{id}),Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,6,6,,1,,Service Booking Plataform\Sprint 3
-86,User Story,HU 21 - Bloquear un horario puntual,,,,New,,,,,,,,Service Booking Plataform\Sprint 3
-,Task,,[HU21-DATOS] Cierres puntuales: tabla resource_closures con EXCLUDE anti-traslape (migración V14),Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,3,3,,1,,Service Booking Plataform\Sprint 3
-,Task,,"[HU21-API] Cierres puntuales: crear con confirmación, listar y eliminar; horario efectivo en disponibilidad y reservas",Orquestado en reservation; ResourceScheduleLookup.effectiveWindowsOn; revalidación con el recurso bloqueado.<br>Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,14,14,,1,,Service Booking Plataform\Sprint 3
-93,User Story,HU 27 - Completar reserva,,,,New,,,,,,,,Service Booking Plataform\Sprint 3
-,Task,,[HU27-API] Módulo de reservas: completar reserva (POST /api/v1/bookings/{id}/completion),Solo tras la hora de fin (supuesto D4); sin calificación (D5).<br>Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,5,5,,1,,Service Booking Plataform\Sprint 3
-,User Story,HU 29 - Consultar ocupación de un recurso,,Sprint 3. Criterios: Sprint 3 HU para organizar.pdf y docs/api/endpoints-sprint-3.md.,,New,,,,,,,5,Service Booking Plataform\Sprint 3
-,Task,,[HU29-API] Módulo de reportes: base del módulo (ADR-008) y ocupación por recurso,Módulo report de solo lectura; BookingReportQuery y availableMinutesByDay. Definición de ocupación: supuesto D1.<br>Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,12,12,,1,,Service Booking Plataform\Sprint 3
-,User Story,HU 30 - Consultar ocupación del negocio,,Sprint 3. Criterios: Sprint 3 HU para organizar.pdf y docs/api/endpoints-sprint-3.md.,,New,,,,,,,3,Service Booking Plataform\Sprint 3
-,Task,,[HU30-API] Módulo de reportes: ocupación del negocio por día o semana con mayor y menor demanda,Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,6,6,,1,,Service Booking Plataform\Sprint 3
-,User Story,HU 31 - Consultar reservas por estado,,Sprint 3. Criterios: Sprint 3 HU para organizar.pdf y docs/api/endpoints-sprint-3.md.,,New,,,,,,,3,Service Booking Plataform\Sprint 3
-,Task,,[HU31-API] Módulo de reportes: reservas por estado y cancelaciones por origen,Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,4,4,,1,,Service Booking Plataform\Sprint 3
-,User Story,HU 32 - Consultar servicios más reservados,,Sprint 3. Criterios: Sprint 3 HU para organizar.pdf y docs/api/endpoints-sprint-3.md.,,New,,,,,,,3,Service Booking Plataform\Sprint 3
-,Task,,[HU32-API] Módulo de reportes: ranking de servicios más reservados,Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,4,4,,1,,Service Booking Plataform\Sprint 3
-,User Story,HU 33 - Consultar el valor de las reservas,,Sprint 3. Criterios: Sprint 3 HU para organizar.pdf y docs/api/endpoints-sprint-3.md.,,New,,,,,,,5,Service Booking Plataform\Sprint 3
-,Task,,[HU33-API] Módulo de reportes: valor de las reservas según el precio guardado,Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,4,4,,1,,Service Booking Plataform\Sprint 3
-,User Story,HU 34 - Consultar el resumen de la plataforma,,Sprint 3. Criterios: Sprint 3 HU para organizar.pdf y docs/api/endpoints-sprint-3.md.,,New,,,,,,,8,Service Booking Plataform\Sprint 3
-,Task,,[HU34-API] Módulo de reportes: resumen de la plataforma para el administrador (con MFA),Incluye pruebas unitarias y de integración (Definición de hecho).,,New,,Development,6,6,,1,,Service Booking Plataform\Sprint 3
-,User Story,TECH-04 · Entrega final de Arquitectura de Software,,"Diagramas actualizados y generados del código, ADR-008, informe final del proyecto y guía de sustentación.",,New,,,,,,,5,Service Booking Plataform\Sprint 3
-,Task,,[ARQ-05] Diagramas de la entrega final: componentes y paquetes generados del código; despliegue con Neon,,,New,,Design,6,6,,1,,Service Booking Plataform\Sprint 3
-,Task,,"[ARQ-06] Informe final del proyecto y guía de sustentación (arquitectura, decisiones y código clave)",,,New,,Documentation,8,8,,1,,Service Booking Plataform\Sprint 3
+﻿ID,Work Item Type,Title 1,Title 2,Activity,Original Estimate,Remaining Work,Completed Work,Iteration Path
+72,User Story,HU 07 - Editar información del negocio,,,,,,Service Booking Plataform\Sprint 3
+,Task,,"[HU07-DATOS] Perfil del negocio: columnas descripción, dirección, tipo y teléfono (migración V13)",Development,3,0,3,Service Booking Plataform\Sprint 3
+,Task,,[HU07-API] Perfil del negocio: edición parcial (PATCH /api/v1/businesses/{id}) y datos visibles en el catálogo,Development,10,0,10,Service Booking Plataform\Sprint 3
+75,User Story,HU 10 - Editar servicio,,,,,,Service Booking Plataform\Sprint 3
+,Task,,[HU10-API] Módulo de servicios: editar servicio (PATCH /api/v1/services/{id}) sin alterar el precio de las reservas,Development,8,0,8,Service Booking Plataform\Sprint 3
+76,User Story,HU 11 - Desactivar servicio,,,,,,Service Booking Plataform\Sprint 3
+,Task,,[HU11-API] Ciclo de vida del servicio: desactivar con confirmación y cancelación de reservas futuras,Development,10,0,10,Service Booking Plataform\Sprint 3
+77,User Story,HU 12 - Reactivar servicio,,,,,,Service Booking Plataform\Sprint 3
+,Task,,"[HU12-API] Ciclo de vida del servicio: reactivar (idempotente, sin restaurar canceladas)",Development,4,0,4,Service Booking Plataform\Sprint 3
+80,User Story,HU 15 - Editar recurso,,,,,,Service Booking Plataform\Sprint 3
+,Task,,[HU15-API] Módulo de recursos: editar nombre y tipo (PATCH /api/v1/resources/{id}),Development,6,0,6,Service Booking Plataform\Sprint 3
+86,User Story,HU 21 - Bloquear un horario puntual,,,,,,Service Booking Plataform\Sprint 3
+,Task,,[HU21-DATOS] Cierres puntuales: tabla resource_closures con EXCLUDE anti-traslape (migración V14),Development,3,0,3,Service Booking Plataform\Sprint 3
+,Task,,"[HU21-API] Cierres puntuales: crear con confirmación, listar y eliminar; horario efectivo en disponibilidad y reservas",Development,14,0,14,Service Booking Plataform\Sprint 3
+93,User Story,HU 27 - Completar reserva,,,,,,Service Booking Plataform\Sprint 3
+,Task,,[HU27-API] Módulo de reservas: completar reserva (POST /api/v1/bookings/{id}/completion),Development,5,0,5,Service Booking Plataform\Sprint 3
+,User Story,TECH-04 · Entrega final de Arquitectura de Software,,,,,,Service Booking Plataform\Sprint 3
+,Task,,[ARQ-05] Diagramas de la entrega final: componentes y paquetes generados del código; despliegue con Neon,Design,6,0,6,Service Booking Plataform\Sprint 3
+,Task,,"[ARQ-06] Informe final del proyecto y guía de sustentación (arquitectura, decisiones y código clave)",Documentation,8,0,8,Service Booking Plataform\Sprint 3

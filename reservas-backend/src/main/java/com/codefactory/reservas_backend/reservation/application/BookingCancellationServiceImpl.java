@@ -12,12 +12,14 @@ import com.codefactory.reservas_backend.reservation.domain.BookingStatus;
 import com.codefactory.reservas_backend.reservation.domain.CancelOrigin;
 import com.codefactory.reservas_backend.reservation.infrastructure.BookingRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -33,6 +35,7 @@ public class BookingCancellationServiceImpl implements BookingCancellationServic
     private final BookingRepository bookingRepository;
     private final BusinessAccessService businessAccessService;
     private final AuditService auditService;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     @Override
@@ -77,7 +80,8 @@ public class BookingCancellationServiceImpl implements BookingCancellationServic
         }
 
         applyCancellation(booking, CancelOrigin.PROVEEDOR, reason, now);
-        // El aviso al cliente (fuera de alcance) queda como evento de auditoría con su correo.
+        // Aviso al cliente por correo (ADR-009): sale después de confirmar la transacción. Queda además en la auditoría.
+        eventPublisher.publishEvent(BookingsCancelled.of(CancelOrigin.PROVEEDOR, booking.getCancelReason(), List.of(booking)));
         auditService.registerEvent(AuditEventType.CANCELACION_RESERVA, provider.email(), "SUCCESS",
                 "Reserva " + booking.getId() + " cancelada por el proveedor (aviso al cliente "
                         + booking.getClientEmail() + ", servicio " + booking.getServiceId()

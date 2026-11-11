@@ -25,11 +25,14 @@ class BookingBulkCancellationServiceImplTest {
     @Mock
     private BookingRepository repository;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     private BookingBulkCancellationServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new BookingBulkCancellationServiceImpl(repository, Clock.fixed(NOW, ZoneId.of("America/Bogota")));
+        service = new BookingBulkCancellationServiceImpl(repository, eventPublisher, Clock.fixed(NOW, ZoneId.of("America/Bogota")));
     }
 
     @Test
@@ -61,5 +64,33 @@ class BookingBulkCancellationServiceImplTest {
         when(repository.cancelFutureConfirmedOfResource(RESOURCE_ID, CancelOrigin.RECURSO_NO_DISPONIBLE, "motivo", NOW)).thenReturn(2);
 
         assertThat(service.cancelFutureOfResource(RESOURCE_ID, CancelOrigin.RECURSO_NO_DISPONIBLE, "motivo")).isEqualTo(2);
+    }
+
+    @Test
+    void alCancelarPorServicioPublicaLasReservasAfectadasParaAvisarALosClientes() {
+        UUID serviceId = UUID.randomUUID();
+        com.codefactory.reservas_backend.reservation.domain.Booking b = com.codefactory.reservas_backend.reservation.domain.Booking.builder()
+                .id(UUID.randomUUID()).clientEmail("ana@correo.co").clientName("Ana").businessName("N").serviceName("Corte")
+                .resourceName("Sala 1").startAt(NOW.plusSeconds(86_400)).build();
+        when(repository.findFutureConfirmedOfService(serviceId, NOW)).thenReturn(java.util.List.of(b));
+        when(repository.cancelFutureConfirmedOfService(serviceId, CancelOrigin.SERVICIO_NO_DISPONIBLE, "motivo", NOW)).thenReturn(1);
+
+        service.cancelFutureOfService(serviceId, CancelOrigin.SERVICIO_NO_DISPONIBLE, "motivo");
+
+        org.mockito.ArgumentCaptor<BookingsCancelled> event = org.mockito.ArgumentCaptor.forClass(BookingsCancelled.class);
+        org.mockito.Mockito.verify(eventPublisher).publishEvent(event.capture());
+        assertThat(event.getValue().origin()).isEqualTo("SERVICIO_NO_DISPONIBLE");
+        assertThat(event.getValue().bookings()).singleElement()
+                .satisfies(c -> assertThat(c.clientEmail()).isEqualTo("ana@correo.co"));
+    }
+
+    @Test
+    void sinReservasAfectadasNoPublicaNadaYAnonimizarUsaElNombreFijo() {
+        service.cancelFutureOfResource(RESOURCE_ID, CancelOrigin.RECURSO_NO_DISPONIBLE, "motivo");
+        UUID clientId = UUID.randomUUID();
+        when(repository.anonymizeClient(clientId, "Cliente eliminado")).thenReturn(4);
+
+        assertThat(service.anonymizeClient(clientId)).isEqualTo(4);
+        org.mockito.Mockito.verifyNoInteractions(eventPublisher);
     }
 }

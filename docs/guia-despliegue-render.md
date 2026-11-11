@@ -78,6 +78,23 @@ curl -X POST https://reservas-backend-xxxx.onrender.com/api/v1/users \
 
 La migración `V10__create_bookings_table.sql` ejecuta `CREATE EXTENSION IF NOT EXISTS btree_gist` para la restricción anti-overbooking de las reservas. En PostgreSQL 13+ esa extensión es *trusted*: la puede crear el dueño de la base sin ser superusuario, así que **debería funcionar en Render sin cambios**, pero no se ha probado allí. Si el despliegue falla en esa migración (`permission denied to create extension`), créala una vez desde un cliente con el usuario de la base (`CREATE EXTENSION btree_gist;`) y vuelve a desplegar.
 
+## 4.3 Correo de avisos con Brevo (desde el 2026-11-11, ADR-009)
+
+Cuando a un cliente le cancelan una reserva (proveedor, servicio o recurso desactivado, cierre, cuenta del proveedor eliminada) la aplicación le manda un correo por la **API HTTPS de Brevo** (Render gratuito bloquea SMTP). Sin configurar, el correo solo se escribe en el log y todo lo demás funciona igual.
+
+1. En [brevo.com](https://www.brevo.com) (plan gratuito, 300 correos al día): *Senders, domains & dedicated IPs → Senders* → agregar y **verificar** el correo remitente (p. ej. el del equipo).
+2. *SMTP & API → API keys* → **Generate a new API key**. Cópiala una sola vez; **no la pegues en el repositorio ni en el chat**.
+3. Render → Web Service → *Environment*:
+
+   | Variable | Valor |
+   |---|---|
+   | `BREVO_API_KEY` | la clave del paso 2 |
+   | `NOTIFICATION_SENDER_EMAIL` | el remitente verificado del paso 1 |
+   | `NOTIFICATION_SENDER_NAME` | opcional (por defecto «Plataforma de Reservas») |
+
+4. Redesplegar. En los logs de arranque debe aparecer «Correo activo: avisos por la API de Brevo» (sin clave dice «Correo desactivado…»).
+5. Probar: un cliente **con un correo real** (los de `example.com` y otros dominios de prueba se omiten a propósito) reserva; el proveedor la cancela; el correo llega en segundos. Si no llega, buscar en los logs «No se pudo enviar el aviso…» (trae el código de respuesta de Brevo, nunca la clave).
+
 ## 5. Despliegues siguientes (desde el pipeline de CI/CD)
 
 Desde el Sprint 2 el despliegue lo dispara GitHub Actions (`.github/workflows/build.yml`), no Render por su cuenta. En cada push a `main` corren, en orden: pruebas → SonarCloud → build del JAR → **Deploy to Render**. Ese último job llama al *deploy hook* de Render (secret `RENDER_DEPLOY_HOOK_URL`), Render reconstruye la imagen con el `Dockerfile` y el job espera a que `/actuator/health` responda 200. Si algún job anterior falla, no se despliega.

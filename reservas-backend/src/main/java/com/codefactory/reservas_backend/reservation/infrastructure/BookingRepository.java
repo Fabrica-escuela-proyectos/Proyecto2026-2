@@ -110,6 +110,42 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
                                           @Param("end") Instant end, @Param("origin") CancelOrigin origin,
                                           @Param("reason") String reason, @Param("now") Instant now);
 
+    // --- Reservas que una cancelación masiva va a afectar (para avisar a cada cliente por correo; mismos filtros que los UPDATE) ---
+
+    @Query("""
+            select b from Booking b
+            where b.resourceId = :resourceId and b.status = com.codefactory.reservas_backend.reservation.domain.BookingStatus.CONFIRMADA
+              and b.startAt > :now
+            """)
+    List<Booking> findFutureConfirmedOfResource(@Param("resourceId") UUID resourceId, @Param("now") Instant now);
+
+    @Query("""
+            select b from Booking b
+            where b.serviceId = :serviceId and b.status = com.codefactory.reservas_backend.reservation.domain.BookingStatus.CONFIRMADA
+              and b.startAt > :now
+            """)
+    List<Booking> findFutureConfirmedOfService(@Param("serviceId") UUID serviceId, @Param("now") Instant now);
+
+    @Query("""
+            select b from Booking b
+            where b.resourceId = :resourceId and b.status = com.codefactory.reservas_backend.reservation.domain.BookingStatus.CONFIRMADA
+              and b.startAt > :now and b.startAt < :end and b.endAt > :start
+            """)
+    List<Booking> findFutureConfirmedOfResourceIn(@Param("resourceId") UUID resourceId, @Param("start") Instant start,
+                                                  @Param("end") Instant end, @Param("now") Instant now);
+
+    @Query("""
+            select b from Booking b
+            where b.businessId in :businessIds and b.status = com.codefactory.reservas_backend.reservation.domain.BookingStatus.CONFIRMADA
+              and b.startAt > :now
+            """)
+    List<Booking> findFutureConfirmedOfBusinesses(@Param("businessIds") Collection<UUID> businessIds, @Param("now") Instant now);
+
+    /** P12 (Calidad, 2026-11-06): al eliminar la cuenta, sus reservas dejan de mostrar su nombre y correo. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update Booking b set b.clientName = :name, b.clientEmail = null where b.clientId = :clientId")
+    int anonymizeClient(@Param("clientId") UUID clientId, @Param("name") String name);
+
     // --- Reportes del Sprint 3 (HU-29..34): agregados por negocio o de toda la plataforma, periodo [from, to) sobre start_at ---
 
     @Query("select b.status, count(b) from Booking b where b.businessId = :businessId and b.startAt >= :from and b.startAt < :to group by b.status")

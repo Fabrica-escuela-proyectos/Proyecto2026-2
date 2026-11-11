@@ -20,10 +20,10 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.abspath(os.path.join(AQUI, "..", "..", ".."))
 SRC = os.path.join(RAIZ, "reservas-backend", "src", "main", "java", "com", "codefactory", "reservas_backend")
 
-NEGOCIO = ["report", "reservation", "service", "resource", "provider", "identity"]
+NEGOCIO = ["notification", "report", "reservation", "service", "resource", "provider", "identity"]
 TRANSVERSALES = ["audit", "common"]
 CAPAS = ["controller", "application", "infrastructure", "domain"]
-COLOR = {"report": "#2e7d32", "reservation": "#6a1b9a", "service": "#ef6c00", "resource": "#00838f",
+COLOR = {"notification": "#ad1457", "report": "#2e7d32", "reservation": "#6a1b9a", "service": "#ef6c00", "resource": "#00838f",
          "provider": "#1565c0", "identity": "#c62828", "audit": "#5d4037", "common": "#546e7a"}
 
 

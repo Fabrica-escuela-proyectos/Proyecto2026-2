@@ -12,13 +12,13 @@ Construimos el **backend REST** de una plataforma donde **proveedores** (barber�
 |---|---|
 | Historias de usuario implementadas | **34** (HU-01 a HU-34): 6 del Sprint 1, 22 del Sprint 2 (15 en el sprint + 7 al inicio del Sprint 3) y 6 del Sprint 3 |
 | Endpoints REST | **48**, todos documentados en Swagger (9 grupos) |
-| Módulos | 6 de negocio (`identity`, `provider`, `service`, `resource`, `reservation`, `report`) + 2 transversales (`audit`, `common`), **sin ciclos** |
-| Base de datos | 14 tablas, 14 migraciones Flyway (V1–V14), 2 restricciones `EXCLUDE` |
-| Pruebas automáticas | **815** (471 unitarias + 344 de integración contra PostgreSQL real), todas en verde |
-| Cobertura | **97,6 % de líneas / 91,7 % de ramas** (JaCoCo; meta del curso ≥ 65 %) |
+| Módulos | 7 de negocio (`identity`, `provider`, `service`, `resource`, `reservation`, `report`, `notification`) + 2 transversales (`audit`, `common`), **sin ciclos** |
+| Base de datos | 14 tablas, 15 migraciones Flyway (V1–V15), 2 restricciones `EXCLUDE` |
+| Pruebas automáticas | **833** (483 unitarias + 350 de integración contra PostgreSQL real), todas en verde |
+| Cobertura | **97,5 % de líneas / 91,1 % de ramas** (JaCoCo; meta del curso ≥ 65 %) |
 | SonarCloud | **Quality Gate OK**: 0 bugs, 0 vulnerabilidades, 0 *code smells*, deuda 0 min, A en fiabilidad, seguridad y mantenibilidad (2026-11-03) |
 | Postman en el servicio desplegado | 119 peticiones, 166 aserciones, **0 fallos** contra Render + Neon (2026-11-03) |
-| Decisiones registradas | 8 ADR + 32 supuestos documentados (S-01…S-32) + 13 del Sprint 3 (D1…D13) |
+| Decisiones registradas | 9 ADR + 32 supuestos (S-01…S-32) + 13 del Sprint 3 (D1…D13), **confirmados por Calidad el 6-nov** ([`supuestos-para-calidad.md`](../sprint-3/supuestos-para-calidad.md)) |
 
 ## 2. Alcance por sprint
 
@@ -42,7 +42,7 @@ Un solo artefacto desplegable (`reservas-backend.jar`) dividido en **módulos po
 2. **Sin `@ManyToOne` entre módulos**: las referencias son columnas `UUID` con `REFERENCES` en SQL.
 3. **Grafo acíclico:** `identity ← provider ← resource ← service ← reservation ← report` (y `audit` abajo de todos).
 4. Lo que cruza módulos lo **orquesta el de más arriba**: desactivar un servicio o un recurso, o cerrar un recurso, lo hace `reservation` porque es el que puede cancelar reservas.
-5. Dos mecanismos para no invertir el grafo: **inversión de dependencias** (`service` declara `BusyTimeSource` y `reservation` la implementa, para que la disponibilidad descuente reservas) y un **evento de dominio síncrono** (`identity` publica `UserDeletionRequested`; `reservation` cancela las reservas en la misma transacción).
+5. Dos mecanismos para no invertir el grafo: **inversión de dependencias** (`service` declara `BusyTimeSource` y `reservation` la implementa, para que la disponibilidad descuente reservas) y **eventos de dominio**: `UserDeletionRequested` es **síncrono** (`identity` lo publica y `reservation` cancela las reservas en la misma transacción, todo o nada), y `BookingsCancelled` se atiende **después de confirmar y en otro hilo** (`reservation` lo publica y `notification` avisa por correo al cliente, sin poder deshacer ni demorar la cancelación, [ADR-009](../arquitectura/adr/ADR-009-avisos-por-correo.md)).
 
 ![Diagrama de paquetes](../arquitectura/diagramas/diagrama-paquetes.png)
 
@@ -68,8 +68,9 @@ Cliente → Cloudflare/Render (TLS) → contenedor Docker sin root → PostgreSQ
 | [006](../arquitectura/adr/ADR-006-historial-snapshots-y-cancelaciones.md) | Copias («snapshots») en la reserva y `ON DELETE SET NULL`; cancelación = estado + origen + motivo | Borrar o editar cuentas, servicios o negocios no rompe ni altera el historial; no se multiplican estados |
 | [007](../arquitectura/adr/ADR-007-comunicacion-entre-modulos-y-eventos.md) | Interfaces de consulta, orquestar arriba, evento síncrono | Grafo sin ciclos y operaciones todo-o-nada |
 | [008](../arquitectura/adr/ADR-008-modulo-de-reportes.md) | Reportes como módulo de **solo lectura sin tablas** | La base agrega; nadie duplica datos que sincronizar |
+| [009](../arquitectura/adr/ADR-009-avisos-por-correo.md) | Correo al cliente cuando le cancelan una reserva: evento después de confirmar, envío asíncrono por la API HTTPS de Brevo | Lo pidió Calidad (P5); Render gratuito bloquea SMTP; un fallo del correo no puede deshacer la cancelación |
 
-Estado: 001–003 aceptados; **004–008 «Propuesto»** hasta que el equipo los ratifique. Los supuestos (qué interpretamos de cada HU y quién debe confirmarlo) están en [`decisiones-y-supuestos-sprint-2.md`](../arquitectura/decisiones-y-supuestos-sprint-2.md) y en el plan del Sprint 3 §3.
+Estado: 001–003 aceptados; **004–009 «Propuesto»** hasta que el equipo los ratifique. Los supuestos (qué interpretamos de cada HU y quién debe confirmarlo) están en [`decisiones-y-supuestos-sprint-2.md`](../arquitectura/decisiones-y-supuestos-sprint-2.md) y en el plan del Sprint 3 §3.
 
 ## 5. Atributos de calidad y cómo se logran
 
@@ -82,7 +83,7 @@ Estado: 001–003 aceptados; **004–008 «Propuesto»** hasta que el equipo los
 | **Trazabilidad** | Un error en producción | `traceId` en cada respuesta de error y en los logs JSON; auditoría de eventos | `WebHardeningIntegrationTest` |
 | **Mantenibilidad / modificabilidad** | Agregar los reportes del Sprint 3 | Módulo nuevo encima del grafo sin tocar el esquema ni los módulos existentes (solo nuevas consultas) | Diagrama de paquetes generado del código |
 | **Disponibilidad (limitada)** | El plan gratuito agota sus horas | Base movida a Neon sin cambiar código; interruptor `DEPLOY_ENABLED` y tiempos límite en el pipeline | [`guia-recuperar-despliegue.md`](../guia-recuperar-despliegue.md) |
-| **Probabilidad (testability)** | Lógica dependiente de la hora | Reloj inyectable (`Clock` de Bogotá) y Testcontainers con PostgreSQL real | 815 pruebas |
+| **Probabilidad (testability)** | Lógica dependiente de la hora | Reloj inyectable (`Clock` de Bogotá) y Testcontainers con PostgreSQL real | 833 pruebas |
 
 ## 6. Seguridad (OWASP Top 10)
 
@@ -119,7 +120,7 @@ Revisión de código con correcciones y sondeos al servicio desplegado (no es un
 * **Una sola instancia:** los límites de intentos viven en memoria; con varias instancias habría que llevarlos a Redis o a la base.
 * **MFA:** falta anti-replay, cifrado del secreto en reposo y recuperación por otro administrador.
 * **Reportes:** usan el horario vigente (no hay historial de horarios); para volúmenes grandes, vista materializada.
-* **Notificaciones:** los «avisos» a clientes y proveedores son eventos de auditoría; un servicio de correo sería el siguiente paso.
+* **Correo:** se avisa al cliente cuando le cancelan una reserva (ADR-009), pero sin reintentos ni *outbox*: si Brevo falla, ese correo se pierde (la cancelación sigue siendo válida y queda en la auditoría). Al proveedor no se le avisa cuando el cliente cancela.
 * **Gobierno:** ratificar ADR-004..008, proteger `main` con revisión obligatoria y CI verde.
 * **Plataforma:** el plan gratuito duerme el servicio; observabilidad (Prometheus/Grafana) y orquestación quedan como evolución.
 

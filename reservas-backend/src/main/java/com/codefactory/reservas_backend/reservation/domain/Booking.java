@@ -28,7 +28,7 @@ public class Booking {
     @Column(name = "client_id", updatable = false)
     private UUID clientId;
 
-    @Column(name = "client_email", nullable = false, length = 150)
+    @Column(name = "client_email", length = 150)
     private String clientEmail;
 
     @Column(name = "client_name", nullable = false, length = 150)

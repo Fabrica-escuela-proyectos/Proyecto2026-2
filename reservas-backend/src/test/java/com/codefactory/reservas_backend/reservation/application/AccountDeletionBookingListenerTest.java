@@ -52,6 +52,8 @@ class AccountDeletionBookingListenerTest {
 
         verify(auditService).registerEvent(eq(AuditEventType.CANCELACION_RESERVA), eq("cliente@example.com"),
                 eq("SUCCESS"), contains("3 reserva"), anyString());
+        // P12: sus reservas dejan de mostrar su nombre y correo.
+        verify(bulkCancellation).anonymizeClient(USER_ID);
     }
 
     @Test

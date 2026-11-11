@@ -17,8 +17,9 @@ import java.util.UUID;
  * las que el usuario hizo como cliente y las de los negocios que tenía como proveedor. Corre de forma síncrona
  * en la misma transacción de la eliminación (evento {@link UserDeletionRequested}), así que o se cancela y se
  * elimina todo, o no se hace nada. No aplica la regla de antelación de 1 hora. Las reservas pasadas, las ya
- * canceladas y las completadas se conservan como historial: {@code bookings} guarda copias del nombre, correo,
- * servicio, recurso y precio, y sus referencias pasan a nulas al borrarse (ON DELETE SET NULL).
+ * canceladas y las completadas se conservan como historial: {@code bookings} guarda copias del
+ * servicio, recurso y precio, y sus referencias pasan a nulas al borrarse (ON DELETE SET NULL). Desde el
+ * 2026-11-06 (P12) el nombre y el correo del cliente eliminado se reemplazan por "Cliente eliminado".
  * Los servicios y recursos del proveedor se eliminan por cascada, así que dejan de ser reservables.
  */
 @Component
@@ -35,6 +36,8 @@ public class AccountDeletionBookingListener {
     @EventListener
     public void onUserDeletion(UserDeletionRequested event) {
         int asClient = bulkCancellation.cancelFutureOfClient(event.userId(), CancelOrigin.ELIMINACION_CUENTA, CLIENT_REASON);
+        // P12 (Calidad, 2026-11-06): sus reservas dejan de mostrar su nombre y su correo ("Cliente eliminado").
+        bulkCancellation.anonymizeClient(event.userId());
 
         List<UUID> businessIds = businessDirectoryService.businessIdsOfUser(event.userId());
         int asProvider = bulkCancellation.cancelFutureOfBusinesses(businessIds, CancelOrigin.ELIMINACION_CUENTA, PROVIDER_REASON);

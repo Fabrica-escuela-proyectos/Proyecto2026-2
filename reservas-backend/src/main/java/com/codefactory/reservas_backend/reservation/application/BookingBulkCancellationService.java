@@ -38,4 +38,13 @@ public interface BookingBulkCancellationService {
 
     /** HU-21: cancela las reservas confirmadas del recurso, aún no iniciadas, que se traslapan con [start, end). */
     int cancelFutureOfResourceIn(UUID resourceId, Instant start, Instant end, CancelOrigin origin, String reason);
+
+    /** Nombre que muestran las reservas de un cliente cuya cuenta se eliminó (P12, Calidad 2026-11-06). */
+    String DELETED_CLIENT_NAME = "Cliente eliminado";
+
+    /**
+     * P12: borra el nombre y el correo del cliente de TODAS sus reservas (pasadas y futuras) y deja
+     * {@link #DELETED_CLIENT_NAME}. El resto del historial (servicio, recurso, horario, precio y estado) se conserva.
+     */
+    int anonymizeClient(UUID clientId);
 }

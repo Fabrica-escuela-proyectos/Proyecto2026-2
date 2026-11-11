@@ -16,12 +16,12 @@ import sys
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 SRC = os.path.join(RAIZ, "reservas-backend", "src", "main", "java", "com", "codefactory", "reservas_backend")
-MODULOS = ["identity", "provider", "service", "resource", "reservation", "report", "audit", "common"]
-NEGOCIO = ["identity", "provider", "service", "resource", "reservation", "report"]
+MODULOS = ["identity", "provider", "service", "resource", "reservation", "report", "notification", "audit", "common"]
+NEGOCIO = ["identity", "provider", "service", "resource", "reservation", "report", "notification"]
 
 # Excepciones documentadas en ADR-007 §3 (módulo que importa -> lo que importa de otro módulo).
 CONOCIDAS = {
-    ("common", r"^(identity|provider|service|resource|reservation|report)\.(domain|infrastructure)\.\w*(Exception)$"),
+    ("common", r"^(identity|provider|service|resource|reservation|report|notification)\.(domain|infrastructure)\.\w*(Exception)$"),
     ("provider", r"^identity\.(domain\.(DuplicateEmailException|DuplicatePhoneException|RoleName)|infrastructure\.(RegistrationRateLimiter|TooManyRequestsException))$"),
     ("reservation", r"^service\.domain\.ServiceNotAvailableException$"),
     ("*", r"^audit\.domain\.AuditEventType$"),

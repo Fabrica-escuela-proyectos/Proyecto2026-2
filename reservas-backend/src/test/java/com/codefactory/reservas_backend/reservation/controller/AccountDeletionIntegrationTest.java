@@ -137,7 +137,7 @@ class AccountDeletionIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void laReservaCanceladaConservaElHistorialDelClienteEliminadoYElProveedorLaVe() throws Exception {
+    void laReservaCanceladaConservaElHistorialSinLosDatosDelClienteEliminado() throws Exception {
         AdminSession admin = createEnrolledAdmin(uniqueEmail("admin"));
         Provider p = provider();
         Client leaving = client();
@@ -147,8 +147,9 @@ class AccountDeletionIntegrationTest extends AbstractIntegrationTest {
 
         Booking b = booking(id);
         assertThat(b.getClientId()).isNull();
-        assertThat(b.getClientEmail()).isEqualToIgnoringCase(leaving.email());
-        assertThat(b.getClientName()).isEqualTo("Usuario de Prueba");
+        // P12 (Calidad, 2026-11-06): no se muestran datos de clientes eliminados.
+        assertThat(b.getClientEmail()).isNull();
+        assertThat(b.getClientName()).isEqualTo("Cliente eliminado");
         assertThat(b.getServiceName()).isEqualTo("Corte");
         assertThat(b.getPriceCop()).isEqualTo(25_000L);
         JsonNode item = json(mockMvc.perform(get("/api/v1/businesses/" + p.businessId() + "/bookings")
@@ -156,7 +157,8 @@ class AccountDeletionIntegrationTest extends AbstractIntegrationTest {
         assertThat(item.get("status").asText()).isEqualTo("CANCELADA");
         assertThat(item.get("cancelOrigin").asText()).isEqualTo("ELIMINACION_CUENTA");
         assertThat(item.get("clientId").isNull()).isTrue();
-        assertThat(item.get("clientName").asText()).isEqualTo("Usuario de Prueba");
+        assertThat(item.get("clientName").asText()).isEqualTo("Cliente eliminado");
+        assertThat(item.get("clientEmail").isNull()).isTrue();
     }
 
     @Test
@@ -223,9 +225,14 @@ class AccountDeletionIntegrationTest extends AbstractIntegrationTest {
         assertThat(booking(done).getStatus()).isEqualTo(BookingStatus.COMPLETADA);
         assertThat(booking(cancelled).getStatus()).isEqualTo(BookingStatus.CANCELADA);
         assertThat(booking(cancelled).getCancelOrigin()).isNull();
-        // Siguen existiendo (no se borran en cascada), solo pierden la referencia al usuario.
+        // Siguen existiendo (no se borran en cascada), pierden la referencia al usuario y, desde P12 (Calidad,
+        // 2026-11-06), también su nombre y su correo, en todas sus reservas: pasadas, completadas y canceladas.
         assertThat(booking(past).getClientId()).isNull();
-        assertThat(booking(past).getClientEmail()).isEqualToIgnoringCase(leaving.email());
+        for (UUID id : new UUID[]{past, done, cancelled}) {
+            assertThat(booking(id).getClientEmail()).isNull();
+            assertThat(booking(id).getClientName()).isEqualTo("Cliente eliminado");
+        }
+        assertThat(booking(done).getServiceName()).isEqualTo("S");
     }
 
     @Test

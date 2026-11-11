@@ -35,7 +35,11 @@ SonarCloud (análisis del commit `6dab10a`, 2026-11-03): **Quality Gate OK**, 0 
 
 Antes, contra la aplicación **local** (perfil dev, PostgreSQL 16 temporal en Docker, V1–V14 desde cero), sin administrador: **119 peticiones, 166 aserciones, 0 fallos**. Colección: [`docs/postman/`](postman/README.md) (131 peticiones; la carpeta 07b es la del Sprint 3).
 
-## 5. Lo que NO se ha corrido todavía
+## 5. Cambios por las respuestas de Calidad (2026-11-11)
+
+Suite completa tras P12 (cliente eliminado) y P5 (correo): **833 pruebas en verde** (483 unitarias + 350 de integración), cobertura **97,5 % líneas / 91,1 % ramas** (`notification`: 94,7 % de líneas). Nuevas: `CancellationEmailIntegrationTest` (6: el cliente recibe el correo al cancelar el proveedor, al desactivar el servicio, al cerrar el recurso solo si la reserva cae en el cierre y al eliminar al proveedor; **no** recibe correo si la operación no se confirma (409) ni cuando él mismo cancela), `CancellationNotifierTest` (4), `EmailSendersTest` (6, Brevo contra un servidor HTTP local falso: formato del pedido, clave en la cabecera, error sin filtrar la clave, dominios de prueba omitidos, elección del emisor) y casos nuevos en `BookingBulkCancellationServiceImplTest`, `AccountDeletionBookingListenerTest` y `AccountDeletionIntegrationTest` («Cliente eliminado» y sin correo en reservas pasadas, completadas y canceladas). **No verificado:** un envío real por Brevo (requiere la clave del equipo) ni nada de esto en Render.
+
+## 6. Lo que NO se ha corrido todavía
 
 * La consulta directa a Neon de `flyway_schema_history` (V13 y V14): la hace Simon en el SQL Editor. Indirectamente ya está comprobado: la aplicación arranca con `ddl-auto: validate` y el Swagger de Render expone los 48 endpoints.
 * La carpeta 08 de Postman con administrador (incluido HU-34) en esta versión.

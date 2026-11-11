@@ -53,6 +53,8 @@
 
 ## 3. Decisiones de diseño (propuestas; las confirma Calidad/PO)
 
+> Las que debe confirmar Calidad/PO están separadas, como preguntas cerradas, en [`supuestos-para-calidad.md`](supuestos-para-calidad.md) (junto con las pendientes del Sprint 2). D2, D9 y D11 son decisiones de arquitectura.
+
 | # | Decisión | Por qué | Alternativa |
 |---|---|---|---|
 | D1 | **Ocupación = minutos reservados (CONFIRMADA + COMPLETADA) ÷ minutos disponibles** según el horario semanal **actual** de los recursos **activos**, menos sus cierres (HU-21), en el periodo | Es la definición del PDF; el horario no tiene historial, así que se usa el vigente; un recurso inactivo no se puede reservar y sumaría horas «libres» falsas | Guardar el historial de horarios (más tablas, sin pedido explícito); incluir recursos inactivos |

@@ -23,8 +23,9 @@ RAIZ = os.path.abspath(os.path.join(AQUI, "..", "..", ".."))
 SRC = os.path.join(RAIZ, "reservas-backend", "src", "main", "java", "com", "codefactory", "reservas_backend")
 
 # Filas de arriba (quien más depende) hacia abajo (quien menos).
-MODULOS = ["report", "reservation", "service", "resource", "provider", "identity", "audit"]
+MODULOS = ["notification", "report", "reservation", "service", "resource", "provider", "identity", "audit"]
 DESCRIPCION = {
+    "notification": "Avisos por correo (Brevo) · ADR-009",
     "report": "Reportes HU-29..34 · solo lectura",
     "reservation": "Reservas HU-22..28 · orquesta cancelaciones",
     "service": "Servicios, catálogo y disponibilidad",
@@ -33,9 +34,9 @@ DESCRIPCION = {
     "identity": "Usuarios, sesión, roles y MFA",
     "audit": "Registro de eventos",
 }
-COLOR = {"report": "#2e7d32", "reservation": "#6a1b9a", "service": "#ef6c00", "resource": "#00838f",
+COLOR = {"notification": "#ad1457", "report": "#2e7d32", "reservation": "#6a1b9a", "service": "#ef6c00", "resource": "#00838f",
          "provider": "#1565c0", "identity": "#c62828", "audit": "#5d4037"}
-EVENTOS = {"UserDeletionRequested"}
+EVENTOS = {"UserDeletionRequested", "BookingsCancelled"}
 INVERTIDAS = {"BusyTimeSource": "reservation"}  # interfaz -> módulo que la implementa (provee)
 
 
@@ -87,7 +88,7 @@ def svg(usos):
     # leyenda
     o.append('<circle cx="40" cy="78" r="7" fill="#fff" stroke="#37474f" stroke-width="2"/><text x="54" y="82" font-size="12" fill="#37474f">provista (bola)</text>')
     o.append('<path d="M 160 71 A 8 8 0 0 0 160 85" fill="none" stroke="#37474f" stroke-width="2.2"/><text x="172" y="82" font-size="12" fill="#37474f">requerida (media luna)</text>')
-    o.append('<text x="330" y="82" font-size="12" fill="#37474f">«event» = evento de dominio síncrono (UserDeletionRequested, HU-28) · BusyTimeSource: la declara service y la implementa reservation (inversión de dependencias)</text>')
+    o.append('<text x="330" y="82" font-size="12" fill="#37474f">«event» = evento de dominio (UserDeletionRequested, síncrono, HU-28; BookingsCancelled, aviso por correo tras confirmar, ADR-009) · BusyTimeSource: la declara service y la implementa reservation (inversión de dependencias)</text>')
 
     # alcance horizontal de cada fila (hasta su último carril)
     alcance = {m: 0 for m in MODULOS}
@@ -133,7 +134,7 @@ def svg(usos):
         o.append('<text x="%d" y="%d" font-size="15" font-weight="bold" fill="%s">%s</text>' % (caja_x + 12, y + 8, color, m))
         o.append('<text x="%d" y="%d" font-size="10.5" fill="#455a64">%s</text>' % (caja_x + 12, y + 22, DESCRIPCION[m]))
 
-    o.append('<text x="30" y="%d" font-size="11" fill="#78909c">common (errores, configuración, filtros web) es transversal y no expone interfaces de negocio; no se dibuja. Todos los componentes salvo audit exponen además su API REST (48 endpoints).</text>' % (alto - 20))
+    o.append('<text x="30" y="%d" font-size="11" fill="#78909c">common (errores, configuración, filtros web) es transversal y no expone interfaces de negocio; no se dibuja. Todos los componentes salvo audit y notification exponen además su API REST (48 endpoints).</text>' % (alto - 20))
     o.append('</svg>')
     return "\n".join(o), carriles
 

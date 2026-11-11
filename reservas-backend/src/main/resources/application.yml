@@ -67,6 +67,17 @@ security:
 
 # Documentación OpenAPI/Swagger (ARQ-01). Apagada por defecto: solo se expone si SWAGGER_ENABLED=true
 # (perfil dev y pruebas la encienden; en Render, solo mientras dure una demostración). OWASP A05.
+# Avisos por correo al cliente cuando le cancelan una reserva (P5 de Calidad, ADR-009). Se envían por la API
+# HTTPS de Brevo porque Render gratuito bloquea SMTP (puertos 25/465/587). Sin BREVO_API_KEY (dev, pruebas o un
+# despliegue sin configurar) el correo solo se escribe en el log. La clave NUNCA va en el repositorio.
+notifications:
+  brevo:
+    api-key: ${BREVO_API_KEY:}
+  sender:
+    # Remitente verificado en Brevo (Senders, domains & dedicated IPs).
+    email: ${NOTIFICATION_SENDER_EMAIL:}
+    name: ${NOTIFICATION_SENDER_NAME:Plataforma de Reservas}
+
 springdoc:
   api-docs:
     enabled: ${SWAGGER_ENABLED:false}

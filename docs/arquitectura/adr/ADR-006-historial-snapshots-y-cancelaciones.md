@@ -40,3 +40,7 @@ HU-28 exige eliminar cuentas (cliente, proveedor o por un administrador) y «los
 ## 5. Verificación
 
 Pruebas de integración: al eliminar un cliente o un proveedor (administrador con MFA) las futuras quedan `CANCELADA` con origen `ELIMINACION_CUENTA`, las pasadas/completadas/canceladas se conservan con sus copias y sus referencias en `NULL`, el proveedor sigue viendo la reserva (`AccountDeletionIntegrationTest`); cambiar el precio o el nombre del servicio no altera una reserva ya hecha (`BookingCreationIntegrationTest`); el nombre y el correo del cliente son los del momento de reservar (`BusinessBookingsIntegrationTest`). La colección de Postman repite el flujo contra Render.
+
+## Adenda (2026-11-11): datos del cliente eliminado
+
+Por la respuesta de Calidad a P12 («no se muestran datos de clientes ya eliminados»), al eliminar una cuenta sus reservas reemplazan el nombre del cliente por «Cliente eliminado» y borran su correo (`client_email` pasa a admitir nulo, migración V15, que además limpia las reservas de cuentas ya eliminadas). El resto de las copias (negocio, servicio, recurso, horario, precio, estado y origen de la cancelación) se conservan, así que el historial y los reportes siguen completos. La auditoría de seguridad (`audit_logs`) no cambia.

@@ -48,12 +48,15 @@ class BookingCancellationServiceImplTest {
     @Mock
     private AuditService auditService;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     private BookingCancellationServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new BookingCancellationServiceImpl(bookingRepository, businessAccessService, auditService,
-                Clock.fixed(NOW, ZoneId.of("America/Bogota")));
+                eventPublisher, Clock.fixed(NOW, ZoneId.of("America/Bogota")));
     }
 
     private Booking booking(UUID clientId, BookingStatus status, Instant startAt) {

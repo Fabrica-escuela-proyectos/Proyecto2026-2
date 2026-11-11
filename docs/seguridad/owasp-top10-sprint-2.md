@@ -27,7 +27,7 @@
 | A07 Autenticación | **Parcial** | Fuerte (BCrypt, MFA admin, límites); sin cambio de contraseña, sin anti-replay, contraseña demo pública |
 | A08 Integridad | **Parcial** | CI y migraciones inmutables; `main` sin protección verificada, commits subidos por la web |
 | A09 Registro y monitoreo | **Parcial** | Auditoría sin secretos; **desde el 2026-10-10** `traceId`/`X-Request-Id` en errores y logs, y logs JSON en `prod`; sin alertas |
-| A10 SSRF | **No aplica** | El backend no hace llamadas salientes |
+| A10 SSRF | **Cubierto** (desde 2026-11-11) | Única llamada saliente: la API de Brevo, a una URL fija sin datos del usuario (ADR-009) |
 
 **Prioridad de corrección antes de la entrega** (de mayor a menor): ① rotar la contraseña del admin demo y quitarla de la guía (**pendiente**, depende de ti); ② ~~`server.forward-headers-strategy` (OWASP-03)~~ **hecho el 2026-10-10**, verificar en Render; ③ ~~perfil por defecto y secreto JWT~~ **hecho**; ④ ~~Dependabot~~ **archivo añadido**, falta un escaneo de vulnerabilidades; ⑤ proteger `main` (**pendiente**, ajuste de GitHub); ⑥ ~~cabeceras y límite de tamaño de cuerpo~~ **hecho**; límite de tasa en rutas públicas **pendiente**.
 
@@ -110,7 +110,7 @@
 
 ### A10 — Falsificación de peticiones del lado del servidor (SSRF) · **No aplica**
 
-El backend **no hace ninguna llamada HTTP saliente** (ningún `RestTemplate`, `WebClient`, `RestClient` ni `HttpClient` en el código; verificado por búsqueda). No hay funciones que reciban URLs del usuario. Revisar de nuevo si se añaden notificaciones por correo/webhook (hoy fuera de alcance).
+Hasta el 2026-11-11 el backend no hacía llamadas salientes. Desde entonces hay **una**: `BrevoEmailSender` envía los avisos de cancelación a `https://api.brevo.com/v3/smtp/email` (ADR-009). La URL es una constante (ningún dato del usuario decide a dónde se conecta el servidor, que es lo que explota un SSRF), con tiempo límite de 5 s para conectar y 10 s por petición; la clave va en una variable de entorno y nunca en el log ni en las excepciones; los destinatarios de dominios de prueba se omiten. Revisar de nuevo si se agregan *webhooks* con URLs configurables.
 
 ## 4. Sondeos a Render (2026-10-10, solo lectura)
 

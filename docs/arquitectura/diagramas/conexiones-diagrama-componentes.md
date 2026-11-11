@@ -5,6 +5,7 @@ Respaldo del diagrama [`diagrama-componentes.svg`](diagrama-componentes.svg). La
 | Interfaz | La provee | La requieren |
 |---|---|---|
 | `BookingReportQuery` | reservation | report |
+| `BookingsCancelled` | reservation | notification |
 | `BusyTimeSource` | reservation | service |
 | `ServiceLifecycleService` | service | reservation |
 | `ServiceLookupService` | service | report, reservation |

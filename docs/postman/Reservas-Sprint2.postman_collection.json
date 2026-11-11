@@ -5861,7 +5861,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Cancelada por eliminación de cuenta, con los datos del cliente conservados', () => { const it = pm.response.json().items.find(i => i.id === pm.collectionVariables.get('bookingId4')); pm.expect(it).to.exist; pm.expect(it.cancelOrigin).to.eql('ELIMINACION_CUENTA'); pm.expect(it.clientId).to.eql(null); pm.expect(it.clientName).to.eql('Cliente QA'); });"
+                  "pm.test('Cancelada por eliminación de cuenta, sin los datos del cliente eliminado (P12)', () => { const it = pm.response.json().items.find(i => i.id === pm.collectionVariables.get('bookingId4')); pm.expect(it).to.exist; pm.expect(it.cancelOrigin).to.eql('ELIMINACION_CUENTA'); pm.expect(it.clientId).to.eql(null); pm.expect(it.clientName).to.eql('Cliente eliminado'); pm.expect(it.clientEmail).to.eql(null); });"
                 ]
               }
             }
