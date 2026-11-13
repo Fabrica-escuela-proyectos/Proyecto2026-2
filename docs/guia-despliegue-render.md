@@ -82,8 +82,8 @@ La migración `V10__create_bookings_table.sql` ejecuta `CREATE EXTENSION IF NOT 
 
 Cuando a un cliente le cancelan una reserva (proveedor, servicio o recurso desactivado, cierre, cuenta del proveedor eliminada) la aplicación le manda un correo por la **API HTTPS de Brevo** (Render gratuito bloquea SMTP). Sin configurar, el correo solo se escribe en el log y todo lo demás funciona igual.
 
-1. En [brevo.com](https://www.brevo.com) (plan gratuito, 300 correos al día): *Senders, domains & dedicated IPs → Senders* → agregar y **verificar** el correo remitente (p. ej. el del equipo).
-2. *SMTP & API → API keys* → **Generate a new API key**. Cópiala una sola vez; **no la pegues en el repositorio ni en el chat**.
+1. En [brevo.com](https://www.brevo.com) (plan gratuito; el cupo diario se ve en el plan de la cuenta): abrir [account.brevo.com/senders](https://account.brevo.com/senders), agregar el correo remitente (p. ej. el del equipo) y **verificarlo** con el mensaje que Brevo envía a ese buzón.
+2. En la configuración de la cuenta, pestaña **API keys** → **Generate a new API key** → ponerle un nombre (p. ej. `render-reservas`). Brevo la muestra **una sola vez**: cópiala directo a Render; **no la pegues en el repositorio ni en el chat**.
 3. Render → Web Service → *Environment*:
 
    | Variable | Valor |
@@ -93,7 +93,7 @@ Cuando a un cliente le cancelan una reserva (proveedor, servicio o recurso desac
    | `NOTIFICATION_SENDER_NAME` | opcional (por defecto «Plataforma de Reservas») |
 
 4. Redesplegar. En los logs de arranque debe aparecer «Correo activo: avisos por la API de Brevo» (sin clave dice «Correo desactivado…»).
-5. Probar: un cliente **con un correo real** (los de `example.com` y otros dominios de prueba se omiten a propósito) reserva; el proveedor la cancela; el correo llega en segundos. Si no llega, buscar en los logs «No se pudo enviar el aviso…» (trae el código de respuesta de Brevo, nunca la clave).
+5. Probar: un cliente **con un correo real** (los de `example.com` y otros dominios de prueba se omiten a propósito) reserva; el proveedor la cancela; el correo llega en segundos. Si no llega, revisar spam, el registro de envíos de Brevo ([app.brevo.com/transactional/email/logs](https://app.brevo.com/transactional/email/logs)) y en los logs de Render «No se pudo enviar el aviso…» (trae el código de respuesta de Brevo, nunca la clave): `401` = clave mal copiada; `400` = remitente no verificado o distinto de `NOTIFICATION_SENDER_EMAIL`.
 
 ## 5. Despliegues siguientes (desde el pipeline de CI/CD)
 
