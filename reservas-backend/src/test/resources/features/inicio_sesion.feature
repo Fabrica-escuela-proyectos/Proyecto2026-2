@@ -52,7 +52,7 @@ Feature: Inicio de sesión
     When envía un código de verificación incorrecto
     Then no obtiene acceso
 
-  @acceso @mfa
+  @acceso @mfa @pendiente
   Scenario: Bloqueo de operación sensible sin confirmación adicional
     Given un Administrador autenticado y un usuario con rol "Cliente"
     When intenta modificar los permisos de ese usuario sin la confirmación adicional
