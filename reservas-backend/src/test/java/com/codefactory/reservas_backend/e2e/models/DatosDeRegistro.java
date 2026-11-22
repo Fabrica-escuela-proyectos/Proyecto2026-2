@@ -47,11 +47,11 @@ public record DatosDeRegistro(String nombreCompleto, String correo, String celul
     /** Deja vacío el campo indicado con el nombre que usan los escenarios. */
     public DatosDeRegistro sinElCampo(String campo) {
         return switch (campo) {
-            case "nombre completo" -> new DatosDeRegistro("", correo, celular, contrasena, nombreDelNegocio);
-            case "correo electrónico" -> conCorreo("");
-            case "número de celular" -> conCelular("");
-            case "contraseña" -> conContrasena("");
-            case "nombre del negocio" -> new DatosDeRegistro(nombreCompleto, correo, celular, contrasena, "");
+            case "full name" -> new DatosDeRegistro("", correo, celular, contrasena, nombreDelNegocio);
+            case "email" -> conCorreo("");
+            case "cell phone number" -> conCelular("");
+            case "password" -> conContrasena("");
+            case "business name" -> new DatosDeRegistro(nombreCompleto, correo, celular, contrasena, "");
             default -> throw new IllegalArgumentException("Campo desconocido: " + campo);
         };
     }
@@ -59,11 +59,11 @@ public record DatosDeRegistro(String nombreCompleto, String correo, String celul
     /** Nombre del campo en la respuesta de error de la API. */
     public static String claveEnLaRespuesta(String campo) {
         return switch (campo) {
-            case "nombre completo" -> "fullName";
-            case "correo electrónico" -> "email";
-            case "número de celular" -> "cellphone";
-            case "contraseña" -> "password";
-            case "nombre del negocio" -> "businessName";
+            case "full name" -> "fullName";
+            case "email" -> "email";
+            case "cell phone number" -> "cellphone";
+            case "password" -> "password";
+            case "business name" -> "businessName";
             default -> throw new IllegalArgumentException("Campo desconocido: " + campo);
         };
     }

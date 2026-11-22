@@ -1,5 +1,6 @@
 package com.codefactory.reservas_backend.e2e.tasks;
 
+import com.codefactory.reservas_backend.e2e.models.Roles;
 import com.codefactory.reservas_backend.e2e.models.DatosDeRegistro;
 import com.codefactory.reservas_backend.e2e.models.Json;
 import com.codefactory.reservas_backend.e2e.user.Memoria;
@@ -27,7 +28,7 @@ public final class RegistrarCuenta {
         return Task.where("{0} envía su registro como proveedor pidiendo el rol " + rolSolicitado, actor -> {
             actor.remember(Memoria.DATOS, datos);
             Map<String, String> cuerpo = new LinkedHashMap<>(datos.comoCuerpo());
-            cuerpo.put("role", rolSolicitado.toUpperCase(Locale.ROOT));
+            cuerpo.put("role", Roles.nombreEnLaApi(rolSolicitado));
             actor.attemptsTo(Post.to("/api/v1/providers").with(request -> request.body(Json.de(cuerpo))));
         });
     }
