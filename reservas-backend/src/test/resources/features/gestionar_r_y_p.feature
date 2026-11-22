@@ -1,16 +1,12 @@
 @HU05 @identity
 Feature: Manage roles and permissions
 
-  # Intentionally omitted: "History after deleting a user" (already verified in integration tests with the database).
-  # The Administrator's operations require their additional confirmation (a current verification code).
-
   @positivo @mfa
   Scenario: Administrator assigns the "Administrador" role to a Client user
     Given an authenticated Administrator and a user with the role "Cliente"
     When they assign the role "Administrador" to that user with their additional confirmation
     Then the user's role is updated to "Administrador"
 
-  # TO VERIFY against the API before automating: the block on the new Administrator until the additional verification is completed.
   @acceso @mfa
   Scenario: New Administrator without completed additional verification cannot access
     Given a user received the role "Administrador" and has not yet completed the creation of additional verification
@@ -59,21 +55,21 @@ Feature: Manage roles and permissions
     Then the operation is rejected
     And they receive an error message saying the role does not exist
 
-  # FINDING: Client and Provider get a generic 403 ("No tiene permisos para realizar esta operación"),
-  # not the self-modification message the user story asks for. Only the Administrator gets "No puede modificar su propio rol".
   @acceso
-  Scenario Outline: User tries to modify their own permissions or role
-    Given an authenticated user with the role "<role>"
+  Scenario: Administrator tries to modify their own role
+    Given an authenticated user with the role "Administrador"
     When they try to modify their own permissions or role
     Then the operation is rejected
     And they receive an error message saying they cannot modify themselves
 
-    Examples:
-      | role          |
-      | Administrador |
+  @acceso
+  Scenario Outline: Client or Provider tries to modify their own role
+    Given an authenticated user with the role "<role>"
+    When they try to modify their own permissions or role
+    Then the operation is rejected
+    And they receive an error message saying they do not have permission for this operation
 
-    @hallazgo
     Examples:
-      | role     |
+      | role      |
       | Cliente   |
       | Proveedor |

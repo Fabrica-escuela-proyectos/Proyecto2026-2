@@ -1,10 +1,6 @@
 @HU04 @identity
 Feature: Log out
 
-  # Intentionally omitted: automatic session expiration (it would require waiting one hour) and connection failure
-  # when logging out (it cannot be triggered through the API). To review with the team: the user story says to
-  # invalidate "all associated devices", but the endpoint documentation says the current session is revoked.
-
   @positivo @sesion
   Scenario: Successful logout
     Given a user has an active, authenticated session

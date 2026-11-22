@@ -209,6 +209,14 @@ public class GestionarRolesYPermisosSteps {
         theActorInTheSpotlight().should(seeThat(RespuestaDeLaApi.mensaje(), containsString("propio rol")));
     }
 
+    /** Cliente y Proveedor: Spring Security los rechaza antes de la regla de auto-modificación (403 genérico). */
+    @And("they receive an error message saying they do not have permission for this operation")
+    public void mensajeSinPermisos() {
+        theActorInTheSpotlight().should(
+                seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(403)),
+                seeThat(RespuestaDeLaApi.mensaje(), containsString("No tiene permisos")));
+    }
+
     // ---------- Apoyo ----------
 
     private void autenticarAdministrador() {

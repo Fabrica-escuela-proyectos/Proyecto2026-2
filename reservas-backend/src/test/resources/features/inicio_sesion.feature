@@ -1,10 +1,6 @@
 @HU02 @identity
 Feature: Log in
 
-  # Intentionally omitted: session expiration after one hour (it would require waiting or changing the clock),
-  # protection of sensitive data in internal logs (verified in integration tests) and password change
-  # (there is no equivalent operation in the API).
-
   @positivo @sesion
   Scenario: Successful login with valid credentials
     Given a registered client wants to log in

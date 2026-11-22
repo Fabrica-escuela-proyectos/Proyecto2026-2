@@ -1,9 +1,6 @@
 @HU03 @identity
 Feature: Provider registration
 
-  # The cases for invalid email, invalid cell phone number, password and common fields are the same as in HU-01
-  # and are not repeated here; only the behaviors specific to the provider are included.
-
   @positivo
   Scenario: Successful provider registration with valid data
     Given an unregistered visitor wants to create a provider account

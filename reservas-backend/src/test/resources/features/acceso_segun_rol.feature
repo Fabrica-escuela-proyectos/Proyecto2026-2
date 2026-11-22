@@ -1,9 +1,6 @@
 @HU06 @identity
 Feature: Access according to role
 
-  # Intentionally omitted: "The Provider's general permission is not enough for someone else's resources" (it is the same
-  # behavior as "Provider tries to manage resources of another business") and the "expired" session state (it would require waiting one hour).
-
   @positivo @acceso
   Scenario: Client manages their own data
     Given a user with the role "Cliente" has logged in

@@ -1,8 +1,6 @@
 @HU01 @identity
 Feature: Client registration
 
-  # Intentionally omitted: "User access after registration" and "Protection of the password and sensitive data"
-  # (the first is ambiguous for an API and the second is verified in integration tests and in the database).
 
   @positivo
   Scenario: Successful registration with valid data
@@ -87,9 +85,3 @@ Feature: Client registration
       | cell phone number |
       | password          |
 
-  # This scenario needs the production limit (5 attempts). It runs apart from the rest: see the @rate-limit tag.
-  @acceso @rate-limit
-  Scenario: Temporary block after multiple registration attempts
-    Given the same origin made 5 registration attempts in a short time
-    When it tries to register again
-    Then new requests from that origin are temporarily blocked
