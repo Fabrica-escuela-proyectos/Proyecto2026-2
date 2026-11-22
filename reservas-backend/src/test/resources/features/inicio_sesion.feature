@@ -1,59 +1,60 @@
 @HU02 @identity
-Feature: Inicio de sesión
+Feature: Log in
 
-  # Omitidos a propósito: expiración de la sesión a la hora (obliga a esperar o alterar el reloj), protección de datos
-  # sensibles en registros internos (se verifica en integración) y cambio de contraseña (no hay operación equivalente en la API).
+  # Intentionally omitted: session expiration after one hour (it would require waiting or changing the clock),
+  # protection of sensitive data in internal logs (verified in integration tests) and password change
+  # (there is no equivalent operation in the API).
 
   @positivo @sesion
-  Scenario: Inicio de sesión exitoso con credenciales válidas
-    Given un cliente registrado quiere iniciar sesión
-    When proporciona su correo y contraseña correctos
-    Then obtiene acceso
+  Scenario: Successful login with valid credentials
+    Given a registered client wants to log in
+    When they provide their correct email and password
+    Then they gain access
 
   @excepcion @sesion
-  Scenario Outline: Intento de inicio de sesión con credenciales inválidas
-    Given un cliente registrado quiere iniciar sesión
-    When intenta iniciar sesión con el correo "<correo>" y la contraseña "<contraseña>"
-    Then el intento de acceso es rechazado y no puede ingresar a la plataforma
+  Scenario Outline: Login attempt with invalid credentials
+    Given a registered client wants to log in
+    When they try to log in with the email "<email>" and the password "<password>"
+    Then the access attempt is rejected and they cannot enter the platform
 
     Examples:
-      | correo                  | contraseña               |
-      | otro.correo@ejemplo.com | la contraseña registrada |
-      | el correo registrado    | Incorrecta#2026          |
-      | (vacío)                 | la contraseña registrada |
-      | el correo registrado    | (vacío)                  |
+      | email                    | password                 |
+      | other.email@example.com  | the registered password  |
+      | the registered email     | Wrong#2026               |
+      | (empty)                  | the registered password  |
+      | the registered email     | (empty)                  |
 
   @acceso
-  Scenario Outline: Identificación del rol del usuario tras iniciar sesión
-    Given un usuario con rol "<rol>" inició sesión exitosamente
-    When su cuenta es reconocida
-    Then se identifica el rol "<rol>" asociado al usuario
+  Scenario Outline: Identification of the user's role after logging in
+    Given a user with the role "<role>" has logged in successfully
+    When their account is recognized
+    Then the role "<role>" associated with the user is identified
 
     Examples:
-      | rol       |
+      | role     |
       | Cliente   |
       | Proveedor |
 
   @acceso @mfa
-  Scenario: Solicitud de verificación adicional a cuenta administrativa
-    Given un Administrador con verificación adicional activa ingresa su correo y contraseña correctos
-    When intenta iniciar sesión sin el código de verificación
-    Then se le solicita completar la verificación adicional
+  Scenario: Additional verification request for an administrative account
+    Given an Administrator with additional verification enabled enters their correct email and password
+    When they try to log in without the verification code
+    Then they are asked to complete the additional verification
 
   @positivo @mfa
-  Scenario: Acceso con verificación adicional correcta
-    Given un Administrador con verificación adicional activa ingresa su correo y contraseña correctos
-    When completa la verificación con el código vigente
-    Then obtiene acceso
+  Scenario: Access with correct additional verification
+    Given an Administrator with additional verification enabled enters their correct email and password
+    When they complete the verification with the current code
+    Then they gain access
 
   @excepcion @mfa
-  Scenario: Bloqueo de acceso con verificación adicional incorrecta
-    Given un Administrador con verificación adicional activa ingresa su correo y contraseña correctos
-    When envía un código de verificación incorrecto
-    Then no obtiene acceso
+  Scenario: Access blocked with incorrect additional verification
+    Given an Administrator with additional verification enabled enters their correct email and password
+    When they submit an incorrect verification code
+    Then they do not gain access
 
-  @acceso @mfa @pendiente
-  Scenario: Bloqueo de operación sensible sin confirmación adicional
-    Given un Administrador autenticado y un usuario con rol "Cliente"
-    When intenta modificar los permisos de ese usuario sin la confirmación adicional
-    Then no puede realizar la acción
+  @acceso @mfa
+  Scenario: Sensitive operation blocked without additional confirmation
+    Given an authenticated Administrator and a user with the role "Cliente"
+    When they try to change that user's permissions without the additional confirmation
+    Then they cannot perform the action

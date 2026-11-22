@@ -1,5 +1,6 @@
 package com.codefactory.reservas_backend.e2e.stepdefinitions;
 
+import com.codefactory.reservas_backend.e2e.models.Roles;
 import com.codefactory.reservas_backend.e2e.models.DatosDeRegistro;
 import com.codefactory.reservas_backend.e2e.questions.RespuestaDeLaApi;
 import com.codefactory.reservas_backend.e2e.tasks.RegistrarCuenta;
@@ -35,22 +36,22 @@ public class RegistroClienteSteps {
 
     // ---------- Given ----------
 
-    @Given("un visitante no registrado quiere crear una cuenta de cliente")
+    @Given("an unregistered visitor wants to create a client account")
     public void visitanteQuiereCrearCuentaDeCliente() {
         theActorCalled(VISITANTE).remember(Memoria.DATOS, DatosDeRegistro.validos());
     }
 
-    @Given("un visitante tiene nombre, correo y contraseña válidos")
+    @Given("a visitor has a valid name, email and password")
     public void visitanteConNombreCorreoYContrasenaValidos() {
         visitanteQuiereCrearCuentaDeCliente();
     }
 
-    @Given("un visitante tiene nombre, correo y celular válidos")
+    @Given("a visitor has a valid name, email and cell phone number")
     public void visitanteConNombreCorreoYCelularValidos() {
         visitanteQuiereCrearCuentaDeCliente();
     }
 
-    @Given("ya existe una cuenta de cliente registrada")
+    @Given("a client account is already registered")
     public void yaExisteUnaCuentaDeCliente() {
         Actor existente = theActorCalled(CLIENTE_EXISTENTE);
         existente.attemptsTo(RegistrarCuenta.comoCliente(DatosDeRegistro.validos()));
@@ -60,43 +61,43 @@ public class RegistroClienteSteps {
 
     // ---------- When ----------
 
-    @When("completa todos los datos con información válida y envía la solicitud")
+    @When("they complete all the data with valid information and submit the request")
     public void completaTodosLosDatosYEnvia() {
         enviar(datosDelVisitante());
     }
 
-    @When("ingresa el correo {string} y envía la solicitud")
+    @When("they enter the email {string} and submit the request")
     public void ingresaElCorreoYEnvia(String correo) {
         enviar(datosDelVisitante().conCorreo(correo));
     }
 
-    @When("envía la solicitud con el celular {string}")
+    @When("they submit the request with the cell phone number {string}")
     public void enviaConElCelular(String celular) {
         enviar(datosDelVisitante().conCelular(celular));
     }
 
-    @When("envía la contraseña {string} que incluye el carácter especial {string}")
+    @When("they submit the password {string} that includes the special character {string}")
     public void enviaContrasenaConCaracterEspecial(String contrasena, String caracterEspecial) {
         enviar(datosDelVisitante().conContrasena(contrasena));
     }
 
-    @When("envía la contraseña {string} que incumple el requisito {string}")
+    @When("they submit the password {string} that fails the requirement {string}")
     public void enviaContrasenaQueIncumple(String contrasena, String requisito) {
         enviar(datosDelVisitante().conContrasena(contrasena));
     }
 
-    @When("deja vacío el campo {string} y envía la solicitud")
+    @When("they leave the field {string} empty and submit the request")
     public void dejaVacioElCampoYEnvia(String campo) {
         enviar(datosDelVisitante().sinElCampo(campo));
     }
 
-    @When("un visitante intenta registrarse con el mismo correo de esa cuenta")
+    @When("a visitor tries to register with the same email as that account")
     public void intentaRegistrarseConElMismoCorreo() {
         DatosDeRegistro existente = theActorCalled(CLIENTE_EXISTENTE).recall(Memoria.DATOS);
         enviar(DatosDeRegistro.validos().conCorreo(existente.correo()));
     }
 
-    @When("un visitante intenta registrarse con el mismo celular de esa cuenta")
+    @When("a visitor tries to register with the same cell phone number as that account")
     public void intentaRegistrarseConElMismoCelular() {
         DatosDeRegistro existente = theActorCalled(CLIENTE_EXISTENTE).recall(Memoria.DATOS);
         enviar(DatosDeRegistro.validos().conCelular(existente.celular()));
@@ -104,25 +105,25 @@ public class RegistroClienteSteps {
 
     // ---------- Then / And ----------
 
-    @Then("la cuenta queda creada exitosamente")
+    @Then("the account is created successfully")
     public void laCuentaQuedaCreada() {
         Actor visitante = theActorCalled(VISITANTE);
         visitante.should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(201)));
         assertThat(userRepository.findByEmailIgnoreCase(datosDelVisitante().correo())).isPresent();
     }
 
-    @And("tiene el rol {string} por defecto")
+    @And("it has the role {string} by default")
     public void tieneElRolPorDefecto(String rol) {
         theActorCalled(VISITANTE).should(
-                seeThat(RespuestaDeLaApi.rol(), equalTo(rol.toUpperCase(Locale.ROOT))));
+                seeThat(RespuestaDeLaApi.rol(), equalTo(Roles.nombreEnLaApi(rol))));
     }
 
-    @Then("la solicitud es rechazada y no se crea una cuenta duplicada")
+    @Then("the request is rejected and no duplicate account is created")
     public void rechazadaPorDuplicado() {
         theActorCalled(VISITANTE).should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(409)));
     }
 
-    @Then("la solicitud es rechazada y no se crea ninguna cuenta")
+    @Then("the request is rejected and no account is created")
     public void rechazadaYSinCuenta() {
         Actor visitante = theActorCalled(VISITANTE);
         visitante.should(seeThat(RespuestaDeLaApi.codigoDeEstado(),
@@ -130,37 +131,37 @@ public class RegistroClienteSteps {
         assertThat(userRepository.findByEmailIgnoreCase(datosDelVisitante().correo())).isEmpty();
     }
 
-    @And("recibe un mensaje indicando que el correo ya está en uso")
+    @And("they receive a message saying the email is already in use")
     public void mensajeCorreoEnUso() {
         theActorCalled(VISITANTE).should(
                 seeThat(RespuestaDeLaApi.mensaje(), containsString("correo electrónico ya está en uso")));
     }
 
-    @And("recibe un mensaje indicando que el número de celular ya está en uso")
+    @And("they receive a message saying the cell phone number is already in use")
     public void mensajeCelularEnUso() {
         theActorCalled(VISITANTE).should(
                 seeThat(RespuestaDeLaApi.mensaje(), containsString("celular ya está en uso")));
     }
 
-    @And("recibe un mensaje de error indicando que el formato del correo no es válido")
+    @And("they receive an error message saying the email format is not valid")
     public void mensajeFormatoDeCorreo() {
         theActorCalled(VISITANTE).should(
                 seeThat(RespuestaDeLaApi.mensajeDelCampo("email"), containsString("no es válido")));
     }
 
-    @And("recibe un mensaje de error indicando que el número de celular no es válido")
+    @And("they receive an error message saying the cell phone number is not valid")
     public void mensajeCelularInvalido() {
         theActorCalled(VISITANTE).should(
                 seeThat(RespuestaDeLaApi.mensajeDelCampo("cellphone"), containsString("no es válido")));
     }
 
-    @And("recibe un mensaje indicando el requisito de seguridad no cumplido")
+    @And("they receive a message stating the security requirement that was not met")
     public void mensajePoliticaDeContrasena() {
         theActorCalled(VISITANTE).should(
                 seeThat(RespuestaDeLaApi.mensajeDelCampo("password"), containsString("política de seguridad")));
     }
 
-    @And("recibe un mensaje de error específico para el campo {string}")
+    @And("they receive a specific error message for the field {string}")
     public void mensajeEspecificoParaElCampo(String campo) {
         theActorCalled(VISITANTE).should(seeThat(
                 RespuestaDeLaApi.mensajeDelCampo(DatosDeRegistro.claveEnLaRespuesta(campo)),

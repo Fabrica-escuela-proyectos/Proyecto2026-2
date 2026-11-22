@@ -1,5 +1,6 @@
 package com.codefactory.reservas_backend.e2e.stepdefinitions;
 
+import com.codefactory.reservas_backend.e2e.models.Roles;
 import com.codefactory.reservas_backend.e2e.models.DatosDeRegistro;
 import com.codefactory.reservas_backend.e2e.questions.RespuestaDeLaApi;
 import com.codefactory.reservas_backend.e2e.tasks.RegistrarCuenta;
@@ -38,12 +39,12 @@ public class RegistroProveedorSteps {
 
     // ---------- Given ----------
 
-    @Given("un visitante no registrado quiere crear una cuenta de proveedor")
+    @Given("an unregistered visitor wants to create a provider account")
     public void visitanteQuiereCrearCuentaDeProveedor() {
         theActorCalled(VISITANTE).remember(Memoria.DATOS, DatosDeRegistro.validos().comoProveedor());
     }
 
-    @Given("ya existe una cuenta de proveedor registrada")
+    @Given("a provider account is already registered")
     public void yaExisteUnaCuentaDeProveedor() {
         Actor existente = theActorCalled(PROVEEDOR_EXISTENTE);
         existente.attemptsTo(RegistrarCuenta.comoProveedor(DatosDeRegistro.validos().comoProveedor()));
@@ -53,17 +54,17 @@ public class RegistroProveedorSteps {
 
     // ---------- When ----------
 
-    @When("completa todos los datos personales y del negocio con información válida y envía la solicitud")
+    @When("they complete all personal and business data with valid information and submit the request")
     public void completaTodosLosDatosYEnvia() {
         enviar();
     }
 
-    @When("termina el registro con datos válidos")
+    @When("they finish registering with valid data")
     public void terminaElRegistro() {
         enviar();
     }
 
-    @When("un visitante intenta registrarse como proveedor con el mismo correo de esa cuenta")
+    @When("a visitor tries to register as a provider with the same email as that account")
     public void intentaRegistrarseConElMismoCorreo() {
         DatosDeRegistro existente = theActorCalled(PROVEEDOR_EXISTENTE).recall(Memoria.DATOS);
         Actor visitante = theActorCalled(VISITANTE);
@@ -71,39 +72,39 @@ public class RegistroProveedorSteps {
                 DatosDeRegistro.validos().comoProveedor().conCorreo(existente.correo())));
     }
 
-    @When("intenta registrarse con el rol {string}")
+    @When("they try to register with the role {string}")
     public void intentaRegistrarseConElRol(String rol) {
         theActorCalled(VISITANTE).attemptsTo(RegistrarCuenta.comoProveedorSolicitandoRol(datosDelVisitante(), rol));
     }
 
     // ---------- Then / And ----------
 
-    @Then("la cuenta del proveedor queda creada exitosamente")
+    @Then("the provider account is created successfully")
     public void laCuentaDelProveedorQuedaCreada() {
         theActorCalled(VISITANTE).should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(201)));
         assertThat(userRepository.findByEmailIgnoreCase(datosDelVisitante().correo())).isPresent();
     }
 
-    @And("la información del negocio queda registrada y asociada a esa cuenta")
+    @And("the business information is registered and linked to that account")
     public void elNegocioQuedaRegistradoYAsociado() {
         Actor visitante = theActorCalled(VISITANTE);
         visitante.should(seeThat(RespuestaDeLaApi.nombreDelNegocio(), equalTo(datosDelVisitante().nombreDelNegocio())));
         visitante.should(seeThat(RespuestaDeLaApi.idDelNegocio(), not(emptyOrNullString())));
     }
 
-    @Then("tiene el rol {string} de forma controlada")
+    @Then("they have the role {string} in a controlled way")
     public void tieneElRolDeFormaControlada(String rol) {
-        theActorCalled(VISITANTE).should(seeThat(RespuestaDeLaApi.rol(), equalTo(rol.toUpperCase(Locale.ROOT))));
+        theActorCalled(VISITANTE).should(seeThat(RespuestaDeLaApi.rol(), equalTo(Roles.nombreEnLaApi(rol))));
     }
 
-    @Then("el rol solicitado es ignorado y se le asigna el rol {string} de forma controlada")
+    @Then("the requested role is ignored and they are given the role {string} in a controlled way")
     public void elRolSolicitadoEsIgnorado(String rol) {
         Actor visitante = theActorCalled(VISITANTE);
         visitante.should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(201)));
-        visitante.should(seeThat(RespuestaDeLaApi.rol(), equalTo(rol.toUpperCase(Locale.ROOT))));
+        visitante.should(seeThat(RespuestaDeLaApi.rol(), equalTo(Roles.nombreEnLaApi(rol))));
     }
 
-    @And("la cuenta queda registrada únicamente con el rol autorizado")
+    @And("the account is registered only with the authorized role")
     public void soloConElRolAutorizado() {
         Set<RoleName> roles = userRepository.findByEmailIgnoreCase(datosDelVisitante().correo()).orElseThrow()
                 .getRoles().stream().map(Role::getName).collect(Collectors.toSet());

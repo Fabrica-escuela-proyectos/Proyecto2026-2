@@ -24,49 +24,49 @@ public class CerrarSesionSteps {
 
     // ---------- Given ----------
 
-    @Given("un usuario tiene una sesión activa y autenticada")
+    @Given("a user has an active, authenticated session")
     public void usuarioConSesionActiva() {
         iniciarSesionComoCliente();
     }
 
-    @Given("un usuario cerró su sesión exitosamente")
+    @Given("a user logged out successfully")
     public void usuarioCerroSuSesion() {
         Actor usuario = iniciarSesionComoCliente();
         usuario.attemptsTo(CerrarSesion.ahora());
         usuario.should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(204)));
     }
 
-    @Given("un usuario no ha iniciado sesión")
+    @Given("a user has not logged in")
     public void usuarioSinSesion() {
         theActorCalled(USUARIO).remember(Memoria.TOKEN, "");
     }
 
     // ---------- When ----------
 
-    @When("ejecuta la acción de cerrar sesión")
+    @When("they perform the log out action")
     public void ejecutaLaAccionDeCerrarSesion() {
         theActorCalled(USUARIO).attemptsTo(CerrarSesion.ahora());
     }
 
-    @When("intenta cerrar sesión")
+    @When("they try to log out")
     public void intentaCerrarSesion() {
         theActorCalled(USUARIO).attemptsTo(CerrarSesion.ahora());
     }
 
-    @When("intenta realizar una operación protegida con esa sesión")
+    @When("they try to perform a protected operation with that session")
     public void intentaUnaOperacionProtegida() {
         theActorCalled(USUARIO).attemptsTo(ConsultarSusDatos.conSuSesion());
     }
 
     // ---------- Then / And ----------
 
-    @Then("el cierre de sesión es exitoso")
+    @Then("the logout is successful")
     public void elCierreEsExitoso() {
         theActorCalled(USUARIO).should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(204)));
     }
 
     /** Un 401 (y no un 403) significa que la plataforma le pide autenticarse otra vez. */
-    @And("debe iniciar sesión nuevamente")
+    @And("they must log in again")
     public void debeIniciarSesionNuevamente() {
         theActorCalled(USUARIO).should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(401)));
     }

@@ -44,7 +44,11 @@ public final class RespuestaDeLaApi {
     /** Id de la cuenta creada (respuesta del registro de cliente). */
     public static Question<String> idDelUsuario() {
         return Question.about("el id de la cuenta creada")
-                .answeredBy(actor -> ultima(actor).jsonPath().getString("id"));
+                .answeredBy(actor -> {
+                    String id = ultima(actor).jsonPath().getString("id");
+                    // El registro de proveedor devuelve el id de la cuenta como "userId".
+                    return id != null ? id : ultima(actor).jsonPath().getString("userId");
+                });
     }
 
     public static Question<String> idDelNegocio() {

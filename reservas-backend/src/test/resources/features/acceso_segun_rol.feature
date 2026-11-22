@@ -1,53 +1,53 @@
 @HU06 @identity
-Feature: Acceso según el rol
+Feature: Access according to role
 
-  # Omitidos a propósito: "Permiso general del Proveedor no es suficiente para recursos ajenos" (es el mismo comportamiento
-  # que "Proveedor intenta gestionar recursos de otro negocio") y el estado de sesión "expirada" (obliga a esperar una hora).
-
-  @positivo @acceso
-  Scenario: Cliente gestiona sus propios datos
-    Given un usuario con rol "Cliente" ha iniciado sesión
-    When intenta consultar un dato que le pertenece
-    Then la operación es permitida
-
-  @excepcion @acceso
-  Scenario: Cliente intenta gestionar datos de otro usuario
-    Given un usuario con rol "Cliente" ha iniciado sesión
-    When intenta consultar un dato que no le pertenece
-    Then se le deniega el acceso
+  # Intentionally omitted: "The Provider's general permission is not enough for someone else's resources" (it is the same
+  # behavior as "Provider tries to manage resources of another business") and the "expired" session state (it would require waiting one hour).
 
   @positivo @acceso
-  Scenario: Proveedor gestiona los recursos de su propio negocio
-    Given un usuario con rol "Proveedor" ha iniciado sesión
-    When intenta gestionar los recursos de su propio negocio
-    Then la operación es permitida
+  Scenario: Client manages their own data
+    Given a user with the role "Cliente" has logged in
+    When they try to view data that belongs to them
+    Then the operation is allowed
 
   @excepcion @acceso
-  Scenario: Proveedor intenta gestionar recursos de otro negocio
-    Given un usuario con rol "Proveedor" ha iniciado sesión
-    When intenta gestionar los recursos de otro proveedor
-    Then se le deniega el acceso
+  Scenario: Client tries to manage another user's data
+    Given a user with the role "Cliente" has logged in
+    When they try to view data that does not belong to them
+    Then access is denied
+
+  @positivo @acceso
+  Scenario: Provider manages the resources of their own business
+    Given a user with the role "Proveedor" has logged in
+    When they try to manage the resources of their own business
+    Then the operation is allowed
 
   @excepcion @acceso
-  Scenario Outline: Denegación de acceso a funcionalidades no autorizadas
-    Given un usuario con rol "<rol>" ha iniciado sesión
-    When intenta "<funcionalidad>"
-    Then se le deniega el acceso
+  Scenario: Provider tries to manage resources of another business
+    Given a user with the role "Proveedor" has logged in
+    When they try to manage the resources of another provider
+    Then access is denied
+
+  @excepcion @acceso
+  Scenario Outline: Access denied to features not authorized for the role
+    Given a user with the role "<role>" has logged in
+    When they try to "<feature>"
+    Then access is denied
 
     Examples:
-      | rol       | funcionalidad                          |
-      | Cliente   | crear un recurso en un negocio         |
-      | Cliente   | eliminar a otro usuario                |
-      | Proveedor | asignar un rol a otro usuario          |
+      | role     | feature                          |
+      | Cliente   | create a resource in a business  |
+      | Cliente   | delete another user              |
+      | Proveedor | assign a role to another user    |
 
   @excepcion @sesion
-  Scenario Outline: Bloqueo de operación protegida sin sesión válida
-    Given un usuario cuenta con una sesión "<estado de sesión>"
-    When intenta realizar una operación protegida
-    Then se le deniega el acceso
-    And debe autenticarse nuevamente
+  Scenario Outline: Protected operation blocked without a valid session
+    Given a user has a session that is "<session status>"
+    When they try to perform a protected operation
+    Then access is denied
+    And they must authenticate again
 
     Examples:
-      | estado de sesión   |
-      | revocada           |
-      | sin iniciar sesión |
+      | session status |
+      | revoked        |
+      | not logged in  |

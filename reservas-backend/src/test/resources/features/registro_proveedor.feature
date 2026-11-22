@@ -1,39 +1,39 @@
 @HU03 @identity
-Feature: Registro de proveedor de servicios
+Feature: Provider registration
 
-  # Los casos de correo inválido, celular inválido, contraseña y campos comunes son iguales a los de HU-01
-  # y no se repiten aquí; solo se incluyen los comportamientos propios del proveedor.
-
-  @positivo
-  Scenario: Registro exitoso de proveedor con datos válidos
-    Given un visitante no registrado quiere crear una cuenta de proveedor
-    When completa todos los datos personales y del negocio con información válida y envía la solicitud
-    Then la cuenta del proveedor queda creada exitosamente
-    And la información del negocio queda registrada y asociada a esa cuenta
+  # The cases for invalid email, invalid cell phone number, password and common fields are the same as in HU-01
+  # and are not repeated here; only the behaviors specific to the provider are included.
 
   @positivo
-  Scenario: Asignación del rol Proveedor
-    Given un visitante no registrado quiere crear una cuenta de proveedor
-    When termina el registro con datos válidos
-    Then tiene el rol "Proveedor" de forma controlada
+  Scenario: Successful provider registration with valid data
+    Given an unregistered visitor wants to create a provider account
+    When they complete all personal and business data with valid information and submit the request
+    Then the provider account is created successfully
+    And the business information is registered and linked to that account
+
+  @positivo
+  Scenario: Assignment of the Provider role
+    Given an unregistered visitor wants to create a provider account
+    When they finish registering with valid data
+    Then they have the role "Proveedor" in a controlled way
 
   @excepcion
-  Scenario: Registro de proveedor con correo ya existente
-    Given ya existe una cuenta de proveedor registrada
-    When un visitante intenta registrarse como proveedor con el mismo correo de esa cuenta
-    Then la solicitud es rechazada y no se crea una cuenta duplicada
-    And recibe un mensaje indicando que el correo ya está en uso
+  Scenario: Provider registration with an email that already exists
+    Given a provider account is already registered
+    When a visitor tries to register as a provider with the same email as that account
+    Then the request is rejected and no duplicate account is created
+    And they receive a message saying the email is already in use
 
   @excepcion
-  Scenario: Registro de proveedor sin nombre del negocio
-    Given un visitante no registrado quiere crear una cuenta de proveedor
-    When deja vacío el campo "nombre del negocio" y envía la solicitud
-    Then la solicitud es rechazada y no se crea ninguna cuenta
-    And recibe un mensaje de error específico para el campo "nombre del negocio"
+  Scenario: Provider registration without a business name
+    Given an unregistered visitor wants to create a provider account
+    When they leave the field "business name" empty and submit the request
+    Then the request is rejected and no account is created
+    And they receive a specific error message for the field "business name"
 
   @acceso
-  Scenario: El proveedor no puede autoasignarse un rol privilegiado
-    Given un visitante no registrado quiere crear una cuenta de proveedor
-    When intenta registrarse con el rol "Administrador"
-    Then el rol solicitado es ignorado y se le asigna el rol "Proveedor" de forma controlada
-    And la cuenta queda registrada únicamente con el rol autorizado
+  Scenario: The provider cannot assign themselves a privileged role
+    Given an unregistered visitor wants to create a provider account
+    When they try to register with the role "Administrador"
+    Then the requested role is ignored and they are given the role "Proveedor" in a controlled way
+    And the account is registered only with the authorized role

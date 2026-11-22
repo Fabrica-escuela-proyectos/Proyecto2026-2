@@ -1,25 +1,25 @@
 @HU04 @identity
-Feature: Cerrar sesión
+Feature: Log out
 
-  # Omitidos a propósito: expiración automática de la sesión (obliga a esperar una hora) y fallo de conexión al cerrar
-  # (no se puede provocar por la API). Revisar con el equipo: la HU habla de invalidar "todos los dispositivos asociados"
-  # pero la documentación del endpoint dice que se revoca la sesión actual.
+  # Intentionally omitted: automatic session expiration (it would require waiting one hour) and connection failure
+  # when logging out (it cannot be triggered through the API). To review with the team: the user story says to
+  # invalidate "all associated devices", but the endpoint documentation says the current session is revoked.
 
   @positivo @sesion
-  Scenario: Cierre de sesión exitoso
-    Given un usuario tiene una sesión activa y autenticada
-    When ejecuta la acción de cerrar sesión
-    Then el cierre de sesión es exitoso
+  Scenario: Successful logout
+    Given a user has an active, authenticated session
+    When they perform the log out action
+    Then the logout is successful
 
   @excepcion @sesion
-  Scenario: Sesión cerrada no permite operaciones protegidas
-    Given un usuario cerró su sesión exitosamente
-    When intenta realizar una operación protegida con esa sesión
-    Then se le deniega el acceso
-    And debe iniciar sesión nuevamente
+  Scenario: A closed session does not allow protected operations
+    Given a user logged out successfully
+    When they try to perform a protected operation with that session
+    Then access is denied
+    And they must log in again
 
   @excepcion @sesion
-  Scenario: Cierre de sesión sin una sesión activa
-    Given un usuario no ha iniciado sesión
-    When intenta cerrar sesión
-    Then se le deniega el acceso
+  Scenario: Logout without an active session
+    Given a user has not logged in
+    When they try to log out
+    Then access is denied

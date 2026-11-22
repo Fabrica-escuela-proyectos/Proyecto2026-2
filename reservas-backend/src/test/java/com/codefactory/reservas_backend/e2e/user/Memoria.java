@@ -8,6 +8,8 @@ public final class Memoria {
     public static final String TOKEN = "token";
     public static final String SECRETO_MFA = "secretoMfa";
     public static final String ID_DE_USUARIO = "idDeUsuario";
+    public static final String ID_DE_NEGOCIO = "idDeNegocio";
+    public static final String ROL = "rol";
 
     private Memoria() {
     }

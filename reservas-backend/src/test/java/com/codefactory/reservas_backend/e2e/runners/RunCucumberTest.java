@@ -11,7 +11,8 @@ import static io.cucumber.junit.platform.engine.Constants.PLUGIN_PROPERTY_NAME;
 
 /**
  * Ejecutor de las pruebas E2E. El nombre termina en "Test" para que Surefire lo tome.
- * Excluye los escenarios @rate-limit (necesitan otro límite de intentos) y @pendiente (pasos aún sin implementar).
+ * Excluye @rate-limit (necesita otro límite de intentos), @pendiente (pasos sin implementar) y @hallazgo
+ * (diferencias entre la HU y la API que el equipo debe resolver).
  */
 @Suite
 @IncludeEngines("cucumber")
@@ -20,6 +21,6 @@ import static io.cucumber.junit.platform.engine.Constants.PLUGIN_PROPERTY_NAME;
 @ConfigurationParameter(key = PLUGIN_PROPERTY_NAME,
         value = "net.serenitybdd.cucumber.core.plugin.SerenityReporterParallel,pretty")
 @ConfigurationParameter(key = FILTER_TAGS_PROPERTY_NAME,
-        value = "(@HU01 or @HU02 or @HU03 or @HU04) and not @rate-limit and not @pendiente")
+        value = "not @rate-limit and not @pendiente and not @hallazgo")
 public class RunCucumberTest {
 }

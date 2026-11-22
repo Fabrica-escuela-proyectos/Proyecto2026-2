@@ -10,6 +10,11 @@ public final class ConSesion {
     private ConSesion() {
     }
 
+    /** Igual que deAcceso, pero si no hay sesión (nula o vacía) envía la petición sin ella. */
+    public static Function<RequestSpecification, RequestSpecification> deAccesoOpcional(String token) {
+        return request -> token == null || token.isBlank() ? request : deAcceso(token).apply(request);
+    }
+
     public static Function<RequestSpecification, RequestSpecification> deAcceso(String token) {
         return request -> request.header("Authorization", "Bearer " + token);
     }

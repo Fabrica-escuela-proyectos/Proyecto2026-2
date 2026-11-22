@@ -1,5 +1,6 @@
 package com.codefactory.reservas_backend.e2e.stepdefinitions;
 
+import com.codefactory.reservas_backend.e2e.models.Roles;
 import com.codefactory.reservas_backend.e2e.models.Credenciales;
 import com.codefactory.reservas_backend.e2e.models.DatosDeRegistro;
 import com.codefactory.reservas_backend.e2e.questions.RespuestaDeLaApi;
@@ -36,9 +37,9 @@ import static org.hamcrest.Matchers.not;
 /** HU-02 - Inicio de sesión (incluye la verificación adicional del Administrador). */
 public class InicioSesionSteps {
 
-    private static final String SIN_VALOR = "(vacío)";
-    private static final String CORREO_REGISTRADO = "el correo registrado";
-    private static final String CONTRASENA_REGISTRADA = "la contraseña registrada";
+    private static final String SIN_VALOR = "(empty)";
+    private static final String CORREO_REGISTRADO = "the registered email";
+    private static final String CONTRASENA_REGISTRADA = "the registered password";
 
     @Autowired
     private UserRepository userRepository;
@@ -49,7 +50,7 @@ public class InicioSesionSteps {
 
     // ---------- Given ----------
 
-    @Given("un cliente registrado quiere iniciar sesión")
+    @Given("a registered client wants to log in")
     public void clienteRegistradoQuiereIniciarSesion() {
         Actor actor = theActorCalled(USUARIO);
         DatosDeRegistro datos = DatosDeRegistro.validos();
@@ -58,7 +59,7 @@ public class InicioSesionSteps {
         actor.remember(Memoria.CREDENCIALES, new Credenciales(datos.correo(), datos.contrasena(), null));
     }
 
-    @Given("un usuario con rol {string} inició sesión exitosamente")
+    @Given("a user with the role {string} has logged in successfully")
     public void usuarioConRolInicioSesion(String rol) {
         Actor usuario = theActorCalled(USUARIO);
         DatosDeRegistro datos = DatosDeRegistro.validos();
@@ -73,7 +74,7 @@ public class InicioSesionSteps {
         usuario.should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(200)));
     }
 
-    @Given("un Administrador con verificación adicional activa ingresa su correo y contraseña correctos")
+    @Given("an Administrator with additional verification enabled enters their correct email and password")
     public void administradorConVerificacionActiva() {
         String correo = DatosDeRegistro.nuevoCorreo("admin");
         Role rolAdministrador = roleRepository.findByName(RoleName.ADMINISTRADOR).orElseThrow();
@@ -96,13 +97,13 @@ public class InicioSesionSteps {
 
     // ---------- When ----------
 
-    @When("proporciona su correo y contraseña correctos")
+    @When("they provide their correct email and password")
     public void proporcionaCredencialesCorrectas() {
         Actor usuario = theActorCalled(USUARIO);
         usuario.attemptsTo(IniciarSesion.con(usuario.recall(Memoria.CREDENCIALES)));
     }
 
-    @When("intenta iniciar sesión con el correo {string} y la contraseña {string}")
+    @When("they try to log in with the email {string} and the password {string}")
     public void intentaIniciarSesionCon(String correo, String contrasena) {
         Actor usuario = theActorCalled(USUARIO);
         Credenciales registradas = usuario.recall(Memoria.CREDENCIALES);
@@ -112,18 +113,18 @@ public class InicioSesionSteps {
                 null)));
     }
 
-    @When("su cuenta es reconocida")
+    @When("their account is recognized")
     public void suCuentaEsReconocida() {
         // La identificación del rol ocurre en la misma respuesta del inicio de sesión: no hay una acción aparte.
     }
 
-    @When("intenta iniciar sesión sin el código de verificación")
+    @When("they try to log in without the verification code")
     public void intentaIniciarSesionSinCodigo() {
         Actor administrador = theActorCalled(ADMINISTRADOR);
         administrador.attemptsTo(IniciarSesion.con(credencialesDelAdministrador(administrador).conCodigo(null)));
     }
 
-    @When("completa la verificación con el código vigente")
+    @When("they complete the verification with the current code")
     public void completaLaVerificacion() {
         Actor administrador = theActorCalled(ADMINISTRADOR);
         String secreto = administrador.recall(Memoria.SECRETO_MFA);
@@ -131,7 +132,7 @@ public class InicioSesionSteps {
                 credencialesDelAdministrador(administrador).conCodigo(TotpTestSupport.codeNow(secreto))));
     }
 
-    @When("envía un código de verificación incorrecto")
+    @When("they submit an incorrect verification code")
     public void enviaUnCodigoIncorrecto() {
         Actor administrador = theActorCalled(ADMINISTRADOR);
         String secreto = administrador.recall(Memoria.SECRETO_MFA);
@@ -141,34 +142,34 @@ public class InicioSesionSteps {
 
     // ---------- Then ----------
 
-    @Then("obtiene acceso")
+    @Then("they gain access")
     public void obtieneAcceso() {
         Actor actor = theActorInTheSpotlight();
         actor.should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(200)));
         actor.should(seeThat(RespuestaDeLaApi.token(), not(emptyOrNullString())));
     }
 
-    @Then("el intento de acceso es rechazado y no puede ingresar a la plataforma")
+    @Then("the access attempt is rejected and they cannot enter the platform")
     public void accesoRechazado() {
         Actor actor = theActorInTheSpotlight();
         actor.should(seeThat(RespuestaDeLaApi.codigoDeEstado(), anyOf(equalTo(400), equalTo(401))));
         actor.should(seeThat(RespuestaDeLaApi.token(), emptyOrNullString()));
     }
 
-    @Then("se identifica el rol {string} asociado al usuario")
+    @Then("the role {string} associated with the user is identified")
     public void seIdentificaElRol(String rol) {
         theActorInTheSpotlight().should(
-                seeThat(RespuestaDeLaApi.rol(), equalTo(rol.toUpperCase(Locale.ROOT))));
+                seeThat(RespuestaDeLaApi.rol(), equalTo(Roles.nombreEnLaApi(rol))));
     }
 
-    @Then("se le solicita completar la verificación adicional")
+    @Then("they are asked to complete the additional verification")
     public void seSolicitaVerificacionAdicional() {
         Actor actor = theActorInTheSpotlight();
         actor.should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(401)));
         actor.should(seeThat(RespuestaDeLaApi.codigoDeError(), equalTo("MFA_REQUIRED")));
     }
 
-    @Then("no obtiene acceso")
+    @Then("they do not gain access")
     public void noObtieneAcceso() {
         theActorInTheSpotlight().should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(401)));
     }

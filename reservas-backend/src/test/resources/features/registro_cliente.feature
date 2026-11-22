@@ -1,95 +1,95 @@
 @HU01 @identity
-Feature: Registro de cliente
+Feature: Client registration
 
-  # Omitidos a propósito: "Acceso del usuario tras el registro" y "Protección de la contraseña y los datos sensibles"
-  # (el primero es ambiguo para una API y el segundo se verifica en pruebas de integración y en la base de datos).
+  # Intentionally omitted: "User access after registration" and "Protection of the password and sensitive data"
+  # (the first is ambiguous for an API and the second is verified in integration tests and in the database).
 
   @positivo
-  Scenario: Registro exitoso con datos válidos
-    Given un visitante no registrado quiere crear una cuenta de cliente
-    When completa todos los datos con información válida y envía la solicitud
-    Then la cuenta queda creada exitosamente
-    And tiene el rol "Cliente" por defecto
+  Scenario: Successful registration with valid data
+    Given an unregistered visitor wants to create a client account
+    When they complete all the data with valid information and submit the request
+    Then the account is created successfully
+    And it has the role "Cliente" by default
 
   @excepcion
-  Scenario: Registro con correo ya existente
-    Given ya existe una cuenta de cliente registrada
-    When un visitante intenta registrarse con el mismo correo de esa cuenta
-    Then la solicitud es rechazada y no se crea una cuenta duplicada
-    And recibe un mensaje indicando que el correo ya está en uso
+  Scenario: Registration with an email that already exists
+    Given a client account is already registered
+    When a visitor tries to register with the same email as that account
+    Then the request is rejected and no duplicate account is created
+    And they receive a message saying the email is already in use
 
   @excepcion
-  Scenario: Registro con formato de correo inválido
-    Given un visitante no registrado quiere crear una cuenta de cliente
-    When ingresa el correo "usuario@@dominio" y envía la solicitud
-    Then la solicitud es rechazada y no se crea ninguna cuenta
-    And recibe un mensaje de error indicando que el formato del correo no es válido
+  Scenario: Registration with an invalid email format
+    Given an unregistered visitor wants to create a client account
+    When they enter the email "usuario@@dominio" and submit the request
+    Then the request is rejected and no account is created
+    And they receive an error message saying the email format is not valid
 
   @excepcion
-  Scenario Outline: Número de celular con formato inválido
-    Given un visitante tiene nombre, correo y contraseña válidos
-    When envía la solicitud con el celular "<celular>"
-    Then la solicitud es rechazada y no se crea ninguna cuenta
-    And recibe un mensaje de error indicando que el número de celular no es válido
+  Scenario Outline: Cell phone number with an invalid format
+    Given a visitor has a valid name, email and password
+    When they submit the request with the cell phone number "<cell phone>"
+    Then the request is rejected and no account is created
+    And they receive an error message saying the cell phone number is not valid
 
     Examples:
-      | celular    |
+      | cell phone |
       | abcde12345 |
       | 12345      |
       | 123        |
       | 1234567890 |
 
   @excepcion
-  Scenario: Registro con número de celular ya registrado en otra cuenta
-    Given ya existe una cuenta de cliente registrada
-    When un visitante intenta registrarse con el mismo celular de esa cuenta
-    Then la solicitud es rechazada y no se crea una cuenta duplicada
-    And recibe un mensaje indicando que el número de celular ya está en uso
+  Scenario: Registration with a cell phone number already registered to another account
+    Given a client account is already registered
+    When a visitor tries to register with the same cell phone number as that account
+    Then the request is rejected and no duplicate account is created
+    And they receive a message saying the cell phone number is already in use
 
   @positivo
-  Scenario Outline: Contraseña válida con un carácter especial permitido
-    Given un visitante tiene nombre, correo y celular válidos
-    When envía la contraseña "<contraseña>" que incluye el carácter especial "<carácter especial>"
-    Then la cuenta queda creada exitosamente
+  Scenario Outline: Valid password with an allowed special character
+    Given a visitor has a valid name, email and cell phone number
+    When they submit the password "<password>" that includes the special character "<special character>"
+    Then the account is created successfully
 
     Examples:
-      | carácter especial | contraseña  |
+      | special character | password    |
       | ¡                 | Segura¡2026 |
       | *                 | Segura*2026 |
       | +                 | Segura+2026 |
       | °                 | Segura°2026 |
 
   @excepcion
-  Scenario Outline: Contraseña que no cumple la política de seguridad
-    Given un visitante tiene nombre, correo y celular válidos
-    When envía la contraseña "<contraseña>" que incumple el requisito "<requisito>"
-    Then la solicitud es rechazada y no se crea ninguna cuenta
-    And recibe un mensaje indicando el requisito de seguridad no cumplido
+  Scenario Outline: Password that does not meet the security policy
+    Given a visitor has a valid name, email and cell phone number
+    When they submit the password "<password>" that fails the requirement "<requirement>"
+    Then the request is rejected and no account is created
+    And they receive a message stating the security requirement that was not met
 
     Examples:
-      | requisito                              | contraseña    |
-      | contener al menos una mayúscula        | clave#segura1 |
-      | contener al menos una minúscula        | CLAVE#SEGURA1 |
-      | tener mínimo 8 caracteres              | Ab#xyz1       |
-      | contener al menos un carácter especial | ClaveSegura1  |
+      | requirement                              | password      |
+      | contain at least one uppercase letter    | clave#segura1 |
+      | contain at least one lowercase letter    | CLAVE#SEGURA1 |
+      | have at least 8 characters               | Ab#xyz1       |
+      | contain at least one special character   | ClaveSegura1  |
 
   @excepcion
-  Scenario Outline: Campo obligatorio faltante
-    Given un visitante no registrado quiere crear una cuenta de cliente
-    When deja vacío el campo "<campo>" y envía la solicitud
-    Then la solicitud es rechazada y no se crea ninguna cuenta
-    And recibe un mensaje de error específico para el campo "<campo>"
+  Scenario Outline: Missing required field
+    Given an unregistered visitor wants to create a client account
+    When they leave the field "<field>" empty and submit the request
+    Then the request is rejected and no account is created
+    And they receive a specific error message for the field "<field>"
 
     Examples:
-      | campo              |
-      | nombre completo    |
-      | correo electrónico |
-      | número de celular  |
-      | contraseña         |
+      | field             |
+      | full name         |
+      | email             |
+      | cell phone number |
+      | password          |
 
-  # Este escenario necesita el límite de producción (5 intentos). Se ejecuta aparte del resto: ver etiqueta @rate-limit.
+  # This scenario needs the production limit (5 attempts). It runs apart from the rest: see the @rate-limit tag.
   @acceso @rate-limit
-  Scenario: Bloqueo temporal por múltiples intentos de registro
-    Given un mismo origen realizó 5 intentos de registro en poco tiempo
-    When intenta registrarse nuevamente
-    Then se bloquean temporalmente nuevas solicitudes desde ese origen
+  Scenario: Temporary block after multiple registration attempts
+    Given the same origin made 5 registration attempts in a short time
+    When it tries to register again
+    Then new requests from that origin are temporarily blocked
