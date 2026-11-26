@@ -124,7 +124,7 @@ public class EditarServicioSteps {
     @When("they try to modify that service")
     public void otroProveedorIntentaModificar() {
         String servicioAjeno = ServiciosDePrueba.servicioDelDueno();
-        theActorCalled(OTRO_PROVEEDOR).attemptsTo(EditarServicio.conLosDatos(servicioAjeno, Map.<String, Object>of("priceCop", 1)));
+        theActorCalled(OTRO_PROVEEDOR).attemptsTo(EditarServicio.conLosDatos(servicioAjeno, Map.of("priceCop", 1)));
     }
 
     /** Lo usan el cliente y el usuario sin sesión: actúa quien esté en el foco después del Given. */
@@ -132,7 +132,7 @@ public class EditarServicioSteps {
     public void intentaModificarUnServicio() {
         Actor quienIntenta = theActorInTheSpotlight();
         String servicio = ServiciosDePrueba.crearServicioValido();
-        ServiciosDePrueba.enElFoco(quienIntenta).attemptsTo(EditarServicio.conLosDatos(servicio, Map.<String, Object>of("priceCop", 1)));
+        ServiciosDePrueba.enElFoco(quienIntenta).attemptsTo(EditarServicio.conLosDatos(servicio, Map.of("priceCop", 1)));
     }
 
     // ---------- Then / And ----------
