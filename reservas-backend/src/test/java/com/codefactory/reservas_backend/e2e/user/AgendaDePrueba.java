@@ -65,22 +65,27 @@ public final class AgendaDePrueba {
 
     public static Agenda prepararNegocio(Actor proveedor, long precio) {
         CuentasDePrueba.registrarEIniciarSesion(proveedor, "Proveedor");
+        return montarAgenda(proveedor, precio, "Servicio " + UUID.randomUUID().toString().substring(0, 6),
+                "Sala " + UUID.randomUUID().toString().substring(0, 6), ABRE, CIERRA);
+    }
+
+    // el proveedor ya tiene sesion; crea servicio y recurso con los nombres y el horario pedidos
+    public static Agenda montarAgenda(Actor proveedor, long precio, String nombreDelServicio, String nombreDelRecurso,
+                                      String abre, String cierra) {
         String idDelNegocio = proveedor.recall(Memoria.ID_DE_NEGOCIO);
         DatosDeRegistro datos = proveedor.recall(Memoria.DATOS);
 
-        String nombreDelServicio = "Servicio " + UUID.randomUUID().toString().substring(0, 6);
         proveedor.attemptsTo(CrearServicio.enElNegocio(idDelNegocio, nombreDelServicio, DURACION, precio));
         proveedor.should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(201)));
         String idDelServicio = ultimaRespuesta(proveedor).getString("id");
 
-        String nombreDelRecurso = "Sala " + UUID.randomUUID().toString().substring(0, 6);
         proveedor.attemptsTo(RegistrarRecurso.llamado(nombreDelRecurso, idDelNegocio));
         proveedor.should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(201)));
         String idDelRecurso = ultimaRespuesta(proveedor).getString("id");
 
         proveedor.attemptsTo(AsignarRecursos.alServicio(idDelServicio, idDelRecurso));
         proveedor.should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(200)));
-        proveedor.attemptsTo(DefinirHorario.todaLaSemana(idDelRecurso, ABRE, CIERRA));
+        proveedor.attemptsTo(DefinirHorario.todaLaSemana(idDelRecurso, abre, cierra));
         proveedor.should(seeThat(RespuestaDeLaApi.codigoDeEstado(), equalTo(200)));
 
         return new Agenda(idDelNegocio, datos.nombreDelNegocio(), idDelServicio, nombreDelServicio,
