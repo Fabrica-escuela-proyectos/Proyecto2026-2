@@ -28,10 +28,13 @@
 	</scm>
 	<properties>
 		<java.version>17</java.version>
+        <serenity.version>5.3.9</serenity.version>
+        <cucumber.version>7.34.2</cucumber.version>
+        <rest-assured.version>6.0.0</rest-assured.version>
         <!-- ./mvnw spring-boot:run arranca en perfil dev (la aplicación ya no tiene perfil por defecto, SEC-05). -->
         <spring-boot.run.profiles>dev</spring-boot.run.profiles>
         <sonar.projectKey>Fabrica-escuela-proyectos_Proyecto2026-2</sonar.projectKey>
-        <sonar.organization>fabrica-escuela-proyectos</sonar.organization>
+        <sonar.organization>fabrica-escuela-proyectos </sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
 	</properties>
 	<dependencies>
@@ -83,7 +86,60 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
-
+<!-- E2E: Cucumber + Serenity Screenplay (solo API) -->
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-java</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-spring</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-junit-platform-engine</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.serenity-bdd</groupId>
+            <artifactId>serenity-core</artifactId>
+            <version>${serenity.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.serenity-bdd</groupId>
+            <artifactId>serenity-cucumber</artifactId>
+            <version>${serenity.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.serenity-bdd</groupId>
+            <artifactId>serenity-screenplay</artifactId>
+            <version>${serenity.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.serenity-bdd</groupId>
+            <artifactId>serenity-screenplay-rest</artifactId>
+            <version>${serenity.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.serenity-bdd</groupId>
+            <artifactId>serenity-ensure</artifactId>
+            <version>${serenity.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-suite</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- JWT (ADR-002-autenticacion-y-sesiones.md: Spring Security + JWT, token
              de 1 hora). Sprint 1 solo deja lista la utilidad de generacion/validacion
              (JwtTokenProvider) como insumo para HU02 (login); no hay filtro de login
@@ -167,6 +223,27 @@
                         <phase>verify</phase>
                         <goals>
                             <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>net.serenity-bdd.maven.plugins</groupId>
+                <artifactId>serenity-maven-plugin</artifactId>
+                <version>${serenity.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>net.serenity-bdd</groupId>
+                        <artifactId>serenity-single-page-report</artifactId>
+                        <version>${serenity.version}</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>serenity-reports</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>aggregate</goal>
                         </goals>
                     </execution>
                 </executions>

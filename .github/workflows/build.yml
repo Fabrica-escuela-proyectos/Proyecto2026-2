@@ -33,9 +33,53 @@ jobs:
           cache: maven
 
       # Corre las pruebas unitarias y las de integración (Testcontainers usa el
-      # Docker que ya trae ubuntu-latest) y genera el reporte de JaCoCo
+      # Docker que ya trae ubuntu-latest) y genera el reporte de JaCoCo.
+      # Excluye el runner E2E (-Dtest='!...'): esas pruebas corren en el job "e2e", aparte, para que una
+      # prueba E2E rota no ponga en rojo "tests" ni bloquee Sonar, build y deploy.
       - name: Run Tests
-        run: mvn -B verify
+        run: mvn -B verify -Dtest='!RunCucumberTest'
+
+  # E2E's job: pruebas de punta a punta de la API (Cucumber + Serenity Screenplay). Arrancan la aplicación completa
+  # con PostgreSQL en Testcontainers (Docker ya viene en ubuntu-latest) y se ejecutan por HTTP real.
+  # Corre en paralelo con "tests": son independientes y cada uno tiene su propio Docker.
+  # NO está en el "needs" de ningún job: si falla se ve en rojo (check "E2E tests"), pero Sonar, build y deploy
+  # siguen su curso. Para que además bloquee el despliegue: en el job "build" usar needs: [sonar, e2e].
+  e2e:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    # Tope duro: un contenedor que no arranca no debe dejar la ejecución colgada.
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Solo el runner E2E (-Dtest). "test" y no "verify": el reporte de Serenity se genera en el paso siguiente
+      # para que exista también cuando una prueba falla (con "verify" Maven se detiene antes de generarlo).
+      - name: Run E2E tests
+        run: mvn -B test -Dtest=RunCucumberTest -Dsurefire.failIfNoSpecifiedTests=false
+
+      # Un problema al armar el reporte no debe ocultar el resultado real de las pruebas.
+      - name: Generate Serenity report
+        if: always()
+        continue-on-error: true
+        run: mvn -B serenity:aggregate
+
+      - name: Upload Serenity report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: serenity-report
+          # upload-artifact no usa working-directory: la ruta es desde la raíz del repo
+          path: reservas-backend/target/site/serenity
+          if-no-files-found: warn
+          retention-days: 14
 
   # Sonar's job
   sonar:
@@ -68,6 +112,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >
           mvn -B verify
+          -Dtest='!RunCucumberTest'
           org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
 
   # Build's job
@@ -149,4 +194,3 @@ jobs:
           done
           echo "::error::La aplicación no respondió UP en 10 minutos"
           exit 1
-
