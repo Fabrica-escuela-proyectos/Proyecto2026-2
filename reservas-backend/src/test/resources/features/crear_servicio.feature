@@ -41,7 +41,7 @@ Feature: Create a service
   Scenario: A new service without resources cannot be booked yet
     Given a provider created a service that has no resources assigned
     When a client tries to book that service
-    Then the booking is not allowed
+    Then the booking is rejected
     And they receive a message saying the service has no availability yet
 
   @exception
@@ -49,7 +49,7 @@ Feature: Create a service
     Given a provider is logged in and owns a business
     When they register a service leaving the field "<field>" empty
     Then the request is rejected and the service is not created
-    And they receive a specific error message for the field "<field>"
+    And they receive an error message about the field "<field>"
 
     Examples:
       | field    |
@@ -68,7 +68,6 @@ Feature: Create a service
       | duration |
       | 0        |
       | -30      |
-      | abc      |
 
   @exception
   Scenario Outline: Price with an invalid value
@@ -80,7 +79,20 @@ Feature: Create a service
     Examples:
       | price |
       | -5000 |
-      | abc   |
+
+  # Hallazgo: con un texto como "abc" la API rechaza la solicitud (400), pero responde un mensaje general
+  # ("El cuerpo de la solicitud es inválido o está vacío") sin decir cuál campo falló, como pide la HU.
+  @exception @hallazgo
+  Scenario Outline: Duration or price written as text
+    Given a provider is logged in and owns a business
+    When they register a service with the "<field>" "abc"
+    Then the request is rejected and the service is not created
+    And they receive an error message about the field "<field>"
+
+    Examples:
+      | field    |
+      | duration |
+      | price    |
 
   # Límite definido por el equipo (supuesto S-06), no por la HU
   @positive
@@ -135,7 +147,7 @@ Feature: Create a service
     Given a provider is logged in and owns a business
     When they register a service whose "<field>" has <length> characters
     Then the request is rejected and the service is not created
-    And they receive a specific error message for the field "<field>"
+    And they receive an error message about the field "<field>"
 
     Examples:
       | field       | length |
