@@ -31,4 +31,28 @@ public final class DefinirHorario {
                             .contentType(ContentType.JSON).body(cuerpo)));
         });
     }
+
+    public static Performable deLunesASabado(String idDelRecurso, String desde, String hasta) {
+        return Task.where("{0} define el horario de lunes a sábado de " + desde + " a " + hasta, actor -> {
+            String token = actor.recall(Memoria.TOKEN);
+            List<Map<String, Object>> dias = IntStream.rangeClosed(1, 6)
+                    .mapToObj(dia -> Map.<String, Object>of("dayOfWeek", dia,
+                            "ranges", List.of(Map.of("start", desde, "end", hasta))))
+                    .toList();
+            String cuerpo = CuerpoJson.de(Map.of("days", dias));
+            actor.attemptsTo(Put.to("/api/v1/resources/" + idDelRecurso + "/availability")
+                    .with(request -> ConSesion.deAccesoOpcional(token).apply(request)
+                            .contentType(ContentType.JSON).body(cuerpo)));
+        });
+    }
+
+    public static Performable delDia(String idDelRecurso, int diaDeLaSemana, String desde, String hasta) {
+        return Task.where("{0} define el horario del día " + diaDeLaSemana + " de " + desde + " a " + hasta, actor -> {
+            String token = actor.recall(Memoria.TOKEN);
+            String cuerpo = CuerpoJson.de(Map.of("ranges", List.of(Map.of("start", desde, "end", hasta))));
+            actor.attemptsTo(Put.to("/api/v1/resources/" + idDelRecurso + "/availability/" + diaDeLaSemana)
+                    .with(request -> ConSesion.deAccesoOpcional(token).apply(request)
+                            .contentType(ContentType.JSON).body(cuerpo)));
+        });
+    }
 }

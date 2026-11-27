@@ -27,4 +27,12 @@ public final class ConsultarReservas {
                     .with(request -> ConSesion.deAccesoOpcional(token).apply(request)));
         });
     }
+
+    public static Performable delUsuario(String idDelUsuario) {
+        return Task.where("{0} consulta las reservas del usuario " + idDelUsuario, actor -> {
+            String token = actor.recall(Memoria.TOKEN);
+            actor.attemptsTo(Get.resource("/api/v1/users/" + idDelUsuario + "/bookings")
+                    .with(request -> ConSesion.deAccesoOpcional(token).apply(request)));
+        });
+    }
 }

@@ -9,6 +9,7 @@ import net.serenitybdd.screenplay.Performable;
 import net.serenitybdd.screenplay.Task;
 import net.serenitybdd.screenplay.rest.interactions.Post;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 /** HU-22: el cliente reserva un servicio en una fecha y hora. */
@@ -27,5 +28,16 @@ public final class ReservarServicio {
                             .with(request -> ConSesion.deAccesoOpcional(token).apply(request)
                                     .contentType(ContentType.JSON).body(cuerpo)));
                 });
+    }
+
+    public static Performable entre(String idDelServicio, LocalDate fecha, String inicio, String fin) {
+        return Task.where("{0} reserva el servicio el " + fecha + " de " + inicio + " a " + fin, actor -> {
+            String token = actor.recall(Memoria.TOKEN);
+            String cuerpo = CuerpoJson.de(Map.of("serviceId", idDelServicio, "date", fecha.toString(),
+                    "startTime", inicio, "endTime", fin));
+            actor.attemptsTo(Post.to("/api/v1/bookings")
+                    .with(request -> ConSesion.deAccesoOpcional(token).apply(request)
+                            .contentType(ContentType.JSON).body(cuerpo)));
+        });
     }
 }

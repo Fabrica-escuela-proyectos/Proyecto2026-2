@@ -25,6 +25,11 @@ public final class CerrarRecurso {
         return cerrar("{0} cierra el recurso todo el " + dia, idDelRecurso, Map.of("date", dia.toString()));
     }
 
+    public static Performable todoElDiaConfirmando(String idDelRecurso, LocalDate dia) {
+        return cerrar("{0} cierra el recurso todo el " + dia + " confirmando la cancelación", idDelRecurso,
+                Map.of("date", dia.toString(), "confirm", true));
+    }
+
     private static Performable cerrar(String titulo, String idDelRecurso, Map<String, Object> cuerpo) {
         return Task.where(titulo, actor -> {
             String token = actor.recall(Memoria.TOKEN);

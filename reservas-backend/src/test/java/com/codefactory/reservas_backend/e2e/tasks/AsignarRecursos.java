@@ -26,4 +26,14 @@ public final class AsignarRecursos {
                             .contentType(ContentType.JSON).body(cuerpo)));
         });
     }
+
+    public static Performable alServicio(String idDelServicio, List<String> idsDeRecursos) {
+        return Task.where("{0} asigna los recursos al servicio", actor -> {
+            String token = actor.recall(Memoria.TOKEN);
+            String cuerpo = CuerpoJson.de(Map.of("resourceIds", idsDeRecursos));
+            actor.attemptsTo(Put.to("/api/v1/services/" + idDelServicio + "/resources")
+                    .with(request -> ConSesion.deAccesoOpcional(token).apply(request)
+                            .contentType(ContentType.JSON).body(cuerpo)));
+        });
+    }
 }
